@@ -1,0 +1,2 @@
+*.stan linguist-language=Stan
+*.stanfunctions linguist-language=Stan

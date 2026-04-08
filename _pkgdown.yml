@@ -1,0 +1,30 @@
+url: ~
+template:
+  bootstrap: 5
+  math-rendering: katex
+
+home:
+  links:
+  - text: Browse source code
+    href: https://github.com/mhollanders/occARU
+  - text: Report a bug
+    href: https://github.com/mhollanders/occARU/issues
+
+reference:
+  - title: Core
+    contents:
+      - make_data
+      - fit_model
+      - set_priors
+  - title: Plotting
+    contents:
+      - plot_intercepts
+      - plot_coefficients
+      - plot_correlations
+      - plot_sites
+      - plot_surveys
+      - plot_partitions
+  - title: helpers
+    contents:
+      - setup_occARU
+

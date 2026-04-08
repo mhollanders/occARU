@@ -1,0 +1,35 @@
+Package: occARU
+Title: Occupancy Models for Automated Recording Unit (ARU) Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Matthijs", "Hollanders", , "matthijs.hollanders@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-0796-1018"))
+Description: Bayesian (multispecies) occupancy models for ARU data using
+    Stan.
+License: MIT + file LICENSE
+SystemRequirements: CmdStan (>= 2.36.0, https://mc-stan.org/cmdstan)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+VignetteBuilder: quarto
+Suggests: 
+    bayesplot (>= 1.15.0.9000),
+    ggh4x,
+    loo,
+    posterior,
+    priorsense,
+    quarto,
+    testthat,
+    tidybayes
+Config/testthat/edition: 3
+Imports: 
+    cli,
+    cmdstanr,
+    dplyr,
+    forcats,
+    ggplot2,
+    lubridate,
+    rlang,
+    sf,
+    tibble,
+    tidyr

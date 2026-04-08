@@ -1,0 +1,11 @@
+^LICENSE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^inst/stan/occARU$
+^inst/stan/occARUss$
+^scratch$
+^vignettes/\.quarto$
+^\.github$

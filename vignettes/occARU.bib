@@ -1,0 +1,210 @@
+@article{aguilar2023,
+  title = {Intuitive Joint Priors for {{Bayesian}} Linear Multilevel Models: {{The R2D2M2}} Prior},
+  shorttitle = {Intuitive Joint Priors for {{Bayesian}} Linear Multilevel Models},
+  author = {Aguilar, Javier Enrique and B{\"u}rkner, Paul-Christian},
+  year = 2023,
+  month = jan,
+  journal = {Electronic Journal of Statistics},
+  volume = {17},
+  number = {1},
+  pages = {1711--1767},
+  publisher = {{Institute of Mathematical Statistics and Bernoulli Society}},
+  issn = {1935-7524, 1935-7524},
+  doi = {10.1214/23-EJS2136},
+  urldate = {2025-07-17},
+  abstract = {The training of high-dimensional regression models on comparably sparse data is an important yet complicated topic, especially when there are many more model parameters than observations in the data. From a Bayesian perspective, inference in such cases can be achieved with the help of shrinkage prior distributions, at least for generalized linear models. However, real-world data usually possess multilevel structures, such as repeated measurements or natural groupings of individuals, which existing shrinkage priors are not built to deal with. We generalize and extend one of these priors, the R2D2 prior by Zhang et al. (2020), to linear multilevel models leading to what we call the R2D2M2 prior. The proposed prior enables both local and global shrinkage of the model parameters. It comes with interpretable hyperparameters, which we show to be intrinsically related to vital properties of the prior, such as rates of concentration around the origin, tail behavior, and amount of shrinkage the prior exerts. We offer guidelines on how to select the prior's hyperparameters by deriving shrinkage factors and measuring the effective number of non-zero model coefficients. Hence, the user can readily evaluate and interpret the amount of shrinkage implied by a specific choice of hyperparameters. Finally, we perform extensive experiments on simulated and real data, showing that our inference procedure for the prior is well calibrated, has desirable global and local regularization properties and enables the reliable and interpretable estimation of much more complex Bayesian multilevel models than was previously possible.},
+  keywords = {Bayesian inference,multilevel models,prior specification,regularization,shrinkage priors},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/KT3WH575/Aguilar and Bürkner - 2023 - Intuitive joint priors for Bayesian linear multilevel models The R2D2M2 prior.pdf}
+}
+
+@article{burkner2020,
+  title = {Modelling Monotonic Effects of Ordinal Predictors in {{Bayesian}} Regression Models.},
+  author = {B{\"u}rkner, Paul-Christian and Charpentier, Emmanuel},
+  year = 2020,
+  month = nov,
+  journal = {British Journal of Mathematical \& Statistical Psychology},
+  volume = {73},
+  number = {3},
+  pages = {420--451},
+  publisher = {Wiley-Blackwell},
+  issn = {0007-1102},
+  doi = {10.1111/bmsp.12195},
+  urldate = {2026-04-01},
+  abstract = {Ordinal predictors are commonly used in regression models. They are often incorrectly treated as either nominal or metric, thus under- or overestimating the information contained. Such practices may lead to worse inference and predictions compared to methods which are specifically designed for this purpose. We propose a new method for modelling ordinal predictors that applies in situations in which it is reasonable to assume their effects to be monotonic. The parameterization of such monotonic effects is realized in terms of a scale parameter b representing the direction and size of the effect and a simplex parameter {$\varsigma$} modelling the normalized differences between categories. This ensures that predictions increase or decrease monotonically, while changes between adjacent categories may vary across categories. This formulation generalizes to interaction terms as well as multilevel structures. Monotonic effects may be applied not only to ordinal predictors, but also to other discrete variables for which a monotonic relationship is plausible. In simulation studies we show that the model is well calibrated and, if there is monotonicity present, exhibits predictive performance similar to or even better than other approaches designed to handle ordinal predictors. Using Stan, we developed a Bayesian estimation method for monotonic effects which allows us to incorporate prior information and to check the assumption of monotonicity. We have implemented this method in the R package brms, so that fitting monotonic effects in a fully Bayesian framework is now straightforward.},
+  langid = {english},
+  keywords = {Forecasting,Isotonic regression,Parameterization,Regression analysis},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/ZQR4EZUM/Bürkner and Charpentier - 2020 - Modelling monotonic effects of ordinal predictors in Bayesian regression models..pdf}
+}
+
+@article{carpenter2017,
+  title = {Stan: {{A Probabilistic Programming Language}}},
+  shorttitle = {Stan},
+  author = {Carpenter, Bob and Gelman, Andrew and Hoffman, Matthew D. and Lee, Daniel and Goodrich, Ben and Betancourt, Michael and Brubaker, Marcus A. and Guo, Jiqiang and Li, Peter and Riddell, Allen},
+  year = 2017,
+  journal = {Journal of Statistical Software},
+  volume = {76},
+  pages = {1},
+  issn = {1548-7660},
+  doi = {10.18637/jss.v076.i01},
+  urldate = {2024-10-10},
+  abstract = {Stan is a probabilistic programming language for specifying statistical models. A Stan program imperatively defines a log probability function over parameters conditioned on specified data and constants. As of version 2.14.0, Stan provides full Bayesian inference for continuous-variable models through Markov chain Monte Carlo methods such as the No-U-Turn sampler, an adaptive form of Hamiltonian Monte Carlo sampling. Penalized maximum likelihood estimates are calculated using optimization methods such as the limited memory Broyden-Fletcher-Goldfarb-Shanno algorithm., Stan is also a platform for computing log densities and their gradients and Hessians, which can be used in alternative algorithms such as variational Bayes, expectation propagation, and marginal inference using approximate integration. To this end, Stan is set up so that the densities, gradients, and Hessians, along with intermediate quantities of the algorithm such as acceptance probabilities, are easily accessible., Stan can be called from the command line using the cmdstan package, through R using the rstan package, and through Python using the pystan package. All three interfaces support sampling and optimization-based inference with diagnostics and posterior analysis. rstan and pystan also provide access to log probabilities, gradients, Hessians, parameter transforms, and specialized plotting.},
+  pmcid = {PMC9788645},
+  pmid = {36568334},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/BERXNNZ7/Carpenter et al. - 2017 - Stan A Probabilistic Programming Language.pdf}
+}
+
+@article{doser2022,
+  title = {{{spOccupancy}}: {{An R}} Package for Single-Species, Multi-Species, and Integrated Spatial Occupancy Models},
+  shorttitle = {{{spOccupancy}}},
+  author = {Doser, Jeffrey W. and Finley, Andrew O. and K{\'e}ry, Marc and Zipkin, Elise F.},
+  year = 2022,
+  journal = {Methods in Ecology and Evolution},
+  volume = {13},
+  number = {8},
+  pages = {1670--1678},
+  issn = {2041-210X},
+  doi = {10.1111/2041-210X.13897},
+  urldate = {2026-02-05},
+  abstract = {Occupancy modelling is a common approach to assess species distribution patterns, while explicitly accounting for false absences in detection--nondetection data. Numerous extensions of the basic single-species occupancy model exist to model multiple species, spatial autocorrelation and to integrate multiple data types. However, development of specialized and computationally efficient software to incorporate such extensions, especially for large datasets, is scarce or absent. We introduce the spOccupancy R package designed to fit single-species and multi-species spatially explicit occupancy models. We fit all models within a Bayesian framework using P\'olya-Gamma data augmentation, which results in fast and efficient inference. spOccupancy provides functionality for data integration of multiple single-species detection--nondetection datasets via a joint likelihood framework. The package leverages Nearest Neighbour Gaussian Processes to account for spatial autocorrelation, which enables spatially explicit occupancy modelling for potentially massive datasets (e.g. 1,000s--100,000s of sites). spOccupancy provides user-friendly functions for data simulation, model fitting, model validation (by posterior predictive checks), model comparison (using information criteria and k-fold cross-validation) and out-of-sample prediction. We illustrate the package's functionality via a vignette, simulated data analysis and two bird case studies. The spOccupancy package provides a user-friendly platform to fit a variety of single and multi-species occupancy models, making it straightforward to address detection biases and spatial autocorrelation in species distribution models even for large datasets.},
+  langid = {english},
+  keywords = {Bayesian,data fusion,data integration,hierarchical model,imperfect detection,MCMC,occupancy model,spatial autocorrelation},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/75PYH43C/Doser et al. - 2022 - spOccupancy An R package for single-species, multi-species, and integrated spatial occupancy models.pdf}
+}
+
+@manual{gabry2025,
+  type = {Manual},
+  title = {{{cmdstanr}}: {{R Interface}} to '{{CmdStan}}'},
+  author = {Gabry, Jonah and {\v C}e{\v s}novar, Rok and Johnson, Andrew and Bronder, Steve},
+  year = 2025
+}
+
+@misc{gabry2025a,
+  title = {Bayesplot: {{Plotting}} for Bayesian Models},
+  author = {Gabry, Jonah and Mahr, Tristan},
+  year = 2025
+}
+
+@article{hanks2015,
+  title = {Restricted Spatial Regression in Practice: Geostatistical Models, Confounding, and Robustness under Model Misspecification},
+  shorttitle = {Restricted Spatial Regression in Practice},
+  author = {Hanks, Ephraim M. and Schliep, Erin M. and Hooten, Mevin B. and Hoeting, Jennifer A.},
+  year = 2015,
+  journal = {Environmetrics},
+  volume = {26},
+  number = {4},
+  pages = {243--254},
+  issn = {1099-095X},
+  doi = {10.1002/env.2331},
+  urldate = {2025-07-28},
+  abstract = {In spatial generalized linear mixed models (SGLMMs), covariates that are spatially smooth are often collinear with spatially smooth random effects. This phenomenon is known as spatial confounding and has been studied primarily in the case where the spatial support of the process being studied is discrete (e.g., areal spatial data). In this case, the most common approach suggested is restricted spatial regression (RSR) in which the spatial random effects are constrained to be orthogonal to the fixed effects. We consider spatial confounding and RSR in the geostatistical (continuous spatial support) setting. We show that RSR provides computational benefits relative to the confounded SGLMM, but that Bayesian credible intervals under RSR can be inappropriately narrow under model misspecification. We propose a posterior predictive approach to alleviating this potential problem and discuss the appropriateness of RSR in a variety of situations. We illustrate RSR and SGLMM approaches through simulation studies and an analysis of malaria frequencies in The Gambia, Africa. Copyright \copyright{} 2015 John Wiley \& Sons, Ltd.},
+  copyright = {Copyright \copyright{} 2015\,John Wiley \& Sons, Ltd.},
+  langid = {english},
+  keywords = {generalized linear mixed model,random effects,restricted regression,spatial confounding},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/7G6W37FB/Hanks et al. - 2015 - Restricted spatial regression in practice geostatistical models, confounding, and robustness under.pdf}
+}
+
+@article{hodges2010,
+  title = {Adding Spatially-Correlated Errors Can Mess up the Fixed Effect You Love},
+  author = {Hodges, James S. and Reich, Brian J.},
+  year = 2010,
+  month = nov,
+  journal = {The American Statistician},
+  volume = {64},
+  number = {4},
+  pages = {325--334},
+  issn = {0003-1305, 1537-2731},
+  doi = {10.1198/tast.2010.10052},
+  urldate = {2025-02-03},
+  abstract = {Many statisticians have had the experience of fitting a linear model with uncorrelated errors, then adding a spatially-correlated error term (random effect) and finding that the estimates of the fixedeffect coefficients have changed substantially. We show that adding a spatially-correlated random effect to a linear model is equivalent to adding a saturated collection of canonical regressors, the coefficients of which are shrunk toward zero, where the spatial map determines both the canonical regressors and the relative extent of the coefficients' shrinkage. Adding a spatially-correlated random effect can also be seen as inflating the error variances associated with specific contrasts of the data, where the spatial map determines the contrasts and the extent of error-variance inflation. We show how to restrict the spatial random effect to the orthogonal complement of the fixed effects, which we call restricted spatial regression. We mostly model spatial correlation using an improper conditional auto-regression (ICAR), but briefly show that spatial confounding also arises with socalled geostatistical models and penalized splines, and for the same reason as with the ICAR. We consider five proposed interpretations of spatial confounding and draw implications about what, if anything, one should do about it. For a given problem, the appropriate action depends on whether the spatial random effect is merely as a formal device used to implement spatial smoothing, or a random effect in the traditional sense of, say, Scheff\textasciiacute e (1959). For spatial random effects with the former interpretation, restricted spatial regression should be used, while for the latter interpretation this is less clear. In the process, we debunk the common belief that adding a spatially-correlated random effect adjusts fixed effect estimates for spatially-structured missing covariates.},
+  langid = {english},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/Q6MPALH2/Hodges and Reich - 2010 - Adding Spatially-Correlated Errors Can Mess Up the Fixed Effect You Love.pdf}
+}
+
+@article{kallioinen2023,
+  title = {Detecting and Diagnosing Prior and Likelihood Sensitivity with Power-Scaling},
+  author = {Kallioinen, Noa and Paananen, Topi and B{\"u}rkner, Paul-Christian and Vehtari, Aki},
+  year = 2023,
+  journal = {Statistics and Computing},
+  volume = {34},
+  number = {57},
+  doi = {10.1007/s11222-023-10366-5},
+  encoding = {UTF-8},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/J9UB32CB/Kallioinen et al. - 2023 - Detecting and diagnosing prior and likelihood sensitivity with power-scaling.pdf}
+}
+
+@article{mackenzie2002,
+  title = {Estimating Site Occupancy Rates When Detection Probabilities Are Less than One},
+  author = {MacKenzie, Darryl I. and Nichols, James D. and Lachman, Gideon B. and Droege, Sam and Andrew Royle, J. and Langtimm, Catherine A.},
+  year = 2002,
+  journal = {Ecology},
+  volume = {83},
+  number = {8},
+  pages = {2248--2255},
+  issn = {1939-9170},
+  doi = {10.1890/0012-9658(2002)083[2248:ESORWD]2.0.CO;2},
+  urldate = {2024-10-10},
+  abstract = {Nondetection of a species at a site does not imply that the species is absent unless the probability of detection is 1. We propose a model and likelihood-based method for estimating site occupancy rates when detection probabilities are {$<$}1. The model provides a flexible framework enabling covariate information to be included and allowing for missing observations. Via computer simulation, we found that the model provides good estimates of the occupancy rates, generally unbiased for moderate detection probabilities ({$>$}0.3). We estimated site occupancy rates for two anuran species at 32 wetland sites in Maryland, USA, from data collected during 2000 as part of an amphibian monitoring program, Frogwatch USA. Site occupancy rates were estimated as 0.49 for American toads (Bufo americanus), a 44\% increase over the proportion of sites at which they were actually observed, and as 0.85 for spring peepers (Pseudacris crucifer), slightly above the observed proportion of 0.83.},
+  langid = {english},
+  keywords = {anurans,bootstrap,Bufo americanus,detection probability,maximum likelihood,metapopulation,monitoring,patch occupancy,Pseudacris crucifer,site occupancy},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/29Y4FWP6/MacKenzie et al. - 2002 - Estimating Site Occupancy Rates When Detection Probabilities Are Less Than One.pdf}
+}
+
+@article{mackenzie2003,
+  title = {Estimating Site Occupancy, Colonization, and Local Extinction When a Species Is Detected Imperfectly},
+  author = {MacKenzie, Darryl I. and Nichols, James D. and Hines, James E. and Knutson, Melinda G. and Franklin, Alan B.},
+  year = 2003,
+  month = aug,
+  journal = {Ecology},
+  volume = {84},
+  number = {8},
+  pages = {2200--2207},
+  issn = {0012-9658},
+  doi = {10.1890/02-3090},
+  urldate = {2024-10-10},
+  abstract = {Few species are likely to be so evident that they will always be detected when present. Failing to allow for the possibility that a target species was present, but undetected, at a site will lead to biased estimates of site occupancy, colonization, and local extinction probabilities. These population vital rates are often of interest in long-term monitoring programs and metapopulation studies. We present a model that enables direct estimation of these parameters when the probability of detecting the species is less than 1. The model does not require any assumptions of process stationarity, as do some previous methods, but does require detection/nondetection data to be collected in a manner similar to Pollock's robust design as used in mark--recapture studies. Via simulation, we show that the model provides good estimates of parameters for most scenarios considered. We illustrate the method with data from monitoring programs of Northern Spotted Owls (Strix occidentalis caurina) in northern California and tiger salamanders (Ambystoma tigrinum) in Minnesota, USA.},
+  copyright = {http://doi.wiley.com/10.1002/tdm\_license\_1.1},
+  langid = {english},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/457YNW6L/MacKenzie et al. - 2003 - ESTIMATING SITE OCCUPANCY, COLONIZATION, AND LOCAL EXTINCTION WHEN A SPECIES IS DETECTED IMPERFECTLY.pdf}
+}
+
+@article{ogle2020,
+  title = {Ensuring Identifiability in Hierarchical Mixed Effects {{Bayesian}} Models},
+  author = {Ogle, Kiona and Barber, Jarrett J.},
+  year = 2020,
+  journal = {Ecological Applications},
+  volume = {30},
+  number = {7},
+  pages = {e02159},
+  issn = {1939-5582},
+  doi = {10.1002/eap.2159},
+  urldate = {2025-09-11},
+  abstract = {Ecologists are increasingly familiar with Bayesian statistical modeling and its associated Markov chain Monte Carlo (MCMC) methodology to infer about or to discover interesting effects in data. The complexity of ecological data often suggests implementation of (statistical) models with a commensurately rich structure of effects, including crossed or nested (i.e., hierarchical or multi-level) structures of fixed and/or random effects. Yet, our experience suggests that most ecologists are not familiar with subtle but important problems that often arise with such models and with their implementation in popular software. Of foremost consideration for us is the notion of effect identifiability, which generally concerns how well data, models, or implementation approaches inform about, i.e., identify, quantities of interest. In this paper, we focus on implementation pitfalls that potentially misinform subsequent inference, despite otherwise informative data and models. We illustrate the aforementioned issues using random effects regressions on synthetic data. We show how to diagnose identifiability issues and how to remediate these issues with model reparameterization and computational and/or coding practices in popular software, with a focus on JAGS, OpenBUGS, and Stan. We also show how these solutions can be extended to more complex models involving multiple groups of nested, crossed, additive, or multiplicative effects, for models involving random and/or fixed effects. Finally, we provide example code (JAGS/OpenBUGS and Stan) that practitioners can modify and use for their own applications.},
+  copyright = {\copyright{} 2020 by the Ecological Society of America},
+  langid = {english},
+  keywords = {crossed effects,equifinality,fixed effects,hierarchical model,identifiability,MCMC,multi-level model,nested effects,prior distribution,random effects,sum-to-zero,sweeping},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/S5F3N58I/Ogle and Barber - 2020 - Ensuring identifiability in hierarchical mixed effects Bayesian models.pdf}
+}
+
+@article{vehtari2017,
+  title = {Practical {{Bayesian}} Model Evaluation Using Leave-One-out Cross-Validation and {{WAIC}}},
+  author = {Vehtari, Aki and Gelman, Andrew and Gabry, Jonah},
+  year = 2017,
+  month = sep,
+  journal = {Statistics and Computing},
+  volume = {27},
+  number = {5},
+  pages = {1413--1432},
+  issn = {1573-1375},
+  doi = {10.1007/s11222-016-9696-4},
+  urldate = {2024-10-15},
+  abstract = {Leave-one-out cross-validation (LOO) and the widely applicable information criterion (WAIC) are methods for estimating pointwise out-of-sample prediction accuracy from a fitted Bayesian model using the log-likelihood evaluated at the posterior simulations of the parameter values. LOO and WAIC have various advantages over simpler estimates of predictive error such as AIC and DIC but are less used in practice because they involve additional computational steps. Here we lay out fast and stable computations for LOO and WAIC that can be performed using existing simulation draws. We introduce an efficient computation of LOO using Pareto-smoothed importance sampling (PSIS), a new procedure for regularizing importance weights. Although WAIC is asymptotically equal to LOO, we demonstrate that PSIS-LOO is more robust in the finite case with weak priors or influential observations. As a byproduct of our calculations, we also obtain approximate standard errors for estimated predictive errors and for comparison of predictive errors between two models. We implement the computations in an R package called loo and demonstrate using models fit with the Bayesian inference package Stan.},
+  langid = {english},
+  keywords = {Artificial Intelligence,Bayesian computation,K-fold cross-validation,Leave-one-out cross-validation (LOO),Pareto smoothed importance sampling (PSIS),Stan,Widely applicable information criterion (WAIC)},
+  file = {/Users/matt.hollanders/Documents/Zotero/storage/DV9PINT5/Vehtari et al. - 2017 - Practical Bayesian model evaluation using leave-one-out cross-validation and WAIC.pdf}
+}
+
+@misc{vehtari2025,
+  title = {{{loo}}: {{Efficient}} Leave-One-out Cross-Validation and {{WAIC}} for {{Bayesian}} Models},
+  author = {Vehtari, Aki and Gabry, Jonah and Magnusson, M{\aa}ns and Yao, Yuling and B{\"u}rkner, Paul-Christian and Paananen, Topi and Gelman, Andrew},
+  year = 2025
+}
