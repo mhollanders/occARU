@@ -10,7 +10,8 @@ aggregate_by_days <- function(dates, reference, survey_length = 1) {
     as.integer(as.Date(dates) - reference) %/% survey_length * survey_length
 }
 
-#' Align a factor column to reference levels, warning or erroring on missing values
+#' Align a factor column to reference levels, warning or erroring on missing
+#' values
 #'
 #' @param df A data frame.
 #' @param col Character. Name of the column to align.
@@ -26,16 +27,15 @@ align_factor <- function(df, col, levels, strict = FALSE) {
   if (n_missing) {
     if (strict) {
       cli::cli_abort(
-        "{.arg {df_name}} contains {n_missing} record{?s} with \\
-        {.val {col}} values not found in {.arg deployments}."
+        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col}} \\
+        values not found."
       )
     } else {
       cli::cli_warn(
-        "{.arg {df_name}} contains {n_missing} record{?s} with \\
-        {.val {col}} values not found in {.arg deployments}. \\
-        {?This record/These records} will be ignored."
+        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col}} \\
+        values not found. {?This record/These records} will be ignored."
       )
-      df <- df[!is.na(df[[col]]), ]
+      df <- tidyr::drop_na(df, col)
     }
   }
   df
@@ -132,13 +132,12 @@ check_no_duplicates <- function(df, col) {
 
 #' Check that all factor levels are present in the data
 #'
-#' Aborts if a factor column contains levels with no corresponding rows,
-#' which typically occurs when a data frame has been filtered after the
-#' factor was defined.
+#' Aborts if a factor column contains levels with no corresponding rows, which
+#' typically occurs when a data frame has been filtered after the factor was
+#' defined.
 #'
 #' @param df A data frame.
 #' @param col_chr Column name as a string.
-#'
 #' @return `df`, invisibly, if all levels are present.
 #' @keywords internal
 check_no_empty_levels <- function(df, col_chr) {
