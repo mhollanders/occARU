@@ -35,6 +35,7 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             stan-dev/cmdstanr
+            stan-dev/bayesplot
           needs: check
           extra-repositories: |
             https://stan-dev.r-universe.dev

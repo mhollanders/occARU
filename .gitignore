@@ -5,7 +5,6 @@
 .DS_Store
 .quarto
 scratch
-docs
 inst/stan/*
 !inst/stan/*.stan
 !inst/stan/*.stanfunctions
