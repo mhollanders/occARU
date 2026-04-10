@@ -40,14 +40,14 @@ in the survey effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
 \item{restricted}{Logical. If \code{TRUE} (default), when \code{include_predictors} is
-\code{FALSE}, plots random survey effects with orthogonal projection, i.e.,
-\eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_X})}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P_X}} is the orthogonal complement of the
-column space of the survey design matrix. If \code{FALSE}, plots random effects
-without orthogonal projection, i.e., \eqn{\boldsymbol{\kappa}} only. Has
-no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
-is unaffected by orthogonal projection. The orthogonal complement of the
-design matrix is computed using the site-averaged survey predictor values.}
+\code{FALSE} and the model was fit with \code{project_kappa = TRUE}, plots random
+survey effects with orthogonal projection, i.e.,
+\eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
+\eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
+the column space of the site-averaged survey design matrix. If \code{FALSE},
+plots random effects without orthogonal projection, i.e.,
+\eqn{\boldsymbol{\kappa}} only. Has no effect when \code{include_predictors}
+is \code{TRUE} as the linear predictor is unaffected by orthogonal projection.}
 
 \item{ndraws}{Number of draws to use for plotting, passed to
 \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
@@ -58,13 +58,13 @@ design matrix is computed using the site-averaged survey predictor values.}
 \item{palette}{Colour palette to be passed to \code{\link[ggplot2:scale_brewer]{ggplot2::scale_fill_brewer()}}.
 Default: \code{"YlGn"}.}
 
-\item{...}{Additional arguments passed to \code{\link[tidybayes:reexports]{tidybayes::stat_lineribbon()}}
+\item{...}{Additional arguments passed to \code{\link[ggdist:stat_lineribbon]{ggdist::stat_lineribbon()}}
 such as \code{.width} and \code{point_interval}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{

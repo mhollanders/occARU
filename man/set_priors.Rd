@@ -14,7 +14,7 @@ set_priors(
   iota_ell = c(1, 1),
   kappa_ell = c(1, 1),
   kappa_ell_periodic = c(1, 1),
-  kappa_v = c(1, 1),
+  K_phi = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -23,7 +23,7 @@ set_priors(
   iota_O_L = 1,
   kappa_O_L = 1,
   epsilon_O_L = 1,
-  print = TRUE
+  verbose = TRUE
 )
 }
 \arguments{
@@ -62,7 +62,7 @@ InvGamma(alpha, beta) prior on the periodic temporal GP length scale. Only
 used when \code{temporal = "gp"} and \code{periodic = TRUE} in \code{\link[=fit_model]{fit_model()}}.
 Default: \code{c(1, 1)}.}
 
-\item{kappa_v}{Numeric vector of length 2. \code{c(alpha[1], alpha[2])} for a
+\item{K_phi}{Numeric vector of length 2. \code{c(alpha[1], alpha[2])} for a
 Dirichlet(alpha) prior on the temporal GP variance partitions of the
 exp. quad. and periodic kernels. Only used when \code{temporal_gp = TRUE} and
 \code{periodic_GP = TRUE}. Default: \code{c(1, 1)}.}
@@ -99,7 +99,7 @@ matrix of species-specific survey effects. Default: \code{1}.}
 correlation matrix of species-specific OLRE residuals. Only used when
 \code{overdispersion = "olre"} in \code{\link[=fit_model]{fit_model()}}. Default: \code{1}.}
 
-\item{print}{Logical. If \code{TRUE} (default), prints list of priors.}
+\item{verbose}{Logical. If \code{TRUE} (default), prints list of priors.}
 }
 \value{
 An \code{occARU_priors} object (a named list) for use with \code{\link[=fit_model]{fit_model()}}.

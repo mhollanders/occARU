@@ -12,13 +12,15 @@ fit_model(
   periodic_gp = FALSE,
   period = NULL,
   species_length_scales = FALSE,
-  overdispersion = c("none", "olre", "nb"),
+  project_kappa = TRUE,
+  overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   latent = TRUE,
   loo_draws = 100,
   ppc = c("Q", "y", "both", "none"),
-  prior = set_priors(print = FALSE),
+  prior = set_priors(verbose = FALSE),
   init = "pathfinder",
+  pathfinder_args = list(),
   threads = 1,
   grainsize = 1,
   ...
@@ -37,15 +39,13 @@ corresponding changes to the output of \code{\link[=make_data]{make_data()}}.}
 (default) fits a hierarchical multi-species spatial Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. \code{"mvn"}
 fits an unstructured multivariate normal, and \code{"none"} omits site-level
-random effects entirely. The latter two are primarily useful for model
-comparison or when site coordinates are unavailable.}
+random effects entirely.}
 
 \item{temporal}{Character. Structure of survey-level random effects. \code{"gp"}
 (default) fits a hierarchical multi-species temporal Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. \code{"mvn"}
 fits an unstructured multivariate normal, and \code{"none"} omits survey-level
-random effects entirely. The latter two are primarily useful for model
-comparison.}
+random effects entirely.}
 
 \item{periodic_gp}{Logical. If \code{TRUE}, a periodic kernel is added to the
 temporal GP kernel. Only used when \code{temporal = "gp"}. Default: \code{FALSE}.}
@@ -62,26 +62,31 @@ shared length scale priors. Note that enabling this requires additional
 Cholesky decompositions per species and GP per iteration, which can
 substantially increase sampling time. If \code{FALSE} (default), only one
 Cholesky decomposition is performed per GP. Only used when multiple species
-are included, \code{spatial = "gp"} or \code{temporal = "gp"}.}
+are included, and \code{spatial = "gp"} or \code{temporal = "gp"}.}
+
+\item{project_kappa}{Logical. If \code{TRUE} (default), uses orthogonal projection
+for random survey effects using the site-averaged survey predictor design
+matrix. Ignored when no survey predictors are provided.}
 
 \item{overdispersion}{Character. Overdispersion model for the observation
-process. One of \code{"none"} (Poisson, default), \code{"olre"} (correlated
-observation-level random effects), or \code{"nb"} (negative binomial).}
+process. One of \code{"none"} (Poisson, default), \code{"nb"} (negative binomial),
+or \code{"olre"} (correlated observation-level random effects).}
 
 \item{variance_decomposition}{Character. Prior for variance partitions.
 One of \code{"dirichlet"} (default) or \code{"logistic-normal"}.}
 
 \item{latent}{Logical. If \code{TRUE} (default), latent occupancy states \code{z}
-are recovered for each species in \verb{generated quantities}.}
+are recovered for each species using the forward-backward sampling
+algorithm.}
 
 \item{loo_draws}{Non-negative integer. Number of Monte Carlo draws for
 marginal log-likelihood estimation of site-level random effects and/or
-Poisson OLREs for LOO-CV via \code{\link[loo:loo]{loo::loo()}}. Default: \code{100}, which produces
-an additional \verb{[S, I]} matrix \code{log_lik2} by marginalising over site effects
-(and OLRE residuals if applicable) via Monte Carlo integration. \code{log_lik2}
-is recommended over \code{log_lik} for PSIS-LOO-CV as it produces better
-Pareto-k diagnostics. Set to \code{0} to disable, returning only \code{log_lik}. Only
-used when \code{spatial} is not \code{"none"} or \code{overdispersion = "olre"}.}
+Poisson OLREs for PSI-LOO-CV via \code{\link[loo:loo]{loo::loo()}}. Default: \code{100}, which
+produces an additional \verb{[S, I]} matrix \code{log_lik2} by marginalising over
+site effects (and OLRE residuals if applicable) via Monte Carlo
+integration. \code{log_lik2} is recommended over \code{log_lik} for PSIS-LOO-CV as it
+produces better Pareto-k diagnostics. Set to \code{0} to disable, returning only
+\code{log_lik}. Only used when \code{spatial} is not \code{"none"} or \code{overdispersion = "olre"}.}
 
 \item{ppc}{Character. Posterior predictive checks to compute. One of \code{"Q"}
 (default), \code{"y"}, \code{"both"}, or \code{"none"}. \code{"y"} returns the full
@@ -104,6 +109,11 @@ convergence.}
 \item{A list}{Custom initial values passed directly to
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}.}
 }}
+
+\item{pathfinder_args}{Named list of additional arguments passed to
+\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()} when \code{init = "pathfinder"}.
+Overrides defaults (\code{refresh = 0}, \code{sig_figs = 14}, \code{init = 0.1},
+\code{num_paths = chains}, \code{num_threads = chains}). Default: \code{list()}.}
 
 \item{threads}{Positive integer. Number of threads for within-chain
 parallelisation via \code{reduce_sum()}. Default: \code{1} (no parallelisation).
@@ -130,7 +140,7 @@ object with occARU-specific attributes attached:
 \item{\code{stan_data}}{The full Stan data list passed to the model,
 including prior hyperparameters.}
 \item{\code{occARU_data}}{The original \code{occARU_data} object from
-\code{\link[=make_data]{make_data()}}, retaining site and species names.}
+\code{\link[=make_data]{make_data()}}.}
 }
 }
 \description{
@@ -138,11 +148,9 @@ Fits a Bayesian multispecies occupancy model with count observation model to
 data prepared by \code{\link[=make_data]{make_data()}} in Stan. Requires CmdStan >= 2.36.0, which can
 be installed with \code{\link[=setup_occARU]{setup_occARU()}}.
 }
-\details{
-See the \href{vignette("model")}{model vignette} for a full description of the
-model structure and options.
-}
 \seealso{
 \code{\link[=make_data]{make_data()}}, \code{\link[=set_priors]{set_priors()}}, \code{\link[=setup_occARU]{setup_occARU()}},
-\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}
+\link[cmdstanr:CmdStanMCMC]{cmdstanr::CmdStanMCMC} for methods on the fitted model object.
+The statistical model is described in
+\code{vignette("model", package = "occARU")}.
 }

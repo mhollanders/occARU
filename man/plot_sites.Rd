@@ -31,7 +31,7 @@ sites are plotted. Must be one of \code{attr(occARU_data, "sites")}.}
 posterior medians on a map using UTM coordinates. Requires site coordinates
 to have been supplied to \code{\link[=make_data]{make_data()}}. If \code{FALSE}, or if no coordinates
 are present, site effects are plotted with
-\code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}}.}
+\code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 
 \item{intercepts}{Logical. If \code{TRUE} (default), species-level baseline log
 detection rates are added to the site effects. If \code{FALSE}, only the site
@@ -47,11 +47,11 @@ effects.}
 
 \item{restricted}{Logical. If \code{TRUE} (default), when \code{include_predictors} is
 \code{FALSE}, plots random site effects with orthogonal projection, i.e.,
-\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P}_X)}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P}_X} is the orthogonal complement of the
-column space of the site design matrix. If \code{FALSE}, plots random effects
-without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only. Has
-no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
+\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+\eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
+the column space of the site design matrix. If \code{FALSE}, plots random
+effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
+Has no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
 is unaffected by orthogonal projection.}
 
 \item{ndraws}{Number of draws to use for plotting, passed to
@@ -61,23 +61,25 @@ is unaffected by orthogonal projection.}
 \code{ndraws} is not \code{NULL}. Default: random integer.}
 
 \item{...}{Additional arguments passed to \code{\link[ggplot2:geom_point]{ggplot2::geom_point()}} when
-\code{map = TRUE} and  \code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}} when \code{map = FALSE}.}
+\code{map = TRUE} and  \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}} when \code{map = FALSE}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{
-Plots species-level detection rates combining site predictors (if included
-via \code{\link[=make_data]{make_data()}}) and site random effects (\code{iota}). If \code{map = TRUE} and
-site coordinates are present in the fitted object, effects are displayed as
-points sized by the magnitude of the detection rate on a map; otherwise site
-effects are plotted as point-intervals. When \code{latent = TRUE} was set in
-\code{\link[=fit_model]{fit_model()}}, sites with median posterior occupancy of 0 are shown as red
-crosses. When \code{latent = FALSE}, detection rates are weighted by occupancy
-probability (\code{inv_logit(logit_psi[s, i])}).
+Plots species-level occupancy and detection rates combining site predictors
+(if included via \code{\link[=make_data]{make_data()}}) and site random effects (\code{iota}).
+}
+\details{
+If \code{map = TRUE} and site coordinates are present in the fitted object,
+effects are displayed as points sized by the magnitude of the detection rate
+on a map; otherwise site effects are plotted as point-intervals. When
+\code{latent = TRUE} was set in \code{\link[=fit_model]{fit_model()}}, sites with median posterior
+occupancy of 0 are shown as red crosses. When \code{latent = FALSE}, detection
+rates are weighted by occupancy probability (\code{inv_logit(logit_psi[s, i])}).
 }
 \seealso{
 \code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},

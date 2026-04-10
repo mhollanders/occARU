@@ -37,7 +37,6 @@ data {
                         OD;  // overdispersion (Poisson, OLRE, negbin)
   int<lower=0, upper=1> dirichlet,  // var. decomp. (logi-norm or Dirichlet)
                         SS,  // species-specific l-scales
-                        project_kappa,  // orth. proj. survey effects
                         latent,  // recover latent occ. states
                         PPC_y,  // posterior predictions of y
                         PPC_Q;  // posterior predictions of Q
@@ -50,7 +49,7 @@ data {
                      iota_ell_inv_gamma,  // spat. GP l-scale
                      kappa_ell_inv_gamma,  // temp. GP l-scale
                      kappa_ell_periodic_inv_gamma,  // periodic temp. GP l-scale
-                     K_phi_dirichlet,  // temp. GPs var. partitions
+                     kappa_v_dirichlet,  // temp. GPs var. partitions
                      phi_inv_gamma;  // negbin overdispersion
   vector<lower=0>[3] psi_W_t,  // occ. log odds var.
                      mu_W_t;  // log det. var.
@@ -97,7 +96,7 @@ transformed data {
 
   // var. partitions for occ. and det.
   int psi_V = 1 + 2 * P_sum[1],
-      mu_V = 1 + 2 * (sum(P_sum[2:3]) + SP + TE + OLRE);
+      mu_V = 1 + 2 * sum(P_sum[2:3]) + (SP + TE + OLRE) * Sp1;
 
   // categorical levels
   array[3, max(P_cat)] int C = rep_array(0, 3, max(P_cat));
@@ -171,13 +170,12 @@ transformed data {
   // site-by-survey design matrix pseudo-inverses for orthogonal projection
   matrix[X_plus_cols[2], J] X3_mean = rep_matrix(0, X_plus_cols[2], J);
   matrix[J, X_plus_cols[2]] X3_plus;
-  if (P_sum[3] && project_kappa) {
+  if (P_sum[3]) {
     if (P[3]) {
       for (i in 1:I) {
         X3_mean[:P[3]] += X3[i];
       }
     }
-    // categorical predictors need a reference category to remain full rank
     if (P_cat[3]) {
       int idx = P[3];
       for (p in 1:P_cat[3]) {
@@ -251,20 +249,17 @@ parameters {
   // site and survey effects and GP length-scales
   array[SP] sum_to_zero_vector[I] iota_bar_z;
   array[SP] sum_to_zero_matrix[S, I] iota_z;
-  array[SP] simplex[S] iota_phi;
   cholesky_factor_corr[SP * S] iota_O_L;
   vector<lower=0>[I_GP * (1 + SS * S)] iota_ell;
   array[TE] sum_to_zero_vector[J] kappa_bar_z;
   array[TE] sum_to_zero_matrix[S, J] kappa_z;
-  array[SP] simplex[S] kappa_phi;
   cholesky_factor_corr[TE * S] kappa_O_L;
   matrix<lower=0>[1 + (SS * S), J_GP + periodic] kappa_ell;
-  array[periodic] simplex[2] K_phi;
+  array[periodic] simplex[2] kappa_v;
 
   // OLRE residuals or negbin overdispersion
   array[OLRE] sum_to_zero_vector[N] epsilon_bar_z;
   array[OLRE] sum_to_zero_matrix[S, N] epsilon_z;
-  array[OLRE] simplex[S] epsilon_phi;
   cholesky_factor_corr[OLRE * S] epsilon_O_L;
   vector<lower=0>[NB * S] phi;
 }
@@ -333,18 +328,9 @@ transformed parameters {
   matrix[S, SP * I] iota;
   matrix[S, SP * P_sum[2] ? I : 0] iota2;
   row_vector[TE * J] kappa_bar;
-  row_vector[TE * P_sum[3] * project_kappa ? J : 0] kappa_bar2;
+  row_vector[TE * P_sum[3] ? J : 0] kappa_bar2;
   matrix[S, TE * J] kappa;
-  matrix[S, TE * P_sum[3] * project_kappa ? J : 0] kappa2;
-
-  // species-specific scales
-  vector[SP * S] iota_t;
-  vector[TE * S] kappa_t;
-  vector[OLRE * S] epsilon_t;
-  if (OLRE) {
-    epsilon_t = mu_tau[mu_V] * sqrt(epsilon_phi[1]);
-  }
-
+  matrix[S, TE * P_sum[3] ? J : 0] kappa22;
   {
     int psi_idx = 2, mu_idx = 2;
 
@@ -462,8 +448,8 @@ transformed parameters {
     // mean and species-specific site effects
     if (SP) {
       iota_bar = mu_tau[mu_idx] * iota_bar_z[1]';
-      iota_t = mu_tau[mu_idx + 1] * sqrt(iota_phi[1]);
-      matrix[S, I] iota_s = diag_pre_multiply(iota_t, iota_O_L) * iota_z[1];
+      matrix[S, I] iota_s = diag_pre_multiply(segment(mu_tau, mu_idx + 1, S),
+                                              iota_O_L) * iota_z[1];
 
       // increment spatial GP
       if (I_GP) {
@@ -489,23 +475,24 @@ transformed parameters {
         iota2 = iota;
         iota = orthogonalise(iota, X2_aug, X2_plus);
       }
-      mu_idx += 2;
+      mu_idx += Sp1;
     }
 
     // mean and species-specific survey effects
     if (TE) {
       kappa_bar = mu_tau[mu_idx] * kappa_bar_z[1]';
-      kappa_t = mu_tau[mu_idx + 1] * sqrt(kappa_phi[1]);
-      matrix[S, J] kappa_s = diag_pre_multiply(kappa_t, kappa_O_L) * kappa_z[1];
+      matrix[S, J] kappa_s = diag_pre_multiply(segment(mu_tau, mu_idx + 1, S),
+                                               kappa_O_L) * kappa_z[1];
 
       // increment temporal GP
       if (J_GP) {
         matrix[J, J] kappa_K, kappa_U;
-        vector[periodic * 2] K_t;
+        vector[periodic * 2] kappa_t;
         if (periodic) {
-          K_t = sqrt(K_phi[1]);
-          kappa_K = gp_exp_quad_cov(surveys, K_t[1], kappa_ell[1, 1])
-                    + gp_periodic_cov(surveys, K_t[2], kappa_ell[1, 2], period);
+          kappa_t = sqrt(kappa_v[1]);
+          kappa_K = gp_exp_quad_cov(surveys, kappa_t[1], kappa_ell[1, 1])
+                    + gp_periodic_cov(surveys, kappa_t[2], kappa_ell[1, 2],
+                                      period);
         } else {
           kappa_K = gp_exp_quad_cov(surveys, 1, kappa_ell[1, 1]);
         }
@@ -515,9 +502,9 @@ transformed parameters {
           for (s in 1:S) {
             int sp1 = s + 1;
             if (periodic) {
-              kappa_K = gp_exp_quad_cov(surveys, K_t[1], kappa_ell[sp1, 1])
-                        + gp_periodic_cov(surveys, K_t[2], kappa_ell[sp1, 2],
-                                          period);
+              kappa_K = gp_exp_quad_cov(surveys, kappa_t[1], kappa_ell[sp1, 1])
+                        + gp_periodic_cov(surveys, kappa_t[2],
+                                          kappa_ell[sp1, 2], period);
             } else {
               kappa_K = gp_exp_quad_cov(surveys, 1, kappa_ell[sp1, 1]);
             }
@@ -587,7 +574,7 @@ transformed parameters {
         lprior += inv_gamma_lpdf(kappa_ell[:, 2] |
                                    kappa_ell_periodic_inv_gamma[1],
                                    kappa_ell_periodic_inv_gamma[2])
-                  + dirichlet_lpdf(K_phi[1] | K_phi_dirichlet);
+                  + dirichlet_lpdf(kappa_v[1] | kappa_v_dirichlet);
       }
     }
   }
@@ -664,9 +651,9 @@ model {
   if (OLRE) {
     target += std_normal_lupdf(epsilon_bar_z[1])
               + std_normal_lupdf(to_vector(epsilon_z[1]));
-    row_vector[N] epsilon_bar = mu_tau[mu_V - 1] * epsilon_bar_z[1]';
+    row_vector[N] epsilon_bar = mu_tau[mu_V - S] * epsilon_bar_z[1]';
     matrix[S, N] epsilon_mat = rep_matrix(epsilon_bar, S)
-                               + diag_pre_multiply(epsilon_t, epsilon_O_L)
+                               + diag_pre_multiply(tail(mu_tau, S), epsilon_O_L)
                                  * epsilon_z[1];
     epsilon = fill_epsilon(f_l, log_Delta, epsilon_mat);
   }
@@ -704,12 +691,26 @@ generated quantities {
   // unconditional site coefficients
   row_vector[SP * P[2]] mu_beta_bar2;
   matrix[S, SP * P[2]] mu_beta2;
+  matrix[SP * P_cat[2], C_max[2]] mu_beta_cat_bar2;
+  array[SP * P_cat[2]] matrix[S, C_max[2]] mu_beta_cat2;
   row_vector[SP * P_ord[2]] mu_beta_ord_bar2;
   matrix[S, SP * P_ord[2]] mu_beta_ord2;
   if (SP) {
     if (P[2]) {
       mu_beta_bar2 = mu_beta_bar - iota_bar2 * X2_plus[:, :P[2]];
       mu_beta2 = mu_beta - iota2 * X2_plus[:, :P[2]];
+    }
+    if (P_cat[2]) {
+      int idx = P[2];
+      for (p in 1:P_cat[2]) {
+        int C_pm1 = C[2, p] - 1;
+        array[C_pm1] int seq = linspaced_int_array(C_p, idx + 1, idx + C_pm1);
+        mu_beta_cat_bar2[p, :C_p] = mu_beta_cat_bar[p, :C_p]
+                                    - iota_bar2 * X2_plus[:, seq];
+        mu_beta_cat2[p, :, :C_p] = mu_beta_cat[p, :, :C_p]
+                                   - iota2 * X2_plus[:, seq];
+        idx += C_p;
+      }
     }
     if (P_ord[2]) {
       int idx = X_plus_cols[1] - P_ord[2] + 1;
@@ -719,14 +720,28 @@ generated quantities {
   }
 
   // unconditional survey coefficients
-  row_vector[TE * P[3] * project_kappa] gamma_bar2;
-  matrix[S, TE * P[3] * project_kappa] gamma2;
-  row_vector[TE * P_ord[3] * project_kappa] gamma_ord_bar2;
-  matrix[S, TE * P_ord[3] * project_kappa] gamma_ord2;
-  if (TE && project_kappa) {
+  row_vector[TE * P[3]] gamma_bar2;
+  matrix[S, TE * P[3]] gamma2;
+  matrix[TE * P_cat[3], C_max[3]] gamma_cat_bar2;
+  array[TE * P_cat[3]] matrix[S, C_max[3]] gamma_cat2;
+  row_vector[TE * P_ord[3]] gamma_ord_bar2;
+  matrix[S, TE * P_ord[3]] gamma_ord2;
+  if (TE) {
     if (P[3]) {
       gamma_bar2 = gamma_bar - kappa_bar2 * X3_plus[:, :P[3]];
       gamma2 = gamma - kappa2 * X3_plus[:, :P[3]];
+    }
+    if (P_cat[3]) {
+      int idx = P[3];
+      for (p in 1:P_cat[3]) {
+        int C_p = C[3, p];
+        array[C_p] int seq = linspaced_int_array(C_p, idx + 1, idx + C_p);
+        gamma_cat_bar2[p, :C_p] = gamma_cat_bar[p, :C_p]
+                                     - kappa_bar2 * X3_plus[:, seq];
+        gamma_cat2[p, :, :C_p] = gamma_cat[p, :, :C_p]
+                                    - kappa2 * X3_plus[:, seq];
+        idx += C_p;
+      }
     }
     if (P_ord[3]) {
       int idx = X_plus_cols[2] - P_ord[3] + 1;
@@ -749,7 +764,7 @@ generated quantities {
     array[OLRE * I] matrix[S, J] epsilon;
     if (OLRE) {
       epsilon_bar = mu_tau[mu_V - S] * epsilon_bar_z[1]';
-      epsilon_S_L = diag_pre_multiply(epsilon_t, epsilon_O_L);
+      epsilon_S_L = diag_pre_multiply(tail(mu_tau, S), epsilon_O_L);
       matrix[S, N] epsilon_mat = rep_matrix(epsilon_bar, S)
                                  + epsilon_S_L * epsilon_z[1];
       epsilon = fill_epsilon(f_l, log_Delta, epsilon_mat);
@@ -793,10 +808,11 @@ generated quantities {
       array[D] matrix[S, I] log_lik_k;
 
       // prepare site effect covariances
+      int mu_idx = 2 + 2 * sum(P_sum[2:3]) + 1;
       array[I_GP * (SS ? S : 1)] matrix[I, I] iota_U;
       matrix[S, S] iota_S_L;
       if (SP) {
-        iota_S_L = diag_pre_multiply(iota_t, iota_O_L);
+        iota_S_L = diag_pre_multiply(segment(mu_tau, mu_idx, S), iota_O_L);
         if (I_GP) {
           if (SS) {
             for (s in 1:S) {

@@ -14,14 +14,12 @@
 #'   (default) fits a hierarchical multi-species spatial Gaussian process with
 #'   exponentiated quadratic kernel, which is the recommended option. `"mvn"`
 #'   fits an unstructured multivariate normal, and `"none"` omits site-level
-#'   random effects entirely. The latter two are primarily useful for model
-#'   comparison or when site coordinates are unavailable.
+#'   random effects entirely.
 #' @param temporal Character. Structure of survey-level random effects. `"gp"`
 #'   (default) fits a hierarchical multi-species temporal Gaussian process with
 #'   exponentiated quadratic kernel, which is the recommended option. `"mvn"`
 #'   fits an unstructured multivariate normal, and `"none"` omits survey-level
-#'   random effects entirely. The latter two are primarily useful for model
-#'   comparison.
+#'   random effects entirely.
 #' @param periodic_gp Logical. If `TRUE`, a periodic kernel is added to the
 #'   temporal GP kernel. Only used when `temporal = "gp"`. Default: `FALSE`.
 #' @param period Positive numeric. Period length in survey units (i.e. number
@@ -35,22 +33,27 @@
 #'   Cholesky decompositions per species and GP per iteration, which can
 #'   substantially increase sampling time. If `FALSE` (default), only one
 #'   Cholesky decomposition is performed per GP. Only used when multiple species
-#'   are included, `spatial = "gp"` or `temporal = "gp"`.
+#'   are included, and `spatial = "gp"` or `temporal = "gp"`.
+#' @param project_kappa Logical. If `TRUE` (default), uses orthogonal projection
+#'   for random survey effects using the site-averaged survey predictor design
+#'   matrix. Ignored when no survey predictors are provided.
 #' @param overdispersion Character. Overdispersion model for the observation
-#'   process. One of `"none"` (Poisson, default), `"olre"` (correlated
-#'   observation-level random effects), or `"nb"` (negative binomial).
+#'   process. One of `"none"` (Poisson, default), `"nb"` (negative binomial),
+#'   or `"olre"` (correlated observation-level random effects).
 #' @param variance_decomposition Character. Prior for variance partitions.
 #'   One of `"dirichlet"` (default) or `"logistic-normal"`.
 #' @param latent Logical. If `TRUE` (default), latent occupancy states `z`
-#'   are recovered for each species in `generated quantities`.
+#'   are recovered for each species using the forward-backward sampling
+#'   algorithm.
 #' @param loo_draws Non-negative integer. Number of Monte Carlo draws for
 #'   marginal log-likelihood estimation of site-level random effects and/or
-#'   Poisson OLREs for LOO-CV via [loo::loo()]. Default: `100`, which produces
-#'   an additional `[S, I]` matrix `log_lik2` by marginalising over site effects
-#'   (and OLRE residuals if applicable) via Monte Carlo integration. `log_lik2`
-#'   is recommended over `log_lik` for PSIS-LOO-CV as it produces better
-#'   Pareto-k diagnostics. Set to `0` to disable, returning only `log_lik`. Only
-#'   used when `spatial` is not `"none"` or `overdispersion = "olre"`.
+#'   Poisson OLREs for PSI-LOO-CV via [loo::loo()]. Default: `100`, which
+#'   produces an additional `[S, I]` matrix `log_lik2` by marginalising over
+#'   site effects (and OLRE residuals if applicable) via Monte Carlo
+#'   integration. `log_lik2` is recommended over `log_lik` for PSIS-LOO-CV as it
+#'   produces better Pareto-k diagnostics. Set to `0` to disable, returning only
+#'   `log_lik`. Only used when `spatial` is not `"none"` or `overdispersion =
+#'   "olre"`.
 #' @param ppc Character. Posterior predictive checks to compute. One of `"Q"`
 #'   (default), `"y"`, `"both"`, or `"none"`. `"y"` returns the full
 #'   `[I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
@@ -70,6 +73,10 @@
 #'     \item{A list}{Custom initial values passed directly to
 #'       [cmdstanr::CmdStanModel]`$sample()`.}
 #'   }
+#' @param pathfinder_args Named list of additional arguments passed to
+#'   [cmdstanr::CmdStanModel]`$pathfinder()` when `init = "pathfinder"`.
+#'   Overrides defaults (`refresh = 0`, `sig_figs = 14`, `init = 0.1`,
+#'   `num_paths = chains`, `num_threads = chains`). Default: `list()`.
 #' @param threads Positive integer. Number of threads for within-chain
 #'   parallelisation via `reduce_sum()`. Default: `1` (no parallelisation).
 #'   The total number of threads used is `threads * chains`, so for optimal
@@ -92,13 +99,12 @@
 #'     \item{`stan_data`}{The full Stan data list passed to the model,
 #'       including prior hyperparameters.}
 #'     \item{`occARU_data`}{The original `occARU_data` object from
-#'       [make_data()], retaining site and species names.}
+#'       [make_data()].}
 #'   }
-#' @details See the [model vignette](vignette("model")) for a full description of the
-#'   model structure and options.
-#'
 #' @seealso [make_data()], [set_priors()], [setup_occARU()],
-#'   [cmdstanr::CmdStanModel]
+#'   [cmdstanr::CmdStanMCMC] for methods on the fitted model object.
+#'   The statistical model is described in
+#'   `vignette("model", package = "occARU")`.
 #' @export
 fit_model <- function(
   data,
@@ -108,13 +114,15 @@ fit_model <- function(
   periodic_gp = FALSE,
   period = NULL,
   species_length_scales = FALSE,
-  overdispersion = c("none", "olre", "nb"),
+  project_kappa = TRUE,
+  overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   latent = TRUE,
   loo_draws = 100,
   ppc = c("Q", "y", "both", "none"),
-  prior = set_priors(print = FALSE),
+  prior = set_priors(verbose = FALSE),
   init = "pathfinder",
+  pathfinder_args = list(),
   threads = 1,
   grainsize = 1,
   ...
@@ -153,8 +161,7 @@ fit_model <- function(
     cli::cli_abort("{.arg loo_draws} must be a non-negative integer.")
   } else if (!(spatial != "none" || overdispersion == "olre")) {
     cli::cli_warn(
-      "{.arg loo_draws} only used when site-level or \\
-                  observation-level random effects are included."
+      "{.arg loo_draws} only used when site effects or OLREs are included."
     )
   }
   if (!is.numeric(threads) || threads < 1 || threads %% 1 != 0) {
@@ -170,9 +177,9 @@ fit_model <- function(
   # spatial GP check — warn and downgrade if no coordinates
   if (spatial == "gp" && all(data$XY == 0)) {
     cli::cli_warn(
-      "No site coordinates found in {.arg data}. Setting \\
-       {.arg spatial = 'mvn'}. Supply {.arg latitude} and \\
-       {.arg longitude} in {.fun make_data} to enable the spatial GP."
+      'No site coordinates found in {.arg data}. Setting \\
+       {.arg spatial = "mvn"}. Supply {.arg latitude} and \\
+       {.arg longitude} in {.fun make_data} to enable the spatial GP.'
     )
     spatial <- "mvn"
   }
@@ -198,9 +205,26 @@ fit_model <- function(
   # species-level GP checks
   if (data$S == 1 && species_length_scales) {
     cli::cli_abort(
-      "{.arg species_length_scales} only applicable if multiple \\
-                   species are included."
+      "{.arg species_length_scales} only applicable if multiple species are \\
+      included."
     )
+  }
+
+  # orthogonal projection check
+  if (project_kappa) {
+    if (temporal == "none") {
+      cli::cli_abort(
+        "Orthogonal projection only applicable if survey random effects are \\
+        included. Set {.arg project_kappa = FALSE} or turn on survey random \\
+        effects."
+      )
+    }
+    if (!sum(c(data$P[3], data$P_cat[3], data$P_ord[3]))) {
+      cli::cli_abort(
+        "Orthogonal projection only applicable if survey predictors are \\
+        included. Set {.arg project_kappa = FALSE} or include predictors."
+      )
+    }
   }
 
   # --- build Stan data list ---------------------------------------------------
@@ -216,6 +240,7 @@ fit_model <- function(
       OD = switch(overdispersion, "none" = 0L, "olre" = 1L, "nb" = 2L),
       dirichlet = as.integer(variance_decomposition == "dirichlet"),
       SS = as.integer(species_length_scales),
+      project_kappa = as.integer(project_kappa),
       latent = as.integer(latent),
       PPC_y = as.integer(ppc %in% c("both", "y")),
       PPC_Q = as.integer(ppc %in% c("both", "Q"))
@@ -237,8 +262,8 @@ fit_model <- function(
 
   # --- compile ----------------------------------------------------------------
 
-  stan_file <- if (is.null(stan_file)) {
-    system.file(
+  if (is.null(stan_file)) {
+    stan_file <- system.file(
       if (data$S > 1L) "stan/occARU.stan" else "stan/occARUss.stan",
       package = "occARU"
     )
@@ -270,7 +295,7 @@ fit_model <- function(
       c(
         " " = "\u00a0\u00a0Period not specified. Defaulting to period = \\
               {round(period, 1)} (annual cycle with \\
-              {attr(data, 'survey_length')}-day surveys)."
+              {attr(data, 'survey_length')}-day surveys)"
       )
     },
     if ((spatial == "gp" || temporal == "gp") && data$S > 1) {
@@ -279,6 +304,7 @@ fit_model <- function(
               {if (species_length_scales) 'yes' else 'no'}"
       )
     },
+
     " " = "Overdispersion: {switch(overdispersion,
                                    'none' = 'None (Poisson)',
                                    'olre' = 'OLRE (Poisson)',
@@ -297,14 +323,17 @@ fit_model <- function(
 
   if (identical(init, "pathfinder")) {
     cli::cli_inform(c("i" = "Running pathfinder for initialisation..."))
-    init <- mod$pathfinder(
+    pathfinder_defaults <- list(
       data = stan_data,
-      refresh = 0,
-      sig_figs = 14,
       init = 0.1,
+      refresh = 0,
       num_paths = chains,
       num_threads = chains,
-      psis_resample = FALSE
+      sig_figs = 14
+    )
+    init <- do.call(
+      mod$pathfinder,
+      utils::modifyList(pathfinder_defaults, pathfinder_args)
     )
   }
 
@@ -319,9 +348,9 @@ fit_model <- function(
   attr(fit, "stan_data") <- stan_data
   attr(fit, "occARU_data") <- data
   cli::cli_inform(c(
-    "i" = "Done. Stan data (including priors) and occARU data stored as \\
-          attributes. Access with {.code attr(fit, 'stan_data')} and \\
-          {.code attr(fit, 'occARU_data')}."
+    "i" = 'Done. Stan data (including priors) and occARU data stored as \\
+          attributes. Access with {.code attr(fit, "stan_data")} and \\
+          {.code attr(fit, "occARU_data")}.'
   ))
   fit
 }

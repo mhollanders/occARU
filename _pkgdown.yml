@@ -1,4 +1,4 @@
-url: ~
+url: https://mhollanders.github.io/occARU
 template:
   bootstrap: 5
   math-rendering: katex
@@ -11,7 +11,7 @@ home:
     href: https://github.com/mhollanders/occARU/issues
 
 reference:
-  - title: Core
+  - title: Core Functions
     contents:
       - make_data
       - fit_model
@@ -24,7 +24,7 @@ reference:
       - plot_sites
       - plot_surveys
       - plot_partitions
-  - title: helpers
+  - title: Setup
     contents:
       - setup_occARU
 

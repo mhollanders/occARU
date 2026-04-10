@@ -18,23 +18,24 @@
 #' @param species Character vector of species to plot. If `NULL` (default), all
 #'   species are plotted. Must be one of `attr(occARU_data, "species")`.
 #' @param restricted Logical. If `TRUE` (default), plots coefficients with
-#'   orthogonal projection of the detection random site or survey effects, i.e.,
-#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P}_X)}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P}_X} is the orthogonal complement of the
-#'   column space of the site or survey design matrix. If `FALSE`, recovers
+#'   orthogonal projection of the detection random site or survey effects, e.g.,
+#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
+#'   the column space of the site or survey design matrix. If `FALSE`, recovers
 #'   coefficients without orthogonal projection, \eqn{\boldsymbol{\beta} -
-#'   \boldsymbol{\iota} \boldsymbol{X}^+}, where  \eqn{\boldsymbol{X}^+} is the
-#'   pseudo-inverse of the design matrix. Only used if `submodel` is
-#'   `"detection"`.
+#'   \boldsymbol{\iota} \boldsymbol{X_2}^+}, where  \eqn{\boldsymbol{X_2}^+} is
+#'   the pseudo-inverse of the design matrix. Only used for site predictors if
+#'   `submodel` is `"detection"`, or if survey random effects were also
+#'   projected with `project_kappa = TRUE` in `fit_model()`.
 #' @param ordinal_categories Logical. If `FALSE` (default), plots coefficients
 #'   associated with maximum category (full effect). If `TRUE`, plots realised
 #'   coefficient associated with each ordered category, where the first
 #'   is used as the reference.
-#' @param ... Additional arguments passed to [tidybayes::stat_pointinterval()].
+#' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_sites()],
@@ -57,7 +58,6 @@ plot_coefficients <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
   species_lvl <- attr(occARU_data, "species")
@@ -80,16 +80,46 @@ plot_coefficients <- function(
     }
   }
 
+  # total number of predictors
+  idx <- if (submodel == "occupancy") {
+    1L
+  } else if (survey) {
+    3L
+  } else {
+    2L
+  }
+  P <- occARU_data$P[idx]
+  P_cat <- occARU_data$P_cat[idx]
+  P_ord <- occARU_data$P_ord[idx]
+  where <- if (!survey) paste("for", submodel) else ""
+  if (!sum(P, P_cat, P_ord)) {
+    cli::cli_abort(
+      "No {component} predictors were found {where} in {.arg fit}."
+    )
+  }
+
   # get restricted indicator
   res <- TRUE
   if (!restricted) {
     if (submodel == "occupancy") {
-      cli::cli_warn(
-        "{.arg restricted} is ignored when {.arg submodel} is \\
-        {.val {submodel}}."
+      cli::cli_abort(
+        '{.arg restricted = FALSE} is only applicable when \\
+        {.arg submodel = "detection"}.'
+      )
+    } else if (survey && !stan_data$project_kappa) {
+      cli::cli_abort(
+        "{.arg restricted = FALSE} is only applicable when random survey \\
+        effects were orthogonally projected. Requires \\
+        {.arg project_kappa = TRUE} in {.fun fit_model}."
       )
     } else {
       res <- FALSE
+    }
+    if (type == "categorical") {
+      cli::cli_abort(
+        "Recovery of unconditional categorical coefficients is currently not \\
+        supported."
+      )
     }
   }
 
@@ -103,25 +133,7 @@ plot_coefficients <- function(
     "mu_"
   }
   coef <- ifelse(survey, "gamma", "beta")
-  idx <- if (submodel == "occupancy") {
-    1L
-  } else if (survey) {
-    3L
-  } else {
-    2L
-  }
-  suffix <- if (!res) "_unc" else NULL
-
-  # total number of predictors
-  P <- occARU_data$P[idx]
-  P_cat <- occARU_data$P_cat[idx]
-  P_ord <- occARU_data$P_ord[idx]
-  where <- if (!survey) paste("for", submodel) else ""
-  if (!sum(P, P_cat, P_ord)) {
-    cli::cli_abort(
-      "No {component} predictors were found {where} in {.arg fit}."
-    )
-  }
+  suffix <- if (!res) "2" else NULL
 
   # get species indices
   if (level == "species") {
@@ -168,7 +180,7 @@ plot_coefficients <- function(
             scales = if (facet_by == "species") "fixed" else "free_x"
           ) +
           my_vline() +
-          tidybayes::stat_pointinterval(
+          ggdist::stat_pointinterval(
             ggplot2::aes(
               y = if (facet_by == "species") {
                 forcats::fct_rev(predictor)
@@ -192,7 +204,7 @@ plot_coefficients <- function(
         p <- ggplot2::ggplot(draws) +
           ggplot2::aes(xdist = !!param, y = forcats::fct_rev(predictor)) +
           my_vline() +
-          tidybayes::stat_pointinterval(...) +
+          ggdist::stat_pointinterval(...) +
           ggplot2::labs(
             x = "Coefficient",
             y = "Predictor"
@@ -206,7 +218,6 @@ plot_coefficients <- function(
 
     # factors
   } else {
-    rlang::check_installed("ggh4x")
     lvls <- attr(occARU_data, "levels")[[
       if (submodel == "occupancy") {
         "X1"
@@ -228,7 +239,7 @@ plot_coefficients <- function(
           dplyr::mutate(c = dplyr::row_number(), .by = predictor)
 
         if (MS && level == "species") {
-          param <- rlang::sym(paste0(prefix, coef, "_cat", suffix))
+          param <- rlang::sym(paste0(prefix, coef, "_cat"))
           draws <- tidybayes::spread_rvars(fit, (!!param)[p, s, c]) |>
             dplyr::filter(s %in% species_idx) |>
             dplyr::right_join(lvls_df, by = dplyr::join_by(p, c)) |>
@@ -260,16 +271,10 @@ plot_coefficients <- function(
               independent = "y"
             ) +
             my_vline() +
-            tidybayes::stat_pointinterval(...) +
+            ggdist::stat_pointinterval(...) +
             ggplot2::labs(x = "Coefficient", y = "Category")
         } else {
-          param <- rlang::sym(paste0(
-            prefix,
-            coef,
-            "_cat",
-            if (MS) "_bar",
-            suffix
-          ))
+          param <- rlang::sym(paste0(prefix, coef, "_cat", if (MS) "_bar"))
           draws <- tidybayes::spread_rvars(fit, (!!param)[p, c]) |>
             dplyr::filter(!is.na(median(!!param))) |>
             dplyr::left_join(lvls_df, by = dplyr::join_by(p, c)) |>
@@ -284,7 +289,7 @@ plot_coefficients <- function(
             ggplot2::aes(xdist = !!param, y = forcats::fct_rev(category)) +
             ggplot2::facet_wrap(~predictor, scales = "free_y") +
             my_vline() +
-            tidybayes::stat_pointinterval(...) +
+            ggdist::stat_pointinterval(...) +
             ggplot2::labs(x = "Coefficient", y = "Category")
         }
       } else {
@@ -349,7 +354,7 @@ plot_coefficients <- function(
                 independent = "y"
               ) +
               my_vline() +
-              tidybayes::stat_pointinterval(...) +
+              ggdist::stat_pointinterval(...) +
               ggplot2::labs(x = "Coefficient", y = "Category")
           } else {
             p <- ggplot2::ggplot(draws) +
@@ -370,7 +375,7 @@ plot_coefficients <- function(
                 scales = if (facet_by == "species") "fixed" else "free_x"
               ) +
               my_vline() +
-              tidybayes::stat_pointinterval(...) +
+              ggdist::stat_pointinterval(...) +
               ggplot2::labs(
                 x = "Coefficient",
                 y = if (facet_by == "species") "Predictor" else "Species"
@@ -405,13 +410,13 @@ plot_coefficients <- function(
               ) +
               ggplot2::facet_wrap(~predictor, scales = "free_y") +
               my_vline() +
-              tidybayes::stat_pointinterval(...) +
+              ggdist::stat_pointinterval(...) +
               ggplot2::labs(x = "Coefficient", y = "Category")
           } else {
             p <- ggplot2::ggplot(draws) +
               ggplot2::aes(xdist = !!param, y = forcats::fct_rev(predictor)) +
               my_vline() +
-              tidybayes::stat_pointinterval(...) +
+              ggdist::stat_pointinterval(...) +
               ggplot2::labs(x = "Coefficient", y = "Predictor")
           }
         }
@@ -440,11 +445,11 @@ plot_coefficients <- function(
 #'   `"detection"` (default) or `"occupancy"`.
 #' @param species Character vector of species to plot. If `NULL` (default), all
 #'   species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param ... Additional arguments passed to [tidybayes::stat_pointinterval()].
+#' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
@@ -461,7 +466,6 @@ plot_correlations <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   if (stan_data$S == 1) {
     cli::cli_abort(
@@ -567,7 +571,7 @@ plot_correlations <- function(
     ggplot2::aes(xdist = .value, y = forcats::fct_rev(species)) +
     ggplot2::facet_grid(species2 ~ .variable) +
     my_vline() +
-    tidybayes::stat_pointinterval(...) +
+    ggdist::stat_pointinterval(...) +
     ggplot2::scale_x_continuous(
       breaks = seq(-0.5, 0.5, 0.5),
       limits = c(-1, 1),
@@ -591,11 +595,11 @@ plot_correlations <- function(
 #'   `exp()` for detection rates. If `FALSE`, values are left on the scale of
 #'   the link functions (logit for occupancy and log for detection).
 #'
-#' @param ... Additional arguments passed to [tidybayes::stat_pointinterval()].
+#' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()], [plot_coefficients()], [plot_sites()],
@@ -612,7 +616,6 @@ plot_intercepts <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
   MS <- stan_data$S > 1
@@ -659,14 +662,14 @@ plot_intercepts <- function(
   if (MS) {
     p <- p +
       ggplot2::facet_wrap(~submodel, nrow = 1, scales = "free_x") +
-      tidybayes::stat_pointinterval(
+      ggdist::stat_pointinterval(
         ggplot2::aes(y = forcats::fct_rev(species)),
         ...
       ) +
       ggplot2::labs(y = "Species")
   } else {
     p <- p +
-      tidybayes::stat_pointinterval(
+      ggdist::stat_pointinterval(
         ggplot2::aes(y = forcats::fct_rev(submodel)),
         ...
       ) +
@@ -679,27 +682,30 @@ plot_intercepts <- function(
 
 #' Plot variance partitions
 #'
+#' Plot variance partitions of the different model components for occupancy
+#' and detection submodels.
+#'
 #' The occARU model uses global-local shrinkage priors for the occupancy and
-#' detection submodels, where half Student-t priors are used for the variances
+#' detection submodels, where half-Student-t priors are used for the variances
 #' of both linear predictors which are simplex partitioned via either Dirichlet
 #' or logistic-normal decomposition. Variance decomposition only occurs when
 #' there is more than one model component. Partitions exist for species-level
-#' intercepts, species-level slopes (with one mean partition and one partition
-#' for species-level deviations), species-level site effects (with mean and
-#' species-specific components), species-level survey effects (with mean and
-#' species-specific components), and Poisson OLREs (with mean and
-#' species-specific components).
+#' intercepts, and species-level slopes, sites effects, survey effects, and
+#' Poisson OLREs (with one mean partition and one for species-level deviations).
+#' The species-level scales for site and survey effects and OLREs are produced
+#' by additional simplex decomposition of the species-level components.
 #'
 #' @param fit A fitted model object from [fit_model()].
 #' @param scales Logical. If `FALSE` (default), plots variance simplex
-#'   partitions \eqn{\phi}. If `TRUE`, produces component scales by plotting
-#'   \eqn{\sqrt{W \cdot \phi}}, where \eqn{W} are variances of linear
-#'   predictors.
-#' @param ... Additional arguments passed to [tidybayes::stat_pointinterval()].
+#'   partitions \eqn{\boldsymbol{\phi}}. If `TRUE`, produces component scales by
+#'   plotting \eqn{\sqrt{W \cdot \boldsymbol{\phi}}}, where \eqn{W} are
+#'   variances of linear predictors. Useful for sparse simplexes, where few
+#'   components account for most of the variance.
+#' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()] [plot_intercepts()], [plot_coefficients()],
@@ -715,10 +721,8 @@ plot_partitions <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
-  species_lvl <- attr(occARU_data, "species")
   S <- stan_data$S
   MS <- S > 1
   SP <- stan_data$spatial > 0
@@ -727,13 +731,12 @@ plot_partitions <- function(
   P_sum <- stan_data$P + stan_data$P_cat + stan_data$P_ord
 
   # labels
-  species_lbl <- paste0("(", species_lvl, ")")
   suffix <- paste0("(", c("Mean", "Species"), ")")
 
   # multispecies
   if (MS) {
     psi_V <- 1 + 2 * P_sum[1]
-    mu_V <- 1 + 2 * sum(P_sum[2:3]) + (SP + TE + OLRE) * (S + 1)
+    mu_V <- 1 + 2 * (sum(P_sum[2:3]) + SP + TE + OLRE)
     if (psi_V == 1 && mu_V == 1) {
       cli::cli_abort(
         "The model was fit without any predictors or random effects and \\
@@ -799,13 +802,13 @@ plot_partitions <- function(
           V_lbl <- c(V_lbl, X_lbl)
         }
         if (SP) {
-          V_lbl <- c(V_lbl, paste("Site Effects", c("(Global)", species_lbl)))
+          V_lbl <- c(V_lbl, paste("Site Effects", suffix))
         }
         if (TE) {
-          V_lbl <- c(V_lbl, paste("Survey Effects", c("(Global)", species_lbl)))
+          V_lbl <- c(V_lbl, paste("Survey Effects", suffix))
         }
         if (OLRE) {
-          V_lbl <- c(V_lbl, paste("OLRE", c("(Global)", species_lbl)))
+          V_lbl <- c(V_lbl, paste("OLRE", suffix))
         }
         mu_phi <- tidybayes::spread_rvars(fit, mu_phi[v], mu_W) |>
           dplyr::mutate(
@@ -915,7 +918,7 @@ plot_partitions <- function(
       y = forcats::fct_rev(partition)
     ) +
     ggplot2::facet_wrap(~submodel, nrow = 1, scales = "free_y") +
-    tidybayes::stat_pointinterval(...) +
+    ggdist::stat_pointinterval(...) +
     ggplot2::scale_x_continuous(expand = c(0, 0)) +
     ggplot2::labs(
       x = "Estimate",
@@ -928,14 +931,15 @@ plot_partitions <- function(
 
 #' Plot site occupancy and detection rates
 #'
-#' Plots species-level detection rates combining site predictors (if included
-#' via [make_data()]) and site random effects (`iota`). If `map = TRUE` and
-#' site coordinates are present in the fitted object, effects are displayed as
-#' points sized by the magnitude of the detection rate on a map; otherwise site
-#' effects are plotted as point-intervals. When `latent = TRUE` was set in
-#' [fit_model()], sites with median posterior occupancy of 0 are shown as red
-#' crosses. When `latent = FALSE`, detection rates are weighted by occupancy
-#' probability (`inv_logit(logit_psi[s, i])`).
+#' Plots species-level occupancy and detection rates combining site predictors
+#' (if included via [make_data()]) and site random effects (`iota`).
+#'
+#' If `map = TRUE` and site coordinates are present in the fitted object,
+#' effects are displayed as points sized by the magnitude of the detection rate
+#' on a map; otherwise site effects are plotted as point-intervals. When
+#' `latent = TRUE` was set in [fit_model()], sites with median posterior
+#' occupancy of 0 are shown as red crosses. When `latent = FALSE`, detection
+#' rates are weighted by occupancy probability (`inv_logit(logit_psi[s, i])`).
 #'
 #' @param fit A fitted model object from [fit_model()].
 #' @param species Character vector of species to plot. If `NULL` (default), all
@@ -946,7 +950,7 @@ plot_partitions <- function(
 #'   posterior medians on a map using UTM coordinates. Requires site coordinates
 #'   to have been supplied to [make_data()]. If `FALSE`, or if no coordinates
 #'   are present, site effects are plotted with
-#'   [tidybayes::stat_pointinterval()].
+#'   [ggdist::stat_pointinterval()].
 #' @param intercepts Logical. If `TRUE` (default), species-level baseline log
 #'   detection rates are added to the site effects. If `FALSE`, only the site
 #'   deviations are plotted on the log scale.
@@ -958,22 +962,22 @@ plot_partitions <- function(
 #'   effects.
 #' @param restricted Logical. If `TRUE` (default), when `include_predictors` is
 #'   `FALSE`, plots random site effects with orthogonal projection, i.e.,
-#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P}_X)}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P}_X} is the orthogonal complement of the
-#'   column space of the site design matrix. If `FALSE`, plots random effects
-#'   without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only. Has
-#'   no effect when `include_predictors` is `TRUE` as the linear predictor
+#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
+#'   the column space of the site design matrix. If `FALSE`, plots random
+#'   effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
+#'   Has no effect when `include_predictors` is `TRUE` as the linear predictor
 #'   is unaffected by orthogonal projection.
 #' @param ndraws  Number of draws to use for plotting, passed to
 #'   [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
 #'   `ndraws` is not `NULL`. Default: random integer.
 #' @param ... Additional arguments passed to [ggplot2::geom_point()] when
-#'   `map = TRUE` and  [tidybayes::stat_pointinterval()] when `map = FALSE`.
+#'   `map = TRUE` and  [ggdist::stat_pointinterval()] when `map = FALSE`.
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
@@ -998,7 +1002,6 @@ plot_sites <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
   site_lvl <- attr(occARU_data, "sites")
@@ -1044,19 +1047,23 @@ plot_sites <- function(
   }
 
   # determine projection
+  res <- TRUE
   if (!restricted) {
     if (P_sum && include_predictors) {
       cli::cli_abort(
-        "{.arg restricted} = {restricted} is only applicable when predictors \\
-        are in the model but excluded from the plot."
+        "{.arg restricted = FALSE} is only applicable when predictors are in \\
+        the model but excluded from the plot. Set \\
+        {.arg include_predictors = FALSE}."
       )
     } else if (!P_sum) {
-      cli::cli_warn(
-        "{.arg restricted} is only applicable when predictors are included."
+      cli::cli_abort(
+        "{.arg restricted = FALSE} is only applicable when predictors are \\
+        included."
       )
+    } else {
+      res <- FALSE
     }
   }
-  res <- !(P_sum && !restricted && !include_predictors)
 
   # initialise log_mu
   draws <- tidyr::expand_grid(s = species_idx, i = site_idx) |>
@@ -1224,7 +1231,7 @@ plot_sites <- function(
 
   # increment random site effects
   if (SP) {
-    param <- rlang::sym(paste0("iota", if (!res) "_unc"))
+    param <- rlang::sym(paste0("iota", if (!res) "2"))
     if (MS) {
       draws <- dplyr::left_join(
         draws,
@@ -1355,7 +1362,7 @@ plot_sites <- function(
   # transform
   draws <- dplyr::mutate(draws, pred = if (transform) exp(log_mu) else log_mu)
   mu_lab <- paste0(
-    "Detection rate per ",
+    "Detection rate per \n",
     survey_length,
     "-day survey",
     if (!transform) " (log)"
@@ -1397,7 +1404,7 @@ plot_sites <- function(
       ggplot2::labs(x = mu_lab, y = "Site")
     if (has_latent) {
       p <- p +
-        tidybayes::stat_pointinterval(
+        ggdist::stat_pointinterval(
           ggplot2::aes(
             xdist = dplyr::if_else(occupied == TRUE, pred, 0),
             colour = occupied,
@@ -1410,7 +1417,7 @@ plot_sites <- function(
         ggplot2::labs(colour = "Occupied", shape = "Occupied")
     } else {
       p <- p +
-        tidybayes::stat_pointinterval(
+        ggdist::stat_pointinterval(
           ggplot2::aes(xdist = pred),
           ...
         )
@@ -1445,26 +1452,26 @@ plot_sites <- function(
 #'   in the survey effects, if included. If `FALSE`, only plots the random
 #'   effects.
 #' @param restricted Logical. If `TRUE` (default), when `include_predictors` is
-#'   `FALSE`, plots random survey effects with orthogonal projection, i.e.,
-#'   \eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_X})}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P_X}} is the orthogonal complement of the
-#'   column space of the survey design matrix. If `FALSE`, plots random effects
-#'   without orthogonal projection, i.e., \eqn{\boldsymbol{\kappa}} only. Has
-#'   no effect when `include_predictors` is `TRUE` as the linear predictor
-#'   is unaffected by orthogonal projection. The orthogonal complement of the
-#'   design matrix is computed using the site-averaged survey predictor values.
+#'   `FALSE` and the model was fit with `project_kappa = TRUE`, plots random
+#'   survey effects with orthogonal projection, i.e.,
+#'   \eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
+#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
+#'   the column space of the site-averaged survey design matrix. If `FALSE`,
+#'   plots random effects without orthogonal projection, i.e.,
+#'   \eqn{\boldsymbol{\kappa}} only. Has no effect when `include_predictors`
+#'   is `TRUE` as the linear predictor is unaffected by orthogonal projection.
 #' @param ndraws  Number of draws to use for plotting, passed to
 #'   [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
 #'   `ndraws` is not `NULL`. Default: random integer.
 #' @param palette Colour palette to be passed to [ggplot2::scale_fill_brewer()].
 #'   Default: `"YlGn"`.
-#' @param ... Additional arguments passed to [tidybayes::stat_lineribbon()]
+#' @param ... Additional arguments passed to [ggdist::stat_lineribbon()]
 #'   such as `.width` and `point_interval`.
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
-#'     \item{`plot_data`}{The data structure used to produce the plot.}
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
@@ -1488,7 +1495,6 @@ plot_surveys <- function(
       "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
     )
   }
-  rlang::check_installed(c("tidybayes", "ggplot2"))
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
   survey_lvl <- attr(occARU_data, "surveys")
@@ -1526,19 +1532,28 @@ plot_surveys <- function(
   }
 
   # determine projection
+  res <- TRUE
   if (!restricted) {
     if (P_sum && include_predictors) {
       cli::cli_abort(
-        "{.arg restricted} = {restricted} is only applicable when predictors \\
-      are in the model but excluded from the plot."
+        "{.arg restricted = FALSE} is only applicable when predictors \\
+        are in the model but excluded from the plot."
       )
     } else if (!P_sum) {
-      cli::cli_warn(
-        "{.arg restricted} is only applicable when predictors are included."
+      cli::cli_abort(
+        "{.arg restricted = FALSE} is only applicable when predictors are \\
+        included."
       )
+    } else if (!stan_data$project_kappa) {
+      cli::cli_abort(
+        "{.arg restricted = FALSE} is ignored when random survey effects were \\
+        not orthogonally projected. Requires {.arg project_kappa = TRUE} in \\
+        {.fun fit_model}."
+      )
+    } else {
+      res <- FALSE
     }
   }
-  res <- !(P_sum && !restricted && !include_predictors)
 
   # initialise log_mu
   draws <- tidyr::expand_grid(s = species_idx, j = survey_idx) |>
@@ -1705,7 +1720,7 @@ plot_surveys <- function(
 
   # increment random survey effects
   if (TE) {
-    param <- rlang::sym(paste0("kappa", if (!res) "_unc"))
+    param <- rlang::sym(paste0("kappa", if (!res) "2"))
     if (MS) {
       draws <- dplyr::left_join(
         draws,
@@ -1781,7 +1796,7 @@ plot_surveys <- function(
   draws <- dplyr::mutate(draws, pred = if (transform) exp(log_mu) else log_mu)
   p <- ggplot2::ggplot(draws) +
     ggplot2::aes(x = survey, ydist = pred) +
-    tidybayes::stat_lineribbon(...) +
+    ggdist::stat_lineribbon(...) +
     ggplot2::facet_wrap(~species, scales = if (transform) "free_y", ncol = 1) +
     ggplot2::scale_x_date(expand = c(0, 0)) +
     ggplot2::scale_y_continuous(expand = c(0, 0)) +

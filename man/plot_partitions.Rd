@@ -10,29 +10,33 @@ plot_partitions(fit, scales = FALSE, ...)
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
 \item{scales}{Logical. If \code{FALSE} (default), plots variance simplex
-partitions \eqn{\phi}. If \code{TRUE}, produces component scales by plotting
-\eqn{\sqrt{W \cdot \phi}}, where \eqn{W} are variances of linear
-predictors.}
+partitions \eqn{\boldsymbol{\phi}}. If \code{TRUE}, produces component scales by
+plotting \eqn{\sqrt{W \cdot \boldsymbol{\phi}}}, where \eqn{W} are
+variances of linear predictors. Useful for sparse simplexes, where few
+components account for most of the variance.}
 
-\item{...}{Additional arguments passed to \code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}}.}
+\item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{
+Plot variance partitions of the different model components for occupancy
+and detection submodels.
+}
+\details{
 The occARU model uses global-local shrinkage priors for the occupancy and
-detection submodels, where half Student-t priors are used for the variances
+detection submodels, where half-Student-t priors are used for the variances
 of both linear predictors which are simplex partitioned via either Dirichlet
 or logistic-normal decomposition. Variance decomposition only occurs when
 there is more than one model component. Partitions exist for species-level
-intercepts, species-level slopes (with one mean partition and one partition
-for species-level deviations), species-level site effects (with mean and
-species-specific components), species-level survey effects (with mean and
-species-specific components), and Poisson OLREs (with mean and
-species-specific components).
+intercepts, and species-level slopes, sites effects, survey effects, and
+Poisson OLREs (with one mean partition and one for species-level deviations).
+The species-level scales for site and survey effects and OLREs are produced
+by additional simplex decomposition of the species-level components.
 }
 \seealso{
 \code{\link[=fit_model]{fit_model()}} \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},

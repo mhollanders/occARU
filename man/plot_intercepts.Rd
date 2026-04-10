@@ -17,12 +17,12 @@ back-transformed to the natural scale via \code{inv_logit()} for occupancy and
 \code{exp()} for detection rates. If \code{FALSE}, values are left on the scale of
 the link functions (logit for occupancy and log for detection).}
 
-\item{...}{Additional arguments passed to \code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}}.}
+\item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{

@@ -9,10 +9,10 @@ make_data(
   observations,
   failures = NULL,
   deploymentID = deploymentID,
-  latitude = latitude,
-  longitude = longitude,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
+  latitude = latitude,
+  longitude = longitude,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -21,7 +21,7 @@ make_data(
   survey_length = 7,
   thin_minutes = 30,
   day_start = "midday",
-  reference_date,
+  reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
@@ -41,21 +41,14 @@ the spatial Gaussian process.}
 columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
 (or equivalents specified via the corresponding arguments).}
 
-\item{failures}{Optional data frame of recorder failure periods. If
-supplied, must have the same \code{deploymentID} factor levels as
-\code{deployments}, with each row corresponding to one failure period at a
-\code{deploymentID} from \code{failureStart} to \code{failureEnd}.}
+\item{failures}{Optional data frame of ARU failure periods. If supplied, must
+have the same \code{deploymentID} factor levels as \code{deployments}, with each row
+corresponding to one failure period at a \code{deploymentID} from \code{failureStart}
+to \code{failureEnd}.}
 
 \item{deploymentID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for site IDs. Must be a factor with identical levels in \code{deployments}
-and \code{observations}. Default: \code{deploymentID}.}
-
-\item{latitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
-for WGS84 latitude in \code{deployments}. If omitted alongside \code{longitude}, no
-spatial Gaussian process is fitted. Default: \code{latitude}.}
-
-\item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
-for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
+name for sites (ARUs). Must be a factor with identical levels in
+\code{deployments} and \code{observations}. Default: \code{deploymentID}.}
 
 \item{deploymentStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
 name for deployment start dates in \code{deployments}. Must be a \code{Date}.
@@ -64,6 +57,13 @@ Default: \code{deploymentStart}.}
 \item{deploymentEnd}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
 name for deployment end dates in \code{deployments}. Must be a \code{Date}.
 Default: \code{deploymentEnd}.}
+
+\item{latitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
+for WGS84 latitude in \code{deployments}. If omitted alongside \code{longitude}, no
+spatial Gaussian process is fitted. Default: \code{latitude}.}
+
+\item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
+for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
 for observation timestamps in \code{observations}. Must be \code{POSIXt}. Default:
@@ -87,12 +87,12 @@ Default: \code{failureEnd}.}
 \item{survey_length}{Positive integer defining the length of each survey
 period in days. Observations are aggregated within each survey period by
 summing \code{count}, and recording effort (\code{Delta}) is computed as the fraction
-of days within each period that the recorder was active. For example,
-\code{days = 7} aggregates to weekly survey periods, with \code{Delta} ranging from 0
-(recorder failed all week) to 1 (recorder active all week). Longer periods
-reduce the number of surveys \code{J} but increase the counts per survey,
-trading off temporal resolution against model complexity and the assumption
-of closure within a survey period. Default: \code{7}.}
+of the survey length the ARU was active. For example, \code{survey_length = 7}
+aggregates to weekly survey periods, with \code{Delta} ranging from 0
+(ARU failed all week) to 1 (ARU active all week). Longer periods reduce the
+number of surveys \code{J} but increase the counts per survey, trading off
+temporal resolution against model complexity and the closure assumption
+within a survey period. Default: \code{7}.}
 
 \item{thin_minutes}{Positive numeric. If supplied, observations within
 \code{thin_minutes} minutes of each other (per site and species) are thinned to
@@ -103,7 +103,7 @@ Default: \code{30}.}
 \code{"midday"}. Default: \code{"midday"}.}
 
 \item{reference_date}{A \code{Date} defining the start of the first survey
-period. Defaults to the earliest deployment start date.}
+period. If \code{NULL} (default), uses the earliest deployment start date.}
 
 \item{occupancy_site_predictors}{Optional data frame of site-level
 covariates for the occupancy submodel. Must contain a \code{deploymentID}
@@ -119,7 +119,8 @@ covariates for the detection submodel. Same column-type rules as
 \item{survey_predictors}{Optional data frame of site-by-survey level
 covariates, with one row per site and date. Must contain \code{deploymentID}
 and \code{date} columns. Predictor columns follow the same type rules as the
-site-level predictor data frames. Must cover the full deployment period.}
+site-level predictor data frames. Must cover the full deployment period for
+each ARU.}
 
 \item{date}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name for
 dates in \code{survey_predictors}. Default: \code{date}.}
@@ -132,8 +133,8 @@ Numeric predictors not named in \code{survey_summary} are summarised with
 \code{mean}; categorical and ordinal predictors are summarised with the
 modal value. Default: \code{NULL}.}
 
-\item{scale_predictors}{Logical. If \code{TRUE}, continuous predictors are are
-scaled to zero mean and unit variance. Scaling parameters are stored as an
+\item{scale_predictors}{Logical. If \code{TRUE}, continuous predictors are scaled
+to zero mean and unit variance. Scaling parameters are stored as an
 attribute. Default: \code{TRUE}.}
 }
 \value{
@@ -141,7 +142,7 @@ A named list of class \code{"occARU_data"} containing all inputs
 required by the occARU Stan model, except for model specification
 arguments which are added by \code{\link[=fit_model]{fit_model()}}. The list contains:
 \describe{
-\item{\code{I}}{Number of sites.}
+\item{\code{I}}{Number of sites (ARUs).}
 \item{\code{J}}{Number of survey periods.}
 \item{\code{S}}{Number of species.}
 \item{\code{Delta}}{\verb{[I, J]} matrix of recording effort (0-1).}
@@ -169,6 +170,25 @@ array.}
 \item{\code{X_ord3}}{\verb{[I, P_ord[3], J]} site-by-survey survey ordinal integer
 array.}
 }
+The object also carries the following attributes, accessible via
+\code{\link[=attr]{attr()}}:
+\describe{
+\item{\code{sites}}{Character vector of site identifiers.}
+\item{\code{surveys}}{Character vector of start dates for each survey
+period).}
+\item{\code{species}}{Character vector species names.}
+\item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
+system used to transform site coordinates, or \code{NULL} if no coordinates
+were supplied.}
+\item{\code{scaling}}{tibble of means and standard deviations used to
+standardise continuous predictors, or \code{NULL} if
+\code{scale_predictors = FALSE}.}
+\item{\code{levels}}{Named list of category levels for categorical and ordinal
+predictors}
+\item{\code{survey_length}}{}
+\item{\code{thin_minutes}}{}
+\item{\code{reference_date}}{}
+}
 }
 \description{
 Transforms raw deployment and observation data into a named list suitable
@@ -178,5 +198,6 @@ Site coordinates are automatically projected from WGS84 latitude/longitude
 to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}
+\code{\link[=fit_model]{fit_model()}}, \code{\link[=set_priors]{set_priors()}}.
+The model is described in detail in \code{vignette("model", package = "occARU")}.
 }

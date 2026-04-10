@@ -36,6 +36,7 @@ data {
                         temporal,  // survey effects (GP, MVN, none)
                         OD;  // overdispersion (Poisson, OLRE, negbin)
   int<lower=0, upper=1> dirichlet,  // var. decomp. (logi-norm or Dirichlet)
+                        project_kappa,  // orth. proj. survey effects
                         latent,  // recover latent occ. states
                         PPC_y,  // posterior predictions of y
                         PPC_Q;  // posterior predictions of Q
@@ -161,7 +162,7 @@ transformed data {
   // site-by-survey design matrix pseudo-inverses for orthogonal projection
   matrix[X_plus_cols[2], J] X3_mean = rep_matrix(0, X_plus_cols[2], J);
   matrix[J, X_plus_cols[2]] X3_plus;
-  if (P_sum[3]) {
+  if (P_sum[3] && project_kappa) {
     if (P[3]) {
       for (i in 1:I) {
         X3_mean[:P[3]] += X3[i];
@@ -282,9 +283,9 @@ transformed parameters {
 
   // species-level conditional and unconditional site and survey effects
   row_vector[SP * I] iota;
-  row_vector[SP * P_sum[2] ? I : 0] iota_unc;
+  row_vector[SP * P_sum[2] ? I : 0] iota2;
   vector[TE * J] kappa;
-  vector[TE * P_sum[3] ? J : 0] kappa_unc;
+  vector[TE * P_sum[3] * project_kappa ? J : 0] kappa2;
   {
     int psi_idx = 1, mu_idx = 1;
 
@@ -383,8 +384,8 @@ transformed parameters {
 
       // increment orthogonal projection
       if (P_sum[2]) {
-        iota_unc = iota;
-        iota = orthogonalise(iota_unc, X2_aug, X2_plus);
+        iota2 = iota;
+        iota = orthogonalise(iota, X2_aug, X2_plus);
       }
       mu_idx += 1;
     }
@@ -408,9 +409,9 @@ transformed parameters {
       }
 
       // increment orthogonal projection
-      if (P_sum[3]) {
-        kappa_unc = kappa;
-        kappa = orthogonalise(kappa_unc', X3_mean, X3_plus)';
+      if (P_sum[3] && project_kappa) {
+        kappa2 = kappa;
+        kappa = orthogonalise(kappa', X3_mean, X3_plus)';
       }
     }
   }
@@ -517,50 +518,28 @@ model {
 
 generated quantities {
   // unconditional site coefficients
-  row_vector[SP * P[2]] mu_beta_unc;
-  matrix[SP * P_cat[2], C_max[2]] mu_beta_cat_unc;
-  row_vector[SP * P_ord[2]] mu_beta_ord_unc;
+  row_vector[SP * P[2]] mu_beta2;
+  row_vector[SP * P_ord[2]] mu_beta_ord2;
   if (SP) {
     if (P[2]) {
-      mu_beta_unc = mu_bar - iota_unc * X2_plus[:, :P[2]];
-    }
-    if (P_cat[2]) {
-      int idx = P[2];
-      for (p in 1:P_cat[2]) {
-        int C_p = C[2, p];
-        array[C_p] int seq = linspaced_int_array(C_p, idx + 1, idx + C_p);
-        mu_beta_cat_unc[p, :C_p] = mu_beta_cat[p, :C_p]
-                                   - iota_unc * X2_plus[:, seq];
-        idx += C_p;
-      }
+      mu_beta2 = mu_bar - iota2 * X2_plus[:, :P[2]];
     }
     if (P_ord[2]) {
-      int idx = X_plus_cols[1] - P_ord[2] + 1;
-      mu_beta_ord_unc = mu_beta_ord - iota_unc * X2_plus[:, idx:];
+      mu_beta_ord2 = mu_beta_ord
+                     - iota2 * X2_plus[:, X_plus_cols[1] - P_ord[2] + 1:];
     }
   }
 
   // unconditional survey coefficients
-  row_vector[TE * P[3]] gamma_unc;
-  matrix[TE * P_cat[3], C_max[3]] gamma_cat_unc;
-  row_vector[TE * P_ord[3]] gamma_ord_unc;
-  if (TE) {
+  row_vector[TE * P[3] * project_kappa] gamma2;
+  row_vector[TE * P_ord[3] * project_kappa] gamma_ord2;
+  if (TE * project_kappa) {
     if (P[3]) {
-      gamma_unc = gamma - kappa_unc' * X3_plus[:, :P[3]];
-    }
-    if (P_cat[3]) {
-      int idx = P[3];
-      for (p in 1:P_cat[3]) {
-        int C_p = C[3, p];
-        array[C_p] int seq = linspaced_int_array(C_p, idx + 1, idx + C_p);
-        gamma_cat_unc[p, :C_p] = gamma_cat[p, :C_p]
-                                 - kappa_unc' * X3_plus[:, seq];
-        idx += C_p;
-      }
+      gamma2 = gamma - kappa2' * X3_plus[:, :P[3]];
     }
     if (P_ord[3]) {
-      int idx = X_plus_cols[2] - P_ord[3] + 1;
-      gamma_ord_unc = gamma_ord - kappa_unc' * X3_plus[:, idx:];
+      gamma_ord2 = gamma_ord -
+                   kappa2' * X3_plus[:, X_plus_cols[2] - P_ord[3] + 1:];
     }
   }
 

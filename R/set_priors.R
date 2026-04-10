@@ -29,7 +29,7 @@
 #'   InvGamma(alpha, beta) prior on the periodic temporal GP length scale. Only
 #'   used when `temporal = "gp"` and `periodic = TRUE` in [fit_model()].
 #'   Default: `c(1, 1)`.
-#' @param kappa_v Numeric vector of length 2. `c(alpha[1], alpha[2])` for a
+#' @param K_phi Numeric vector of length 2. `c(alpha[1], alpha[2])` for a
 #'   Dirichlet(alpha) prior on the temporal GP variance partitions of the
 #'   exp. quad. and periodic kernels. Only used when `temporal_gp = TRUE` and
 #'   `periodic_GP = TRUE`. Default: `c(1, 1)`.
@@ -57,7 +57,7 @@
 #' @param epsilon_O_L Positive scalar. LKJ prior on the \eqn{[S, S]}
 #'   correlation matrix of species-specific OLRE residuals. Only used when
 #'   `overdispersion = "olre"` in [fit_model()]. Default: `1`.
-#' @param print Logical. If `TRUE` (default), prints list of priors.
+#' @param verbose Logical. If `TRUE` (default), prints list of priors.
 #'
 #' @return An `occARU_priors` object (a named list) for use with [fit_model()].
 #'
@@ -73,7 +73,7 @@ set_priors <- function(
   iota_ell = c(1, 1),
   kappa_ell = c(1, 1),
   kappa_ell_periodic = c(1, 1),
-  kappa_v = c(1, 1),
+  K_phi = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -82,7 +82,7 @@ set_priors <- function(
   iota_O_L = 1,
   kappa_O_L = 1,
   epsilon_O_L = 1,
-  print = TRUE
+  verbose = TRUE
 ) {
   # length checks
   expected_lengths <- list(
@@ -95,7 +95,7 @@ set_priors <- function(
     iota_ell = 2L,
     kappa_ell = 2L,
     kappa_ell_periodic = 2L,
-    kappa_v = 2L,
+    K_phi = 2L,
     phi = 2L,
     alpha_O_L = 1L,
     psi_beta_O_L = 1L,
@@ -133,7 +133,7 @@ set_priors <- function(
       iota_ell_inv_gamma = iota_ell,
       kappa_ell_inv_gamma = kappa_ell,
       kappa_ell_periodic_inv_gamma = kappa_ell_periodic,
-      kappa_v_dirichlet = kappa_v,
+      K_phi_dirichlet = K_phi,
       phi_inv_gamma = phi,
       alpha_O_L_LKJ = alpha_O_L,
       psi_beta_O_L_LKJ = psi_beta_O_L,
@@ -145,9 +145,18 @@ set_priors <- function(
     ),
     class = "occARU_priors"
   )
-  if (print) print(priors) else priors
+  if (verbose) {
+    print(priors)
+  }
+  invisible(priors)
 }
 
+
+#' Print method for occARU_priors objects
+#'
+#' @param x A `occARU_priors` object.
+#' @param ... Ignored.
+#' @keywords internal
 #' @export
 print.occARU_priors <- function(x, ...) {
   cli::cli_h1("occARU priors")
@@ -164,8 +173,7 @@ print.occARU_priors <- function(x, ...) {
                                          {x$kappa_ell_inv_gamma[2]})",
     "kappa_ell (periodic)" = "InvGamma({x$kappa_ell_periodic_inv_gamma[1]}, \\
                              {x$kappa_ell_periodic_inv_gamma[2]})",
-    "kappa_v" = "Dirichlet({x$kappa_v_dirichlet[1]}, \\
-                {x$kappa_v_dirichlet[2]})",
+    "K_phi" = "Dirichlet({x$K_phi_dirichlet[1]}, {x$K_phi_dirichlet[2]})",
     "phi" = "InvGamma({x$phi_inv_gamma[1]}, {x$phi_inv_gamma[2]})",
     "alpha_O_L" = "LKJ({x$alpha_O_L_LKJ})",
     "psi_beta_O_L" = "LKJ({x$psi_beta_O_L_LKJ})",
@@ -175,5 +183,4 @@ print.occARU_priors <- function(x, ...) {
     "kappa_O_L" = "LKJ({x$kappa_O_L_LKJ})",
     "epsilon_O_L" = "LKJ({x$epsilon_O_L_LKJ})"
   ))
-  invisible(x)
 }

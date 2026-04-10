@@ -14,22 +14,23 @@ RoxygenNote: 7.3.3
 VignetteBuilder: quarto
 Suggests: 
     bayesplot (>= 1.15.0.9000),
-    ggh4x,
     loo,
-    posterior,
     priorsense,
     quarto,
-    testthat,
-    tidybayes
+    testthat
 Config/testthat/edition: 3
 Imports: 
     cli,
     cmdstanr,
     dplyr,
     forcats,
+    ggdist,
+    ggh4x,
     ggplot2,
     lubridate,
+    posterior,
     rlang,
     sf,
     tibble,
+    tidybayes,
     tidyr

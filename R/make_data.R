@@ -14,13 +14,13 @@
 #' @param observations A data frame of observation records. Must contain
 #'   columns `deploymentID`, `eventStart`, `scientificName`, and `count`
 #'   (or equivalents specified via the corresponding arguments).
-#' @param failures Optional data frame of recorder failure periods. If
-#'   supplied, must have the same `deploymentID` factor levels as
-#'   `deployments`, with each row corresponding to one failure period at a
-#'   `deploymentID` from `failureStart` to `failureEnd`.
+#' @param failures Optional data frame of ARU failure periods. If supplied, must
+#'   have the same `deploymentID` factor levels as `deployments`, with each row
+#'   corresponding to one failure period at a `deploymentID` from `failureStart`
+#'   to `failureEnd`.
 #' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for site IDs. Must be a factor with identical levels in `deployments`
-#'   and `observations`. Default: `deploymentID`.
+#'   name for sites (ARUs). Must be a factor with identical levels in
+#'   `deployments` and `observations`. Default: `deploymentID`.
 #' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for deployment start dates in `deployments`. Must be a `Date`.
 #'   Default: `deploymentStart`.
@@ -43,12 +43,12 @@
 #' @param survey_length Positive integer defining the length of each survey
 #'   period in days. Observations are aggregated within each survey period by
 #'   summing `count`, and recording effort (`Delta`) is computed as the fraction
-#'   of days within each period that the recorder was active. For example,
-#'   `days = 7` aggregates to weekly survey periods, with `Delta` ranging from 0
-#'   (recorder failed all week) to 1 (recorder active all week). Longer periods
-#'   reduce the number of surveys `J` but increase the counts per survey,
-#'   trading off temporal resolution against model complexity and the assumption
-#'   of closure within a survey period. Default: `7`.
+#'   of the survey length the ARU was active. For example, `survey_length = 7`
+#'   aggregates to weekly survey periods, with `Delta` ranging from 0
+#'   (ARU failed all week) to 1 (ARU active all week). Longer periods reduce the
+#'   number of surveys `J` but increase the counts per survey, trading off
+#'   temporal resolution against model complexity and the closure assumption
+#'   within a survey period. Default: `7`.
 #' @param thin_minutes Positive numeric. If supplied, observations within
 #'   `thin_minutes` minutes of each other (per site and species) are thinned to
 #'   a single observation, retaining the record with the highest `count`.
@@ -56,7 +56,7 @@
 #' @param day_start Character. Whether survey days start at `"midnight"` or
 #'   `"midday"`. Default: `"midday"`.
 #' @param reference_date A `Date` defining the start of the first survey
-#'   period. Defaults to the earliest deployment start date.
+#'   period. If `NULL` (default), uses the earliest deployment start date.
 #' @param failureStart <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for failure start dates in `failures`. Must be a `Date`. Default:
 #'   `failureStart`.
@@ -75,7 +75,8 @@
 #' @param survey_predictors Optional data frame of site-by-survey level
 #'   covariates, with one row per site and date. Must contain `deploymentID`
 #'   and `date` columns. Predictor columns follow the same type rules as the
-#'   site-level predictor data frames. Must cover the full deployment period.
+#'   site-level predictor data frames. Must cover the full deployment period for
+#'   each ARU.
 #' @param date <[`data-masking`][rlang::args_data_masking]> Column name for
 #'   dates in `survey_predictors`. Default: `date`.
 #' @param survey_summary An optional named list mapping continuous survey
@@ -85,15 +86,15 @@
 #'   Numeric predictors not named in `survey_summary` are summarised with
 #'   `mean`; categorical and ordinal predictors are summarised with the
 #'   modal value. Default: `NULL`.
-#' @param scale_predictors Logical. If `TRUE`, continuous predictors are are
-#'   scaled to zero mean and unit variance. Scaling parameters are stored as an
+#' @param scale_predictors Logical. If `TRUE`, continuous predictors are scaled
+#'   to zero mean and unit variance. Scaling parameters are stored as an
 #'   attribute. Default: `TRUE`.
 #'
 #' @return A named list of class `"occARU_data"` containing all inputs
 #'   required by the occARU Stan model, except for model specification
 #'   arguments which are added by [fit_model()]. The list contains:
 #'   \describe{
-#'     \item{`I`}{Number of sites.}
+#'     \item{`I`}{Number of sites (ARUs).}
 #'     \item{`J`}{Number of survey periods.}
 #'     \item{`S`}{Number of species.}
 #'     \item{`Delta`}{`[I, J]` matrix of recording effort (0-1).}
@@ -121,18 +122,39 @@
 #'     \item{`X_ord3`}{`[I, P_ord[3], J]` site-by-survey survey ordinal integer
 #'       array.}
 #'   }
+#'   The object also carries the following attributes, accessible via
+#'   [attr()]:
+#'   \describe{
+#'     \item{`sites`}{Character vector of site identifiers.}
+#'     \item{`surveys`}{Character vector of start dates for each survey
+#'       period).}
+#'     \item{`species`}{Character vector species names.}
+#'     \item{`utm_crs`}{Character. PROJ string of the UTM coordinate reference
+#'       system used to transform site coordinates, or `NULL` if no coordinates
+#'       were supplied.}
+#'     \item{`scaling`}{tibble of means and standard deviations used to
+#'       standardise continuous predictors, or `NULL` if
+#'       `scale_predictors = FALSE`.}
+#'     \item{`levels`}{Named list of category levels for categorical and ordinal
+#'       predictors}
+#'     \item{`survey_length`}{}
+#'     \item{`thin_minutes`}{}
+#'     \item{`reference_date`}{}
+#'   }
+#' @importFrom rlang :=
 #'
-#' @seealso [fit_model()]
+#' @seealso [fit_model()], [set_priors()].
+#'   The model is described in detail in `vignette("model", package = "occARU")`.
 #' @export
 make_data <- function(
   deployments,
   observations,
   failures = NULL,
   deploymentID = deploymentID,
-  latitude = latitude,
-  longitude = longitude,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
+  latitude = latitude,
+  longitude = longitude,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -141,7 +163,7 @@ make_data <- function(
   survey_length = 7,
   thin_minutes = 30,
   day_start = "midday",
-  reference_date,
+  reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
@@ -215,7 +237,7 @@ make_data <- function(
   }
 
   # --- reference date ---------------------------------------------------------
-  if (missing(reference_date)) {
+  if (is.null(reference_date)) {
     reference_date <- deployments |>
       dplyr::pull({{ deploymentStart }}) |>
       min()
@@ -228,7 +250,8 @@ make_data <- function(
     check_cols_exist(occupancy_site_predictors, dep_id_chr)
     check_no_duplicates(occupancy_site_predictors, dep_id_chr)
     check_mixed_predictors(
-      occupancy_site_predictors |> dplyr::select(-{{ deploymentID }})
+      occupancy_site_predictors |> dplyr::select(-{{ deploymentID }}),
+      "occupancy_site_predictors"
     )
     occupancy_site_predictors <- align_factor(
       occupancy_site_predictors,
@@ -244,7 +267,8 @@ make_data <- function(
     check_cols_exist(detection_site_predictors, dep_id_chr)
     check_no_duplicates(detection_site_predictors, dep_id_chr)
     check_mixed_predictors(
-      detection_site_predictors |> dplyr::select(-{{ deploymentID }})
+      detection_site_predictors |> dplyr::select(-{{ deploymentID }}),
+      "detection_site_predictors"
     )
     detection_site_predictors <- align_factor(
       detection_site_predictors,
@@ -256,7 +280,8 @@ make_data <- function(
   if (!is.null(survey_predictors)) {
     check_cols_exist(survey_predictors, dep_id_chr, date_chr)
     check_mixed_predictors(
-      survey_predictors |> dplyr::select(-c({{ deploymentID }}, {{ date }}))
+      survey_predictors |> dplyr::select(-c({{ deploymentID }}, {{ date }})),
+      "survey_predictors"
     )
     survey_predictors <- align_factor(
       survey_predictors,
@@ -416,6 +441,7 @@ make_data <- function(
     occupancy_site_predictors,
     "site",
     dep_id_chr,
+    site_lvl = site_lvl,
     scale_predictors = scale_predictors
   )
   enc2 <- if (
@@ -427,48 +453,31 @@ make_data <- function(
       detection_site_predictors,
       "site",
       dep_id_chr,
+      site_lvl = site_lvl,
       scale_predictors = scale_predictors
     )
   }
   enc3 <- encode_predictors(
-    survey_predictors,
+    semi_join(
+      survey_predictors,
+      daily_grid |> dplyr::filter(Delta == 1L),
+      by = dplyr::join_by({{ deploymentID }}, {{ date }})
+    ),
     "survey",
     dep_id_chr,
     date_chr = date_chr,
+    site_lvl = site_lvl,
+    surveys = surveys,
+    reference_date = reference_date,
     scale_predictors = scale_predictors,
     survey_summary = survey_summary,
-    survey_length = survey_length,
-    reference_date = reference_date
-  )
-
-  empty_site_matrix <- matrix(
-    0L,
-    nrow = 0,
-    ncol = I,
-    dimnames = list(NULL, site_lvl)
-  )
-  empty_survey_array <- array(
-    0L,
-    dim = c(I, 0, J),
-    dimnames = list(site_lvl, NULL, as.character(surveys))
+    survey_length = survey_length
   )
 
   # --- predictor dimensions ---------------------------------------------------
-  P <- c(
-    if (!is.null(enc1)) nrow(enc1$X) else 0L,
-    if (!is.null(enc2)) nrow(enc2$X) else 0L,
-    if (!is.null(enc3)) dim(enc3$X)[2] else 0L
-  )
-  P_cat <- c(
-    if (!is.null(enc1)) nrow(enc1$X_cat) else 0L,
-    if (!is.null(enc2)) nrow(enc2$X_cat) else 0L,
-    if (!is.null(enc3)) dim(enc3$X_cat)[2] else 0L
-  )
-  P_ord <- c(
-    if (!is.null(enc1)) nrow(enc1$X_ord) else 0L,
-    if (!is.null(enc2)) nrow(enc2$X_ord) else 0L,
-    if (!is.null(enc3)) dim(enc3$X_ord)[2] else 0L
-  )
+  P <- c(nrow(enc1$X), nrow(enc2$X), dim(enc3$X)[2])
+  P_cat <- c(nrow(enc1$X_cat), nrow(enc2$X_cat), dim(enc3$X_cat)[2])
+  P_ord <- c(nrow(enc1$X_ord), nrow(enc2$X_ord), dim(enc3$X_ord)[2])
 
   # --- return -----------------------------------------------------------------
   structure(
@@ -482,38 +491,36 @@ make_data <- function(
       P = P,
       P_cat = P_cat,
       P_ord = P_ord,
-      X1 = enc1$X %||% empty_site_matrix,
-      X_cat1 = enc1$X_cat %||% empty_site_matrix,
-      X_ord1 = enc1$X_ord %||% empty_site_matrix,
-      X2 = enc2$X %||% empty_site_matrix,
-      X_cat2 = enc2$X_cat %||% empty_site_matrix,
-      X_ord2 = enc2$X_ord %||% empty_site_matrix,
-      X3 = enc3$X %||% empty_survey_array,
-      X_cat3 = enc3$X_cat %||% empty_survey_array,
-      X_ord3 = enc3$X_ord %||% empty_survey_array
+      X1 = enc1$X,
+      X_cat1 = enc1$X_cat,
+      X_ord1 = enc1$X_ord,
+      X2 = enc2$X,
+      X_cat2 = enc2$X_cat,
+      X_ord2 = enc2$X_ord,
+      X3 = enc3$X,
+      X_cat3 = enc3$X_cat,
+      X_ord3 = enc3$X_ord
     ),
     class = "occARU_data",
     sites = site_lvl,
     surveys = surveys,
     species = species_lvl,
-    survey_length = survey_length,
-    thin_minutes = thin_minutes,
-    reference_date = reference_date,
     utm_crs = utm_crs,
-    scale = if (scale_predictors) {
+    scaling = if (scale_predictors) {
       list(
         X1 = enc1$scale_params,
         X2 = enc2$scale_params,
         X3 = enc3$scale_params
       )
-    } else {
-      NULL
     },
     levels = list(
-      X1 = enc_levels(enc1),
-      X2 = enc_levels(enc2),
-      X3 = enc_levels(enc3)
-    )
+      X1 = if (P_cat[1] || P_ord[1]) enc_levels(enc1),
+      X2 = if (P_cat[2] || P_ord[2]) enc_levels(enc2),
+      X3 = if (P_cat[3] || P_ord[3]) enc_levels(enc3)
+    ),
+    survey_length = survey_length,
+    thin_minutes = thin_minutes,
+    reference_date = reference_date
   ) |>
     print()
 }
@@ -522,7 +529,8 @@ make_data <- function(
 #'
 #' @param x A `occARU_data` object.
 #' @param ... Ignored.
-#' @noRd
+#' @keywords internal
+#' @export
 print.occARU_data <- function(x, ...) {
   cli::cli_h1("occARU data")
   P <- sapply(1:3, \(p) x$P[p] + x$P_cat[p] + x$P_ord[p])
@@ -566,5 +574,4 @@ print.occARU_data <- function(x, ...) {
       " " = "Ordinal: {x$P_ord[3]}"
     ))
   }
-  invisible(x)
 }

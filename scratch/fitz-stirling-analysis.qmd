@@ -1,0 +1,2236 @@
+---
+title: "analysis"
+format: html
+editor_options: 
+  chunk_output_type: console
+---
+
+# Load packages and scripts
+
+```{r}
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(here, gert, tidyverse, assertthat, glue, readxl, sf, janitor, 
+               sdmTMB, reticulate, cropgrowdays, pipebind, cmdstanr, loo, 
+               posterior, tidybayes, MetBrewer)
+options(mc.cores = 8)
+
+# if (dir.exists("aru-occ")) {
+#   git_pull(repo = "aru-occ")
+# } else {
+#   git_clone("https://github.com/mhollanders/aru-occ")
+# }
+source(here("aru-occ/R/aru-functions.R"))
+source(here("aru-occ/R/util.R"))
+source(here("R/my-theme.R"))
+theme_set(my_theme())
+```
+
+# Read and process data
+
+changelog
+- changed some incorrect dates missing slashes etc.
+- removed dates with "." 
+- remove corrected_date entries with "-" and text; must be a date
+- number of individuals has to be a number; change to minimum of range if given
+- some records are e.g. "rabbit and hare". these should be split ( I haven't)
+- row 93 in 2020_detections was 2010; row 95 was 2021
+- "wasn't active" changed to one date before last download (so that removed days are early death + days(1))
+
+
+## Deployments and detections
+
+```{r}
+# sheets in data
+loc <- here("scratch/south-coast/Cocrackerup_Peniup_RedMoort_cameradata.xlsx")
+sheets <- excel_sheets(loc)
+
+# site locations
+locs_raw <- map(list.files(here("scratch/south-coast"), pattern = "\\.shp", full.names = T),
+                ~ read_sf(.) |> clean_names()) |>
+  bind_rows()
+
+locs <- locs_raw |>
+  bind_cols(st_coordinates(locs_raw)) |>
+  select(site = name, longitude = X, latitude = Y) |>
+  add_utm_columns(units = "km")
+
+# deployment stuff
+sites_raw <- read_excel(loc, sheet = sheets[[2]]) |>
+  clean_names() |>
+  rename_with(~ paste0("early_death_", seq_along(.x)),
+              .cols = starts_with("early_death")) |>
+  rename_with(~ paste0("download_", seq_along(.x)),
+              .cols = starts_with("download")) |>
+  mutate(across(where(is.POSIXct), ymd), site = waypoint)
+
+sites <- sites_raw |>
+  mutate(start = ymd(date_set_up),
+         end = ymd(sites_raw[[ncol(sites_raw)]]),
+         .after = waypoint) |>
+  left_join(locs, by = "site") |>
+  mutate(site = factor(site, levels = str_sort(unique(site), numeric = T)))
+
+failures <- sites |>
+  pivot_longer(cols = matches("^(early_death_|download_)"),
+               names_to = c(".value", "period"),
+               names_pattern = "(early_death|download)_(\\d+)") |>
+  drop_na(early_death)
+
+# detections
+dets_raw <- read_excel(loc, sheet = sheets[[1]]) |>
+  clean_names()
+
+dets <- dets_raw |>
+  mutate(date = ymd(date),
+         time = hms::as_hms(time),
+         timestamp = ymd_hms(str_c(date, time)),
+         site = factor(location, levels = levels(sites$site)),
+         species = case_when(species == "Black-gloved wallaby" ~ "Brush wallaby",
+                             .default = species)) |>
+  filter(!str_detect(spp_category, "Bird|Reptile|unidentified|no ID|Unidentified"),
+         !str_detect(species, "no ID|eagle|Honey")) |>
+  mutate(species = factor(str_to_title(species))) |>
+  arrange(species, timestamp) |>
+  select(site, timestamp, species, no_individuals) |> 
+  drop_na()
+
+# labels
+site_lvl <- levels(sites$site)
+species_lvl <- levels(dets$species)
+```
+
+## Site predictors
+
+```{r}
+# setup; this was a pain 
+Sys.setenv("RETICULATE_PYTHON" = "/Users/matt.hollanders/.virtualenvs/rgee/bin/python")
+Sys.setenv("EARTHENGINE_GCLOUD" = "/Users/matt.hollanders/google-cloud-sdk/bin/")
+use_virtualenv("rgee", required = TRUE)
+library(rgee)
+ee <- import("ee")
+ee$Authenticate()
+ee$Initialize(project = "heroic-rain-367400")
+ee_dir <- "~/.config/earthengine"
+if (!dir.exists(ee_dir)) {
+  dir.create(ee_dir, recursive = TRUE, showWarnings = FALSE)
+  write.table(data.frame(user = "matthijshollanders", 
+                         drive_cre = NA, 
+                         gcs_cre = NA),
+              file = path.expand(str_c(ee_dir, "/rgee_sessioninfo.txt")),
+              row.names = F)
+}
+
+# prepare sites as EE object
+deployments_to_fc <- function(deployments, site = site, 
+                              longitude = "longitude", latitude = "latitude", 
+                              crs = 4326) {
+  deployments |> 
+    st_as_sf(coords = c(longitude, latitude), crs = crs) |> 
+    select({{ site }}) |>
+    sf_as_ee()
+}
+
+# terrain function
+extract_terrain <- function(deployments, site = site) {
+  dem <- ee$Image("USGS/SRTMGL1_003")
+  info <- dem$rename("elevation")$
+    addBands(ee$Terrain$slope(dem)$rename("slope"))$
+    addBands(ee$Terrain$aspect(dem)$rename("aspect"))$
+    reduceRegions(collection = deployments_to_fc(deployments),
+                  reducer = ee$Reducer$mean(),
+                  scale = 30)$
+    getInfo()
+  site_lvl <- pull(deployments, {{ site }}) |> levels()
+  info$features |> 
+    map(~as_tibble(.$properties)) |> 
+    list_rbind() |> 
+    relocate({{ site }}, .before = 1) |> 
+    mutate({{ site }} := factor({{ site }}, levels = site_lvl))
+}
+ter <- extract_terrain(sites) |> 
+  mutate(aspect_radian = aspect * pi / 180,
+         northness = cos(aspect_radian),
+         eastness = sin(aspect_radian)) |> 
+  select(site, elevation, slope, northness, eastness)
+ter_scaled <- ter |> 
+  mutate(aspect_radian = aspect * pi / 180,
+         northness = cos(aspect_radian),
+         eastness = sin(aspect_radian)) |> 
+  select(site, elevation, slope, northness, eastness) |> 
+  mutate(across(-site, ~scale(.)[, 1]))
+```
+
+
+## Survey predictors
+
+### Meteorological
+
+```{r}
+# extract SILO data
+silo_loc <- here("data/silo.rds")
+if (file.exists(silo_loc)) {
+  silo <- read_rds(silo_loc)
+} else {
+  silo <- get_multi_silodata(latitude = sites$latitude,
+                             longitude = sites$longitude,
+                             Sitename = sites$site,
+                             email = "matthijs.hollanders@gmail.com",
+                             START = min(sites$start) |> str_remove_all("-"),
+                             FINISH = max(sites$end) |> str_remove_all("-"))
+  write_rds(silo, silo_loc)
+}
+
+# select some and convert to long format
+silo_long <- silo |> 
+  mutate(sqrt_rain = sqrt(rain)) |> 
+  select(site = Sitename, date = date_met, maxt, sqrt_rain, vp) |> 
+  pivot_longer(-c(site, date))
+
+# summarise means and SDs using date-level averages
+silo_stats <- silo_long |> 
+  summarise(average_value = mean(value), 
+            .by = c(date, name)) |> 
+  summarise(mean = mean(average_value),
+            sd = sd(average_value),
+            .by = name)
+
+silo
+
+# scale, but not center rain
+silo_scaled <- silo_long |> 
+  left_join(silo_stats) |> 
+  mutate(value_scaled = (value - if_else(name == "sqrt_rain", 0, mean)) / sd) |> 
+  select(site, date, name, value_scaled)
+```
+
+### Vegetation indices
+
+```{r}
+# function extract NDVI and EVI
+extract_vegetation_index <- function(deployments, site = site, start = start, 
+                                     end = end) {
+  # get start and end dates and site levels
+  date_start <- pull(deployments, {{ start }}) |> min()
+  date_end <- pull(deployments, {{ end }}) |> max()
+  site_lvl <- pull(deployments, {{ site }}) |> levels()
+  
+  # filter
+  ic <- ee$ImageCollection("MODIS/061/MOD13A1")$
+    filterDate(as.character(date_start - days(16)), 
+               as.character(date_end + days(16)))$
+    select(c("NDVI", "EVI"))$
+    map(\(img) img$multiply(0.0001))
+  
+  # extract
+  info <- ic$toBands()$
+    reduceRegions(collection = deployments_to_fc(deployments),
+                  reducer = ee$Reducer$mean())$
+    getInfo()
+    
+  # out
+  info$features |>
+    map(~as_tibble(.$properties)) |>
+    list_rbind() |> 
+    mutate({{ site }} := factor({{ site }}, levels = site_lvl)) |> 
+    pivot_longer(-{{ site }}, names_to = "band") |> 
+    separate_wider_regex(band, 
+                         patterns = c(date = ".*", "_", index = "NDVI|EVI")) |> 
+    mutate(date = ymd(date))
+}
+vi <- extract_vegetation_index(sites)
+
+# scale using date-level averages
+vi_stats <- vi |> 
+  summarise(average_value = mean(value), .by = c(index, date)) |> 
+  summarise(mean = mean(average_value),
+            sd = sd(average_value),
+            .by = index)
+  
+vi_scaled <- vi |> 
+  left_join(vi_stats, by = "index") |> 
+  mutate(value_scaled = (value - mean) / sd) |> 
+  select(site, date, index, value_scaled)
+```
+
+### Combine
+
+```{r}
+survey_predictors <- silo_scaled |>   
+  pivot_wider(names_from = name, values_from = value_scaled) |> 
+  left_join(
+    vi_scaled |> 
+      pivot_wider(names_from = index, values_from = value_scaled) |> 
+      complete(site, date = seq.Date(min(date), max(date))) |> 
+      fill(EVI, NDVI, .direction = "down"),
+    by = c("site", "date")
+  ) |> 
+  select(-NDVI) |> 
+  mutate(camera_fct = 
+           case_when((str_detect(site, "CK") & date >= ymd("2023-08-17") |
+                        str_detect(site, "PN") & date >= ymd("2023-08-20") | 
+                        str_detect(site, "RM") & date >= ymd("2023-10-11")) ~ "Swift",
+                     .default = "Scoutguard") |> 
+           factor(levels = c("Scoutguard", "Swift")),
+         camera = as.integer(camera_fct) - 1.5) |> 
+  select(-camera_fct)
+
+date <- sym("date")
+reference_date <- min(sites$start) 
+
+survey_summary = list("sqrt_rain" = sum)
+summary_fns <- setNames(
+      lapply(X3_lvl, \(col) {
+        if (!is.null(survey_summary) && col %in% names(survey_summary)) {
+          match.fun(survey_summary[[col]])
+        } else {
+          mean
+        }
+      }),
+      X3_lvl
+    )
+X3_lvl <- colnames(survey_predictors[, -c(1:2)])
+P <- list()
+P[3] <- length(X3_lvl)
+
+X3 <- survey_predictors |>
+      dplyr::filter({{ date }} >= reference_date) |>
+      dplyr::mutate(date = aggregate_by_days({{ date }}, reference_date, days)) |>
+      dplyr::summarise(dplyr::across(dplyr::where(is.numeric), 
+                                     ~summary_fns[[dplyr::cur_column()]](., na.rm = TRUE)),
+                       .by = c({{ deploymentID }}, date)) |>
+      tidyr::pivot_longer(-c({{ deploymentID }}, date), names_to = "p") |>
+      tidyr::complete({{ deploymentID }} := factor(site_lvl, site_lvl),
+                      date := lubridate::ymd(surveys),
+                      p := factor(X3_lvl, X3_lvl),
+                      fill = list(value = 0)) |>
+      dplyr::arrange(date, p, {{ deploymentID }}) |>
+      dplyr::pull(value) |> 
+      array(c(I, P[3], J), dimnames = list(site_lvl, X3_lvl, surveys))
+    if (scale) {
+      survey_means <- apply(X3, c(2, 3), mean)
+      X3_means <- apply(survey_means, 1, mean)
+      X3_sds <- apply(survey_means, 1, sd)
+      X3 <- sweep(sweep(X3, 2, X3_means, "-"), 2, X3_sds, "/")
+    }
+dim(X3)
+    
+    survey_predictors
+    survey_summary <- list("rain" = sum)
+
+
+first_last <- survey_predictors |>
+  dplyr::summarise(first = min({{ date }}), last = max({{ date }}),
+                   .by = {{ deploymentID }}) |> 
+  left_join(
+    deployments, by = join_by({{ deploymentID }})
+  )
+    if (first_last$first > reference_date ||
+        first_last$last < max(dplyr::pull(deployments, {{ deploymentEnd }}))) {
+      cli::cli_abort(
+        "{.arg survey_predictors} must cover the full deployment period."
+      )
+    }
+```
+
+# Stan
+
+## Prepare data
+
+```{r}
+# data prep for Stan
+dh <- prep_data(sites, dets, count = no_individuals, 
+                projected_X = X, projected_Y = Y,
+                failures = failures, failure_start = early_death,
+                failure_end = download, days = 7, minutes = 30,
+                # occupancy_site_predictors = ter_scaled,
+                detection_site_predictors = ter_scaled,
+                survey_predictors = survey_predictors
+                ) |> 
+  append_defaults(D = 50, grainsize = 0, OD = 0) |> 
+  glimpse()
+apply(dh$y, 3, sum)
+
+
+# transform survey predictors
+dh$X3[, "rain", ] <- sqrt(dh$X3[, "rain", ])
+for (p in 1:dh$P[3]) {
+  dh$X3[, p, ] <- (dh$X3[, p, ] - mean(colMeans(dh$X3[, p, ]))) / sd(colMeans(dh$X3[, p, ]))
+}
+```
+
+## Fit models
+
+```{r}
+mod <- cmdstan_model(here("aru-occ/stan/aru-occ-ms.stan"), 
+                     cpp_options = list(stan_threads = T))
+register_default_progress_handler()
+mod_lvl <- c("Poisson", "Poisson OLRE", "Negative Binomial", "Negative Binomial w/o kappa")
+configs <- expand_grid(OD = 0:2) |> 
+  mutate(config = row_number(), .before = 1)
+fits <- map(configs$config, ~{
+  dh$OD <- configs$OD[.]
+  mod$sample(dh, chains = 2, threads_per_chain = 4, 
+             iter_warmup = 200, iter_sampling = 200, show_exceptions = T,
+             max_treedepth = 8, show_progress_bar = T, 
+             init = mod$pathfinder(dh, init = 0.1, sig_figs = 14,
+                                   num_threads = 2, num_paths = 2,
+                                   single_path_draws = 100,
+                                   max_lbfgs_iters = 200,
+                                   psis_resample = F))
+})
+hypers <- c(str_c(c("psi", "mu", "beta"), "_bar"), "W", "theta")
+fits[[2]]$draws(hypers) |> mcmc_trace()
+
+map(fits, ~gather_rvars(., beta[d, s, p], beta_unc[s, p]) |> 
+      filter(d == 2 | is.na(d))) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(xdist = .value, y = factor(s, labels = species_lvl))) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  facet_grid(factor(p, labels = rownames(dh$X2)) ~ .variable) +
+  stat_pointinterval(aes(colour = factor(mod)),
+                     position = position_dodge(width = 0.3)) + 
+  scale_x_continuous(limits = c(-2, 2))
+
+fit2 |> 
+  gather_rvars(beta[d, s, p], beta_unc[s, p]) |> 
+  filter(d == 2 | is.na(d)) |> 
+  ggplot(aes(xdist = .value, y = factor(s, labels = species_lvl))) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  facet_wrap(~ factor(p, labels = rownames(dh$X2))) +
+  stat_pointinterval(aes(colour = .variable),
+                     position = position_dodge(width = 0.3)) + 
+  scale_x_continuous(limits = c(-2, 2))
+
+fit |> 
+  gather_rvars(iota[s, i], iota_unc[s, i]) |> 
+  ggplot(aes(xdist = .value, y = factor(i, labels = site_lvl) |> fct_rev())) + 
+  facet_wrap(~ factor(s, labels = species_lvl), nrow = 1, scales = "free_x") + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") +
+  stat_pointinterval(aes(colour = .variable),
+                     .width = 0.95, size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.5)) + 
+  scale_x_continuous(limits = c(-2, 2))
+
+map(list(fit, fit2), ~gather_rvars(., beta[d, s, p]) |> 
+      filter(d == 2 | is.na(d))) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(xdist = .value, y = factor(s, labels = species_lvl))) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  facet_wrap(~ factor(p, labels = rownames(dh$X2))) +
+  stat_pointinterval(aes(colour = factor(mod)),
+                     position = position_dodge(width = 0.3))
+  
+
+fit |> 
+  gather_rvars(beta_bar[d, p], beta_bar_unc[p]) |> 
+  filter(d == 1 | is.na(d)) |> 
+  ggplot(aes(xdist = .value, y = factor(p, labels = rownames(dh$X2)))) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(colour = .variable),
+                     position = position_dodge(width = 0.3))
+
+fits[[2]] |> 
+  gather_rvars(gamma[s, p], gamma_unc[s, p]) |> 
+  ggplot(aes(xdist = .value, y = factor(s, labels = species_lvl))) + 
+  facet_wrap(~ factor(p, labels = colnames(dh$X3))) +
+  stat_pointinterval(aes(colour = .variable),
+                     position = position_dodge(width = 0.3))
+fit |> 
+  gather_rvars(iota[s, i], iota_unc[s, i]) |> 
+  ggplot(aes(xdist = .value, y = factor(i, labels = site_lvl) |> fct_rev())) + 
+  facet_wrap(~ factor(s, labels = species_lvl)) +
+  stat_pointinterval(aes(colour = .variable),
+                     position = position_dodge(width = 0.3))
+
+
+map(list(fits[[2]], fits2[[2]]), ~gather_rvars(., gamma[s, p], gamma_unc[s, p])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(xdist = .value, y = factor(s))) + 
+  facet_grid(.variable ~ p) + 
+  stat_pointinterval(aes(colour = factor(mod)),
+                     position = "dodge")
+
+```
+
+## Goodness-of-fit
+
+```{r}
+# loo
+loos <- map(fits, ~.$loo("log_lik2"))
+loo_compare(loos)
+map(fits, ~spread_rvars(., log_lik2[s, i])) |>
+  list_rbind(names_to = "config") |> 
+  ggplot(aes(xdist = log_lik2, y = factor(i, labels = site_lvl) |> fct_rev())) +
+  facet_wrap(~ factor(s, labels = species_lvl), nrow = 1, scales = "free_x") + 
+  stat_pointinterval(aes(colour = factor(config)), 
+                     point_interval = median_qi, .width = 0.95,
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3))
+map(loos, ~as_tibble(.$pointwise) |> 
+      mutate(i = row_number())) |> 
+  list_rbind(names_to = "config") |> 
+  ggplot(aes(influence_pareto_k, i)) + 
+  geom_point(aes(colour = config))
+loos[[1]]$pointwise |> as_tibble()
+
+# PPC
+glimpse(dh)
+pp_check(apply(dh$y, c(1, 3), sum) |> c(),
+         yrep = fits[[3]]$draws("Qrep", format = "draws_matrix"),
+         group = rep(species_lvl, each = dh$I),
+         fun = ppc_rootogram_grouped,
+         style = "suspended") + 
+  scale_x_continuous(limits = c(0, 50))
+?ppc_rootogram
+
+```
+
+# Plots
+
+## Intercepts
+
+```{r}
+map(fits, ~spread_rvars(., alpha[s, d])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(xdist = if_else(d == 1, inv_logit(alpha), alpha), 
+             y = factor(s, labels = species_lvl) |> fct_rev(),
+             colour = factor(mod, labels = mod_lvl))) + 
+  facet_wrap(~ factor(d, labels = c("Occupancy Probability", "Log Detection Rate")), 
+             scale = "free_x", nrow = 1) + 
+  stat_pointinterval(point_interval = median_hdci, .width = 0.95,
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.2)) + 
+  labs(x = "Estimate", y = "Species", colour = "Observation Model")
+```
+
+
+## Realised occupancy
+
+```{r}
+map(fits, ~spread_rvars(., z[i, s]) |> 
+      summarise(Z = rvar_sum(z), .by = s)) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(xdist = Z / dh$I, 
+             y = factor(s, labels = species_lvl) |> fct_rev(),
+             colour = factor(mod, labels = mod_lvl))) + 
+  stat_pointinterval(point_interval = median_hdci, .width = 0.95,
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.2)) + 
+  scale_x_continuous(breaks = seq(0.2, 0.8, 0.2), limits = c(0, 1), expand = c(0, 0)) + 
+  labs(x = "Proportion of sites occupied", y = "Species", colour = "Observation Model")
+
+```
+
+## Variance partitions
+
+```{r}
+v_lbl <- c("Species intercept", 
+           str_c(rownames(dh$X1), " Global"),
+           str_c(rownames(dh$X1), " Species"),
+           str_c(colnames(dh$X3), " Global"),
+           str_c(colnames(dh$X3), " Species"),
+           str_c("Site Effect ", c("Global", species_lvl)),
+           str_c("Survey Effect ", c("Global", species_lvl))
+           # str_c("Residual ", c("Global", species_lvl))
+           )
+map(fits, ~spread_rvars(., W_phi[v, d]) |> 
+      filter(mean(W_phi) > 0)) |> 
+  list_rbind(names_to = "mod")
+  
+fit |> spread_rvars(W_phi[v, d]) |> 
+  ggplot(aes(xdist = W_phi, 
+             y = factor(v, labels = v_lbl) |> fct_rev(),
+             # colour = factor(mod, labels = mod_lvl)
+             )) + 
+  facet_wrap(~ factor(d, labels = c("Occupancy", "Detection")), 
+             scales = "free_x", nrow = 1) + 
+  stat_pointinterval(point_interval = median_hdci, .width = 0.95,
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.5)) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_colour_met_d("Kandinsky") + 
+  labs(x = "Partition", y = "Component", colour = "Observation Model")
+ggsave(here("manuscript/figs/fig-W_phi.png"), width = 8, height = 12, dpi = 600)
+
+```
+
+
+## Coefficients
+
+```{r}
+# site effects
+map(fits, ~spread_rvars(., beta_bar[d, p], beta[d, s, p])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(y = factor(s, labels = species_lvl) |> fct_rev())) + 
+  facet_grid(factor(p, labels = rownames(dh$X1)) ~ 
+               factor(d, labels = c("Occupancy", "Detection")),
+             scales = "free_x") + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = beta, 
+                         colour = factor(mod)), #  labels = mod_lvl)), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Predictor", colour = "Observation Model")
+map(fits, ~spread_rvars(., beta_unc[s, p])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(y = factor(s, labels = species_lvl) |> fct_rev())) + 
+  facet_wrap(~ factor(p, labels = rownames(dh$X1)),
+             scales = "free_x", nrow = 1) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = beta_unc, 
+                         colour = factor(mod)), #  labels = mod_lvl)), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Predictor", colour = "Observation Model")
+
+map(fits, ~spread_rvars(., beta_bar[d, p], beta[d, s, p]) |> 
+      filter(d == 2)) |> 
+  list_rbind(names_to = "config") |> 
+  left_join(configs) |> 
+  ggplot(aes(y = factor(s, labels = species_lvl) |> fct_rev())) + 
+  facet_grid(factor(p, labels = rownames(dh$X1)) ~ 
+               factor(OD, labels = mod_lvl),
+             scales = "free_x") + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = beta, 
+                         colour = factor(RSR)), #  labels = mod_lvl)), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Predictor", colour = "Observation Model")
+
+# survey effects
+map(fits, ~spread_rvars(., gamma_bar[p], gamma[s, p], gamma_unc[s, p])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(y = factor(p, labels = colnames(dh$X3)))) + 
+  facet_wrap(~ factor(s, labels = species_lvl), nrow = 2) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = gamma_unc, 
+                         colour = factor(mod)), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Predictor", colour = "Observation Model")
+
+map(fits[3:4], ~spread_rvars(., gamma_bar[p], gamma[s, p])) |> 
+  list_rbind(names_to = "mod") |> 
+  ggplot(aes(y = factor(s, labels = species_lvl) |> fct_rev())) + 
+  facet_wrap(~ factor(p, labels = colnames(dh$X3)), 
+             nrow = 1, scales = "free_x") + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = gamma, 
+                         colour = factor(mod, labels = c("Negative Binomial", "Negative Binomial w/o kappa"))), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  scale_colour_met_d("Kandinsky") + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Species", colour = "Observation Model")
+ggsave(here("manuscript/figs/fig-gamma2.png"), width = 10, height = 7, dpi = 600)
+
+map(fits, ~spread_rvars(., gamma_bar[p], gamma[s, p])) |> 
+  list_rbind(names_to = "config") |> 
+  left_join(configs) |> 
+  ggplot(aes(y = factor(s, labels = species_lvl) |> fct_rev())) + 
+  facet_grid(factor(p, labels = colnames(dh$X3)) ~ factor(OD, labels = mod_lvl)) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(xdist = gamma, colour = factor(RSR)), 
+                     point_interval = median_hdci, .width = 0.95, 
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.3)) + 
+  scale_colour_met_d("Kandinsky") + 
+  # stat_pointinterval(aes(xdist = gamma_bar), 
+  #                    point_interval = median_hdci, .width = 0.95, 
+  #                    size = 0.5, linewidth = 0.5,
+  #                    position = position_nudge(y = -0.2), colour = "red4")
+  labs(x = "Estimate", y = "Species", colour = "Observation Model")
+```
+
+## Correlations
+
+```{r}
+fits[[4]] |> 
+  spread_rvars(O[g, s, ss]) |> 
+  mutate(s = factor(s, labels = species_lvl),
+         ss = factor(ss, labels = species_lvl)) |> 
+  filter(median(O) != 1) |> 
+  ggplot(aes(xdist = O, y = fct_rev(s))) + 
+  facet_grid(ss ~ factor(g, labels = c("Survey predictors", "Site", "Survey", "Residual")[1:5])) + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(point_interval = median_hdci, .width = 0.95,
+                     size = 0.5, linewidth = 0.5) +
+  labs(x = "Correlation", y = "Species")
+ggsave(here("manuscript/figs/fig-O.png"), width = 10, height = 15, dpi = 600)
+```
+
+## Site effects
+
+```{r}
+map(fits, ~spread_rvars(., iota[s, i])) |> 
+  list_rbind(names_to = "config") |> 
+  left_join(configs) |> 
+  ggplot(aes(xdist = iota, y = factor(i, labels = site_lvl) |> fct_rev())) + 
+  facet_grid(factor(OD, labels = mod_lvl) ~ factor(s, labels = species_lvl),
+             scales = "free_x") + 
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "red4") + 
+  stat_pointinterval(aes(colour = factor(RSR)),
+                     point_interval = median_qi, .width = 0.95,
+                     size = 0.5, linewidth = 0.5,
+                     position = position_dodge(width = 0.5)) + 
+  scale_colour_met_d("Egypt") +
+  labs(x = "iota", y = "Site", colour = "RSR")
+```
+
+
+## Survey effects
+
+```{r}
+fits[[4]] |> 
+  spread_rvars(alpha[s, d], kappa[s, j], kappa_bar[j]) |> 
+  filter(d == 2) |> 
+  ggplot(aes(factor(j, labels = colnames(dh$Delta)) |> ymd())) + 
+  facet_wrap(~ factor(s, labels = species_lvl), scales = "free_y", ncol = 1) + 
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "red4") +
+  # stat_lineribbon(aes(ydist = exp(alpha + kappa_bar)), fill = "red4",
+  #                point_interval = median_qi, linewidth = 0.5, alpha = 0.2) +
+  # geom_point(aes(ymd(survey), count),
+  #            data = reshape2::melt(dh$y,
+  #                                  value.name = "y", 
+  #                                  varnames = c("site", "survey", "species")) |> 
+  #              as_tibble() |> 
+  #              left_join(reshape2::melt(dh$Delta,
+  #                                       value.name = "Delta", 
+  #                                       varnames = c("site", "survey")),
+  #                        by = c("site", "survey")) |> 
+  #              filter(Delta > 0) |> 
+  #              summarise(count = mean(y / Delta), .by = c(survey, species)),
+  #            alpha = 0.2) + 
+  stat_lineribbon(aes(ydist = exp(alpha + kappa)),
+                  point_interval = median_qi, linewidth = 0.5, alpha = 0.5, 
+                  show.legend = F) +
+  scale_fill_met_d("VanGogh3") + 
+  scale_x_date(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0), n.breaks = 4) + 
+  # scale_y_continuous(breaks = seq(0.5, 2, 0.5), limits = c(0, 2.25), expand = c(0, 0)) + 
+  labs(x = "Date", y = "Weekly Detection Rate")
+ggsave(here("manuscript/figs/fig-kappa.png"), width = 7, height = 10, dpi = 600)
+```
+
+
+
+```{r}
+
+gc()
+
+# Packages ======
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggplot2)
+library(ggspatial)
+library(cowplot)
+library(dplyr)
+library(glue)
+library(httr)
+library(utils)
+library(terra)
+library(tmap)
+library(lubridate)
+library(raster)
+library(gstat)
+
+
+
+# High res map of Australia
+# Define the URL for the GDA2020 shapefile
+url <- "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/aus_2021_aust_shp_gda2020.zip"
+# First accessed: 26th May 2025
+# Australian Bureau of Statistics - Digital Boundary Files
+# CRS: GDA2020 ESG7844 
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Australia boundary")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "aus_2021_aust_shp_gda2020.zip")
+
+# Download the file
+download.file(url, destfile = dest_file, mode = "wb")
+
+# Unzip the file
+unzip(dest_file, exdir = dest_dir)
+
+# Optional: Remove the zip file after extraction
+file.remove(dest_file)
+
+# Define the path to the shapefile (adjust the filename as needed)
+shapefile_path <- file.path(dest_dir, "AUS_2021_AUST_GDA2020.shp")
+shapefile_path
+
+# Read the shapefile
+aus_boundary <- st_read(shapefile_path)
+
+# Check the CRS
+st_crs(aus_boundary)
+
+# Structure
+str(aus_boundary)
+
+# Plot
+plot(st_geometry(aus_boundary), main = "Australia")
+
+
+
+# Generate study area extent from movement data ================================
+# Will be used to crop and mask spatial layers
+# Define extent in which to generate locations
+crop_box <- st_as_sfc(st_bbox(c(
+  xmin = 118.899755,
+  xmax = 119.340872,
+  ymin = -35.549294,
+  ymax = -34.326211
+), crs = 7844))
+
+# Crop Australian land to the extent
+study_area <- st_intersection(aus_boundary, crop_box)
+
+# Plot
+plot(st_geometry(study_area), col = "lightgreen", main = "Cropped Australia Land Area")
+st_crs(study_area)
+
+# Create bounding box - define extent
+study_bbox <- st_as_sfc(st_bbox(study_area))
+study_bbox
+plot(study_bbox)
+
+
+# Prepare crop and mask area for other spatial layers
+# Set seed for reproducibility
+set.seed(42)
+
+# Generate random sample points within the polygon
+n_points <- 1000
+gps_sf <- st_sample(study_area, size = n_points, type = "random")
+
+# Convert to an sf object (st_sample returns geometry only)
+gps_sf <- st_sf(geometry = gps_sf)
+
+# Plot
+plot(st_geometry(study_area), main = "Sample Points in Polygon")
+plot(gps_sf, add = TRUE, col = "blue", pch = 16)
+
+# Convert buffer distance (1000 m) to degrees
+lat <- -34.4
+meters_per_degree_lon <- 111000 * cos(lat * pi / 180)
+meters_per_degree_lat <- 111000
+buffer_lon_deg <- 1000 / meters_per_degree_lon
+buffer_lat_deg <- 1000 / meters_per_degree_lat
+
+# Rename and extract bbox
+bbox_points <- st_bbox(gps_sf)
+
+# Use the correct bbox object
+bbox_expanded <- bbox_points  # this is your named numeric vector
+
+# Apply the buffer in degrees
+bbox_expanded["xmin"] <- bbox_points["xmin"] - buffer_lon_deg
+bbox_expanded["xmax"] <- bbox_points["xmax"] + buffer_lon_deg
+bbox_expanded["ymin"] <- bbox_points["ymin"] - buffer_lat_deg
+bbox_expanded["ymax"] <- bbox_points["ymax"] + buffer_lat_deg
+
+# # Buffer the polygon by 1000 meters (or 500 m if you prefer) - when working with projected coordinates
+# buffer_distance <- 1000  # in meters (since CRS is UTM)
+# bbox_buffered <- st_buffer(bbox_polygon, dist = buffer_distance)
+# bbox_buffered
+# 
+# # Create a bounding box from the buffered box to get square corners
+# bbox <- st_bbox(bbox_buffered)
+# 
+# # Convert bbox to an sf polygon (sfc object)
+# bbox_polygon <- st_as_sfc(bbox)
+# bbox_polygon
+
+# Convert to polygon
+bbox_polygon <- st_as_sfc(bbox_expanded)
+
+# Optional: plot to confirm
+plot(st_geometry(study_area), col = "lightgreen", main = "Buffered Bounding Box")
+plot(bbox_polygon, add = TRUE, border = "red", lwd = 2)
+
+# Use bbox_polygon to crop spatial layers
+# Crop Australian land to Bremer Bay study area extent
+st_crs(aus_boundary)==st_crs(bbox_polygon) # Check geometries match
+bb_study_area <- st_intersection(aus_boundary, bbox_polygon)
+plot(bb_study_area["AUS_CODE21"])
+
+# Reproject
+bb_study_area_7850 <- st_transform(bb_study_area, crs = 7850) # UTM zone 50 projected CRS
+
+# Transform points to match the study area CRS
+gps_sf_transformed <- st_transform(gps_sf, st_crs(bb_study_area_7850))
+
+# Plot to check point buffer has worked
+plot(st_geometry(bb_study_area_7850), main = "Australia")
+plot(gps_sf_transformed, add = TRUE, col = "blue", pch = 16)
+
+
+# Save bounding box of study area
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/Study area bounding box")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "Bremer Bay study area bounding box.shp")
+
+# Define the path to the shapefile (adjust the filename as needed)
+shapefile_path <- file.path(dest_dir, "Bremer Bay study area bounding box.shp")
+shapefile_path
+
+# Save study area bounding box 
+st_write(bbox_polygon,
+         dsn = shapefile_path,
+         delete_layer = TRUE)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Study area bounding box"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".shp", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+file_path
+bbox_polygon <- st_read(file_path)
+plot(bbox_polygon)
+class(bbox_polygon)
+
+# Now convert to terra
+bbox_polygon_spat <- vect(bbox_polygon)
+class(bbox_polygon_spat)
+str(bbox_polygon_spat)
+plot(bbox_polygon_spat)
+
+
+
+# DEM ==========================================================================
+url <- "https://elevation-direct-downloads.s3-ap-southeast-2.amazonaws.com/1sec-dem/70715.zip"
+# First accessed: 28th May 2025
+# Geoscience Australia - SRTM-derived 1 Second Digital Elevation Models Version 1.0
+# WGS 84 (EPSG:4326)
+# DEM-S (smoothed dem)
+# Approx. 30m res
+# Potentially upsample to 10m resolution using bilenar to match high res 10m EVI layer
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(),"Bremer Bay spatial layers/DEM/dem")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "srtm-1sec-dems-v1-COG.zip")
+dest_file
+
+# Download the file
+download.file(url, destfile = dest_file, mode = "wb")
+
+# Unzip the file
+unzip(dest_file, exdir = dest_dir)
+
+# Optional: Remove the zip file after extraction
+file.remove(dest_file)
+
+# Identify the .tif file (assuming only one .tif in folder)
+tif_file <- list.files(dest_dir, pattern = "^srtm-1sec-dems-v1-COG.tif$", full.names = TRUE)
+tif_file
+
+# Read raster DEM
+dem <- rast(tif_file)
+
+# Check original CRS
+st_crs(dem)  # Should be UTM zone 50 if relevant
+
+# Plot
+plot(dem)
+
+# Define large cropping extent as an sf polygon
+large_crop_box <- st_as_sfc(st_bbox(c(
+  xmin = 115,
+  xmax = 120,
+  ymin = -31,
+  ymax = -36
+), crs = 4326))
+
+# Create crop vector
+crop_vect <- vect(large_crop_box)
+
+# Crop DEM
+dem_cropped <- crop(dem, crop_vect)
+
+# Plot
+plot(dem_cropped)
+
+# Save output raster
+writeRaster(dem_cropped, filename = file.path(dest_dir, "SW_WA_DEM_30m_WGS84_EPSG4326.tif"), overwrite = TRUE)
+
+
+# Crop DEM for Bremer Bay
+# Define study area cropping extent as an sf polygon
+# Transform crop extent to match DEM CRS (UTM zone 50)
+bbox_4326 <- st_transform(bbox_polygon, crs(dem))
+crop_vect_4326 <- vect(bbox_4326)
+
+# Crop DEM
+dem_cropped_4326 <- crop(dem, crop_vect_4326) 
+
+# Plot
+plot(dem_cropped_4326)
+
+# Project raster
+dem_cropped <- project(dem_cropped_4326, "EPSG:7850", method = "bilinear", res = 30)
+
+# Mask
+dem_cropped <- crop(dem_cropped, bb_study_area_7850)
+dem_cropped <- mask(dem_cropped, bb_study_area_7850)
+
+# Plot
+plot(dem_cropped)
+
+# Save output raster
+writeRaster(dem_cropped, filename = file.path(dest_dir, "Bremer_Bay_DEM_30m_GDA2020_UTM_zone_50_EPSG7850.tif"), overwrite = TRUE)
+
+dem_cropped <- rast(file.path(getwd(), "Bremer Bay spatial layers/DEM/dem/Bremer_Bay_DEM_30m_GDA2020_UTM_zone_50_EPSG7850.tif"))
+
+
+
+
+# Upsampled DEM to 10m res - needs to be projected anyway so can upsample projected dem
+# Original DEM in EPSG:7850 with 30 m resolution
+
+# Create a 10 m resolution template using `ext()` not `extent()`
+template <- rast(ext(dem_cropped))  # get extent
+res(template) <- 10                 # set 10 m resolution
+crs(template) <- crs(dem_cropped)  # match CRS
+
+# Resample using bilinear interpolation
+dem_10m <- resample(dem_cropped, template, method = "bilinear")
+
+# Plot
+plot(dem_10m, main = "10 m DEM (Resampled from 30 m using bilinear interpolation)")
+dem_10m
+
+
+# # DEM 2 ========================================================================
+# # DEM from 10m interpolated contours based on 10m grid
+# # https://catalogue.data.wa.gov.au/dataset/dpird-10-metre-contours
+# 
+# # Load contour shapefile
+# contours <- st_read("F:\\lemerson\\R\\Eagles and Pumas\\Bremer Bay spatial layers\\Downloaded zip files\\Contours_10_m_DPIRD_073_WA_GDA2020_Public_Shapefile (2)\\Contours_10_m_DPIRD_073.shp")  # must have elevation attribute
+# 
+# # Reproject and crop
+# contours_proj <- st_transform(contours, crs = st_crs(bb_study_area_7850))
+# contours_cropped <- st_intersection(contours_proj, bb_study_area_7850)
+# 
+# # Filter LINESTRING only
+# contours_lines <- contours_cropped[st_geometry_type(contours_cropped) == "LINESTRING", ]
+# 
+# # Sample points every ~10 m
+# points_sampled <- st_line_sample(st_geometry(contours_lines), density = 1 / 10)
+# 
+# # Check number of samples: if too many, consider density = 1/20 or 1/30
+# lengths(points_sampled)
+# 
+# # Create sfc of all sampled points
+# points_geom <- do.call(c, points_sampled)
+# points_geom <- st_sfc(points_geom, crs = st_crs(contours_lines))
+# 
+# # Match elevation to points
+# counts <- lengths(points_sampled)
+# elevations <- rep(contours_lines$elevation, counts)
+# 
+# # sf object
+# elev_points_sf <- st_sf(elevation = elevations, geometry = points_geom)
+# 
+# # Convert to terra object
+# elev_points_vect <- vect(elev_points_sf) # Falls over here - takes forever and may not even run at all!!
+# 
+# # Create empty raster template at 10 m resolution
+# dem_raster <- rast(ext(elev_points_vect), resolution = 10, crs = crs(elev_points_vect))
+# 
+# # Interpolate using terra's IDW
+# dem_from_contours <- interpolate(dem_raster, elev_points_vect, method = "idw", field = "elevation")
+# 
+# # Save
+# writeRaster(dem_from_contours, "contour_based_dem_10m.tif", overwrite = TRUE)
+
+
+
+
+
+# Compare ==
+
+# Elvation differences
+# Ensure both rasters have same extent/resolution
+dem_upsampled <- resample(dem_upsampled, dem_contour)
+
+# Difference raster
+dem_diff <- dem_contour - dem_upsampled
+plot(dem_diff)
+
+# Statistics
+summary(values(dem_diff), na.rm = TRUE)
+
+# Profile analysis
+line <- drawLine()  # interactively draw a line in `terra`
+
+profile_contour <- extract(dem_contour, line)
+profile_upsampled <- extract(dem_upsampled, line)
+
+plot(profile_contour[,2], type="l", col="blue", ylab="Elevation (m)", xlab="Point along line")
+lines(profile_upsampled[,2], col="red")
+legend("topright", legend=c("Contour DEM", "Upsampled DEM"), col=c("blue", "red"), lty=1)
+
+
+# Slope and curvature comparison
+slope_contour <- terrain(dem_contour, v="slope", unit="degrees")
+slope_upsampled <- terrain(dem_upsampled, v="slope", unit="degrees")
+
+curvature_contour <- terrain(dem_contour, v="curvature")
+curvature_upsampled <- terrain(dem_upsampled, v="curvature")
+
+# Compare histograms or differences
+hist(values(slope_contour), breaks=100, main="Contour Slope", col=adjustcolor("blue", 0.5))
+hist(values(slope_upsampled), breaks=100, add=TRUE, col=adjustcolor("red", 0.5))
+
+
+
+
+# Calculate TRI, TPI and Slope, SD_slope =======================================
+
+study_location <- "Bremer Bay"
+
+# Create slope raster -------------------------------------------------------
+# Define name of folder for saving
+data_type <- "Slope"
+
+# Generate raster
+spatial_variable <- terra::terrain(dem_cropped, v="slope", unit="degrees", neighbors=8)
+# slope_variable <- raster::terrain(dsm, opt="slope", unit="degrees", neighbors=8)
+
+# Checks
+spatial_variable
+class(spatial_variable)
+plot(spatial_variable)
+summary(values(spatial_variable))
+global(spatial_variable, fun="isNA")
+# Crop and mask - should not change because already using cropped and masked dem
+cropped <- terra::crop(spatial_variable, bb_study_area_7850)
+masked <- terra::mask(cropped, bb_study_area_7850)
+plot(masked)
+masked
+summary(values(masked))
+global(masked, fun="isNA")
+
+# Save raster to file 
+# Construct the file path
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+
+# Create the folder if it doesn't exist
+subfolder_path <- file.path(folder_path, data_type)
+dir.create(subfolder_path, recursive = TRUE, showWarnings = FALSE)
+
+# Save the object to the specified file path
+writeRaster(masked, file_path, overwrite = T)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Slope"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+slope <- terra::rast(file_path)
+
+
+
+
+# Create SD of slope raster --------------------------------------------------
+# Define variable of interest
+data_type <- "SD slope" # SD of slope
+
+# Generate raster
+spatial_variable <- terra::focal(slope, w = matrix(1, nrow = 5, ncol = 5), fun = sd, na.rm = TRUE)
+
+# Checks
+spatial_variable
+class(spatial_variable)
+plot(spatial_variable)
+summary(values(spatial_variable))
+global(spatial_variable, fun="isNA")
+# Crop and mask - should not change because already using cropped and masked dem - althugh NAs might change
+cropped <- terra::crop(spatial_variable, bb_study_area_7850)
+masked <- terra::mask(cropped, bb_study_area_7850)
+plot(masked)
+masked
+summary(values(masked))
+global(masked, fun="isNA")
+
+# Save raster to file 
+# Construct the file path
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+
+# Create the folder if it doesn't exist
+subfolder_path <- file.path(folder_path, data_type)
+dir.create(subfolder_path, recursive = TRUE, showWarnings = FALSE)
+
+# Save the object to the specified file path
+writeRaster(masked, file_path, overwrite = T)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "SD Slope"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+SD_slope <- terra::rast(file_path)
+
+
+
+
+# Create topographic position index raster ---------------------------------------------------
+# Define name of folder for saving
+data_type <- "TPI"
+
+# Generate raster
+spatial_variable <- terra::terrain(dem_cropped, v="TPI") # Undefined moving window size - i think it might be default of 3 x 3...?
+# spatial_variable <- raster::focal(dsm, w = matrix(1, nrow = 5, ncol = 5), fun = function(x) x[13] - mean(x[-13])) # This is 5 x 5 cells with central cell being position 13
+
+# Checks
+spatial_variable
+class(spatial_variable)
+plot(spatial_variable)
+summary(values(spatial_variable))
+global(spatial_variable, fun="isNA")
+# Crop and mask - should not change because already using cropped and masked dem - althugh NAs might change
+cropped <- terra::crop(spatial_variable, bb_study_area_7850)
+masked <- terra::mask(cropped, bb_study_area_7850)
+plot(masked)
+masked
+summary(values(masked))
+global(masked, fun="isNA")
+
+# Save raster to file 
+# Construct the file path
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+
+# Create the folder if it doesn't exist
+subfolder_path <- file.path(folder_path, data_type)
+dir.create(subfolder_path, recursive = TRUE, showWarnings = FALSE)
+
+# Save the object to the specified file path
+writeRaster(masked, file_path, overwrite = T)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "TPI"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+TPI <- terra::rast(file_path)
+
+
+# Create terrain ruggedness index raster ---------------------------------------------------
+# Define name of folder for saving
+data_type <- "TRI"
+
+# Generate raster
+spatial_variable <- terra::terrain(dem_cropped, v="TRI") # Undefined moving window size - i think it might be default of 3 x 3...?
+# spatial_variable <- raster::focal(dsm, w = matrix(1, nrow = 5, ncol = 5), fun = function(x) x[13] - mean(x[-13])) # This is 5 x 5 cells with central cell being position 13
+
+# Checks
+spatial_variable
+class(spatial_variable)
+plot(spatial_variable)
+summary(values(spatial_variable))
+global(spatial_variable, fun="isNA")
+# Crop and mask - should not change because already using cropped and masked dem - althugh NAs might change
+cropped <- terra::crop(spatial_variable, bb_study_area_7850)
+masked <- terra::mask(cropped, bb_study_area_7850)
+plot(masked)
+masked
+summary(values(masked))
+global(masked, fun="isNA")
+
+# Save raster to file 
+# Construct the file path
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+
+# Create the folder if it doesn't exist
+subfolder_path <- file.path(folder_path, data_type)
+dir.create(subfolder_path, recursive = TRUE, showWarnings = FALSE)
+
+# Save the object to the specified file path
+writeRaster(masked, file_path, overwrite = T)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "TRI"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+TRI <- terra::rast(file_path)
+
+
+
+
+
+
+# Fire history =================================================================
+url <- "https://direct-download.slip.wa.gov.au/datadownload/Environment/DBCA_Fire_History_DBCA_060_WA_GDA2020_Public_Shapefile.zip"
+# First accessed: 28th May 2025
+# DataWA - DBCA Fire History (DBCA-060)
+# GDA2020 (EPSG:7844)
+# Data last updated: 28-01-2025
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/Fire")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "DBCA_Fire_History_DBCA_060.shp")
+
+# Download the file
+download.file(url, destfile = dest_file, mode = "wb")
+
+# Unzip the file
+unzip(dest_file, exdir = dest_dir)
+
+# Optional: Remove the zip file after extraction
+file.remove(dest_file)
+
+# Read the shapefile
+fire <- st_read(dest_file)
+
+# Check the CRS
+st_crs(fire)
+
+# Structure
+str(fire)
+class(fire)
+
+# Transform crop extent to match DEM CRS (UTM zone 50)
+fire_proj <- st_transform(fire, crs = st_crs(bb_study_area_7850))
+
+# # Fix geometries
+# fire_proj <- st_make_valid(fire_proj)
+
+# Crop
+st_crs(fire_proj)==st_crs(bb_study_area_7850) # Check geometries match
+fire_cropped <- st_intersection(fire_proj, bb_study_area_7850)
+
+# Column names
+colnames(fire_cropped)
+
+# Define your reference date (January 28, 2025)
+reference_date <- as.Date("2025-01-28")
+
+# Convert fih_date1 to Date format if it is not already
+fire_cropped$fih_date1 <- as.Date(fire_cropped$fih_date1)
+
+# Calculate time since fire in years
+fire_cropped <- fire_cropped %>%
+  mutate(time_since_fire_yrs = as.numeric(difftime(reference_date, fih_date1, units = "days")) / 365.25)
+
+# Check
+fire_cropped %>%
+  select(fih_date1, time_since_fire_yrs) %>%
+  head()
+
+fire_cropped$time_since_fire_yrs
+
+# Remove other columns
+fire_cropped <- fire_cropped %>%
+  select(time_since_fire_yrs)
+
+# Plot
+head(fire_cropped)
+plot(fire_cropped, main = "Time since fire (Years)")
+
+# Save output 
+st_write(fire_cropped,
+         dsn = file.path(dest_dir, "Bremer Bay fire.gpkg"),
+         layer = "time_since_fire_cropped_7850",
+         driver = "GPKG",
+         delete_layer = TRUE)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Fire"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".gpkg", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+TSF <- st_read(file_path, layer = "time_since_fire_cropped_7850")
+plot(TSF)
+class(TSF)
+
+
+# Now convert to terra
+TSF_spat <- vect(TSF_sf)
+class(TSF_spat)
+str(TSF_spat)
+plot(TSF_spat)
+plot(TSF_spat, "time_since_fire_yrs", type = "continuous", col = terrain.colors(44))
+
+
+
+# Check layers are aligning
+tm_shape(dem_cropped) + 
+  tm_raster(title = "DEM Elevation") +
+  tm_shape(bb_study_area_7850) + 
+  tm_borders(col = "black", lwd = 2) +
+  tm_shape(fire_cropped) + 
+  tm_borders(col = "red", lwd = 2)
+
+
+
+# Habitat types defined as either native vegetation, or farmland 
+# and plantation using the Native Vegetation Extent layer for Western Australia 
+# (DPIRD 005) and landuse categories from ABARES (2022). For non-native vegetation 
+# broadscale landuse data were used to assign categories of cropping, plantation 
+# or grazing (ABARES, 2022). Rehabilitation sites within the Fitz-Stirling were 
+# mapped using data from ABARES and validated using orthophotos.
+
+
+# Native Vegetation extent =====================================================
+# url <- "https://catalogue.data.wa.gov.au/dataset/native-vegetation-extent"
+# First accessed: 28th May 2025
+# DataWA - Native Vegetation Extent (DPIRD-005)
+# Department of Primary Industries and Regional Development
+# GCS_GDA_2020
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/Native veg")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "Native_Veg_Extent_DPIRD_005.shp")
+dest_file
+
+# # Download the file
+# download.file(url, destfile = dest_file, mode = "wb")
+# 
+# # Unzip the file
+# unzip(dest_file, exdir = dest_dir)
+# 
+# # Optional: Remove the zip file after extraction
+# file.remove(dest_file)
+
+# Read the shapefile
+native_veg <- st_read(dest_file)
+
+# Check the CRS
+st_crs(native_veg)
+
+# Structure
+str(native_veg)
+
+# Transform to match DEM CRS (UTM zone 50)
+native_veg <- st_transform(native_veg, crs = st_crs(bb_study_area_7850))
+st_crs(native_veg)
+
+# # Fix geometries
+# native_veg <- st_make_valid(native_veg)
+
+# # Save output 
+# st_write(native_veg,
+#          dsn = file.path(dest_dir, "native_veg.gpkg"),
+#          layer = "native_veg",
+#          driver = "GPKG",
+#          delete_layer = TRUE)
+
+# Crop
+st_crs(native_veg)==st_crs(bb_study_area_7850) # Check geometries match
+native_veg_cropped <- st_intersection(native_veg, bb_study_area_7850)
+class(native_veg_cropped)
+
+# Plot
+colnames(native_veg_cropped)
+plot(native_veg_cropped["comments"], main = "Native vegetation extent")
+
+# Save output raster
+st_write(native_veg_cropped,
+         dsn = file.path(dest_dir, "native_veg_cropped.gpkg"),
+         layer = "native_veg_cropped",
+         driver = "GPKG",
+         delete_layer = TRUE)
+
+# Convert sf to SpatVector (terra format)
+native_veg_cropped <- vect(native_veg_cropped)
+
+# Rasterize vector layer and calculate proportional values: binary values (1 = native veg, 0 = non-veg)
+# Rasterize with 'dem_cropped' as the template
+# The default rasterization will assign NA or 1 depending on presence of polygons
+# But terra sometimes expects a field - so you can create a dummy field:
+native_veg_cropped$burn <- 1
+native_veg_raster <- terra::rasterize(native_veg_cropped, dem_cropped, field="burn", background=0)
+
+# Crop and mask
+native_veg_raster <- terra::crop(native_veg_raster, bb_study_area_7850)
+native_veg_raster <- terra::mask(native_veg_raster, bb_study_area_7850)
+
+# Plot to check
+plot(native_veg_raster, main = "Native Vegetation (Binary Raster)")
+
+# Convert
+native_veg_raster <- raster::raster(native_veg_raster)
+
+# Create buffer weight matrix (100 m radius)
+buffer <- raster::focalWeight(native_veg_raster, 100, "circle")
+dim(buffer)  # How many rows and cols?
+sum(buffer)  # Should be close to 1 if normalized
+
+# Calculate proportional cover
+native_veg_prop <- raster::focal(native_veg_raster, w=buffer, na.rm=TRUE, pad=TRUE, padValue=0)
+
+# Plot them using simple raster algebra to check that no cell sums to greater than 1
+plot(native_veg_prop)
+
+# Convert RasterLayer to SpatRaster
+native_veg_prop <- rast(native_veg_prop)
+
+# Crop and mask
+native_veg_prop <- terra::crop(native_veg_prop, bb_study_area_7850)
+native_veg_prop <- terra::mask(native_veg_prop, bb_study_area_7850)
+
+# Plot
+plot(native_veg_prop)
+
+# Save
+writeRaster(native_veg_prop,
+            filename = file.path(dest_dir, "Bremer Bay native veg.tif"),
+            filetype = "GTiff",
+            overwrite = TRUE)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Native veg"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+native_veg_prop <- rast(file_path)
+plot(native_veg_prop)
+class(native_veg_prop)
+
+
+
+# Roads ========================================================================
+# url <- "https://digital.atlas.gov.au/datasets/digitalatlas::national-roads-2/about"
+# First accessed: 30th May 2025
+# Digital Atlas of Australia - National Roads
+# Geoscience Australia 2021 
+# Appears to be most comprehensive roads layer available but not all roads and trails included - 
+# Need to add roads and tracks manually in QGIS depending on movement data from cats 
+# and if roads appear relevant for analysis - may not be strongly selected for in these open landscapes.
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/Roads")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, "National_Roads_4244405608125821245.gpkg")
+
+# Read the shapefile
+roads <- st_read(dest_file)
+
+# Check the CRS
+st_crs(roads)
+
+# Structure
+str(roads)
+class(roads)
+
+# Transform to match DEM CRS (UTM zone 50)
+roads_proj <- st_transform(roads, crs = st_crs(bb_study_area_7850))
+
+# Crop
+st_crs(roads_proj)==st_crs(bb_study_area_7850) # Check geometries match
+roads_cropped <- st_intersection(roads_proj, bb_study_area_7850)
+
+# Column names
+colnames(roads_cropped)
+
+# Remove other columns
+# roads_cropped <- fire_cropped %>%
+#   select(???)
+
+# Plot
+head(roads_cropped)
+plot(roads_cropped["date_created"], main = "Roads")
+class(roads_cropped)
+
+# Save output 
+st_write(roads_cropped,
+         dsn = file.path(dest_dir, "Bremer Bay roads.gpkg"),
+         layer = "roads_cropped_7850",
+         driver = "GPKG",
+         delete_layer = TRUE)
+
+
+# Create proportion raster for roads
+# Convert to SpatVector
+roads_vect <- vect(roads_cropped)
+
+# Buffer
+roads_buffered <- buffer(roads_vect, width = 30)  
+# width is radius, so 30 m each side - This width required to achieve connected pixels. Overestimates road width and coverage
+
+# Check output
+plot(roads_buffered)
+
+# Add dummy field for rasterization
+roads_buffered$road_cover <- 1
+
+# Rasterize with DEM as template
+roads_raster <- rasterize(roads_buffered, dem_cropped, field = "road_cover", background = 0)
+
+# Crop and mask to study area
+roads_raster <- crop(roads_raster, bb_study_area_7850)
+roads_raster <- mask(roads_raster, bb_study_area_7850)
+
+# Plot
+plot(roads_raster, main = "Binary Road Raster (1 = road, 0 = no road)")
+
+# Convert to raster format if needed
+roads_raster <- raster::raster(roads_raster)
+
+# Create 30 m circular weight matrix
+w <- raster::focalWeight(roads_raster, 30, type = "circle") # Very small circle - 
+# essentially saying whether or not ehy are using road - almost binary predictor. Could increase
+
+# Calculate focal (moving window) average: gives proportion of road cover
+road_prop_cover <- raster::focal(roads_raster, w = w, na.rm = TRUE, pad = TRUE, padValue = 0)
+
+# Plot
+plot(road_prop_cover, main = "Proportional Road Cover (30 m radius)")
+
+# Convert back to SpatRaster
+road_prop_cover <- rast(road_prop_cover)
+
+# Final crop and mask (optional)
+road_prop_cover <- crop(road_prop_cover, bb_study_area_7850)
+road_prop_cover <- mask(road_prop_cover, bb_study_area_7850)
+
+# Plot
+plot(road_prop_cover, main = "Proportional Road Cover (30 m radius)")
+
+# Save
+writeRaster(road_prop_cover,
+            filename = file.path(dest_dir, "Bremer Bay road cover.tif"),
+            filetype = "GTiff",
+            overwrite = TRUE)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Roads"
+layer <- "road cover"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", layer, ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+road_cover <- terra::rast(file_path)
+plot(road_cover)
+class(road_cover)
+
+
+
+# Create distance to road layer
+
+# Optional: Buffer roads if you want to include a buffer zone around the roads (e.g., 15 meters)
+# roads_vect <- buffer(roads_vect, width = 15)
+
+# Create a template raster from your DEM (or any raster with matching extent and resolution)
+r_template <- rast(dem_cropped)
+
+# Rasterize roads: 1 for roads, NA for no roads
+roads_raster_binary <- rasterize(roads_vect, r_template, field = 1, background = NA)
+
+# Calculate distance to nearest road (cells with value 1)
+distance_to_roads <- distance(roads_raster_binary)
+
+# Optional - Crop and mask the distance raster to your study area
+distance_to_roads <- crop(distance_to_roads, bb_study_area_7850)
+distance_to_roads <- mask(distance_to_roads, bb_study_area_7850)
+
+# Plot to check results
+plot(distance_to_roads, main = "Distance to Roads")
+
+# Save the distance raster
+writeRaster(distance_to_roads,
+            filename = file.path(dest_dir, "Bremer Bay distance to roads.tif"),
+            filetype = "GTiff",
+            overwrite = TRUE)
+
+# Read in layer
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Roads"
+layer <- "distance to roads"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", layer, ".tif", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+dist_road <- terra::rast(file_path)
+plot(dist_road)
+class(dist_road)
+
+
+
+
+# Distance to freshwater body, wetland, riparian zone ==========================
+
+
+
+# Calculating drainage lines from DEM ==========================================
+# Install and load the whitebox package
+# install.packages("whitebox")
+# whitebox::install_whitebox()
+library(whitebox)
+
+# Set working directory (adjust path to where your DEM is stored)
+wbt_set_working_dir(file.path(getwd(), "Bremer Bay spatial layers", "DEM", "dem"))
+dir_path <- file.path(getwd(), "Bremer Bay spatial layers", "DEM", "dem")
+
+# Set filenames
+dem_file <- file.path(dir_path, "Bremer_Bay_DEM_30m_GDA2020_UTM_zone_50_EPSG7850.tif")
+dem_filled <- file.path(dir_path, "Bremer_Bay_DEM_filled.tif")
+flow_dir <- file.path(dir_path, "Bremer_Bay_flow_dir.tif")
+flow_acc <- file.path(dir_path, "Bremer_Bay_flow_acc.tif")
+streams_raster <- file.path(dir_path, "Bremer_Bay_streams.tif")
+streams_vector <- file.path(dir_path, "Bremer_Bay_streams_vector.shp")
+depressions_raster <- file.path(dir_path, "Bremer_Bay_depressions.tif")
+depressions_vector <- file.path(dir_path, "Bremer_Bay_depressions_vector.shp")
+
+
+# Step 1: Fill depressions
+wbt_fill_depressions(
+  dem = dem_file,
+  output = dem_filled
+)
+
+# Read the filled DEM raster
+dem_filled_raster <- rast(dem_filled)
+
+# Plot
+plot(dem_filled_raster, main = "Filled DEM")
+
+
+# Step 2: Calculate flow direction (D8)
+wbt_d8_pointer(
+  dem = dem_filled,
+  output = flow_dir
+)
+
+# Read the filled DEM raster
+flow_dir_raster <- rast(flow_dir)
+
+# Plot
+plot(flow_dir_raster, main = "Flow")
+
+
+# Step 3: Calculate flow accumulation
+wbt_d8_flow_accumulation(
+  input = dem_filled,
+  output = flow_acc,
+  out_type = "cells"
+)
+
+# Step 4: Extract stream network from flow accumulation
+# Adjust threshold (e.g., 100) depending on your DEM resolution and landscape
+wbt_extract_streams(
+  flow_accum = flow_acc,
+  output = streams_raster,
+  threshold = 100
+)
+
+# Example of testing three thresholds
+thresholds <- c(100, 250, 500, 750, 1000)
+
+for (t in thresholds) {
+  stream_output <- paste0("stream_network_", t, ".tif")
+  wbt_extract_streams(
+    flow_accum = flow_acc,
+    output = file.path(dir_path, stream_output),
+    threshold = t
+  )
+}
+
+
+# Step 5: Identify depressions (potential water-holding areas)
+wbt_depression_mapping(
+  dem = dem_file,
+  output = depressions_raster
+)
+
+# Optional: Convert streams to vector (shapefile)
+wbt_raster_streams_to_vector(
+  streams = streams_raster,
+  d8_pntr = flow_dir,
+  output = streams_vector
+)
+
+# Optional: Convert depression raster to polygons
+wbt_raster_to_vector_polygons(
+  input = depressions_raster,
+  output = depressions_vector
+)
+
+
+
+
+# Enhanced Vegetation Index ====================================================
+##  See more than 300+ examples of rgee at https://r-earthengine.github.io/.!!!
+# Python environment setup (requires Python >= v3.5 ; will install Miniconda)
+rgee::ee_clean_pyenv() # Do this first then restart R
+
+# After running above and restarting R
+rgee::ee_install() # Then this and restart
+
+# Downgrade ee api
+reticulate::py_install('earthengine-api==0.1.370', envname = 'rgee', method = 'conda')
+rgee::ee_check()
+
+
+### Try starting here but if there are issues re-install python ###
+# After running above and restarting - Ensure reticulate is using the correct conda binary - i.e. correct version of python
+reticulate::use_condaenv("rgee", required = TRUE)
+reticulate::py_config()  # Verify it's using the correct Python
+rgee::ee_check()
+
+# Remove credentials before updating gcloud
+rgee::ee_clean_user_credentials('lukedanielemerson1982@gmail.com') #only fist time or need to clear credentials
+rgee::ee_Authenticate(
+  scopes = c(
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/earthengine"
+  )
+)
+
+# Initialize Earth Engine and GD :  /!\/!\/!\ NEED TO RUN RSTUDIO IN ADMINISTRATOR MODE FOR THIS LINE /!\/!\/!\
+library(rgee)
+rgee::ee_Initialize(user = "lukedanielemerson1982@gmail.com", drive = TRUE, gcs = FALSE)
+
+# Get your Earth Engine user info to confirm
+ee_user_info()
+
+# Check users, credentials, path 
+rgee::ee_users()
+rgee::ee_get_earthengine_path()
+rgee::ee_check()
+rgee::ee_check_python()
+rgee::ee_check_credentials()
+rgee::ee_check_python_packages()
+
+# Checking installation non-R dependencies
+reticulate::conda_list()
+reticulate::py_available()
+reticulate::py_config()
+reticulate::py_discover_config()
+reticulate::py_config()$version
+
+# Load libraries
+library(rgee)
+library(sf)
+library(dplyr)
+library(rgee)
+library(raster)
+library(terra)
+library(sf)
+library(dplyr)
+library(rgeeExtra) # Not available for this version of R
+library(tidyrgee)
+library(googleCloudStorageR)
+library(rgee)
+library(googledrive)
+library(reticulate)
+library(tidyverse)
+library(here)
+library(geojsonio)
+library(devtools)
+
+# Test code to check things are working
+srtm <- rgee::ee$Image("USGS/SRTMGL1_003")
+
+viz <- list(
+  max = 4000,
+  min = 0,
+  palette = c("#000000","#5AAD5A","#A9AD84","#FFFFFF")
+)
+
+rgee::Map$addLayer(
+  eeObject = srtm,
+  visParams =  viz,
+  name = 'SRTM',
+  # legend = TRUE
+)
+
+
+# Read in layer 
+# Construct the file path
+study_location <- "Bremer Bay"
+data_type <- "Study area bounding box"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".shp", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+file_path
+
+# Read file and transform CRS to WGS84 to align with gee
+aoi_sf <- sf::st_read(file_path) %>%
+  st_transform(crs = 4326)
+
+
+# Check crs
+sf::st_crs(aoi_sf)
+
+# Convert to gee object
+aoi <- sf_as_ee(aoi_sf)
+class(aoi)
+
+# Visualise and ensure its in correct location
+Map$centerObject(aoi)
+Map$addLayer(aoi)
+
+# Define date parameters (can be modified later)
+start_date <- '2025-01-01'
+end_date <- '2025-06-06'  # change this to '2024-07-01' for mid last year to Oct this year
+
+# # Alternative dates once data has been collected across sites
+# start_date <- '2024-07-01'
+# end_date <- '2024-10-31'
+
+
+# Load Sentinel-2 surface reflectance
+s2_sr <- ee$ImageCollection("COPERNICUS/S2_SR")$
+  filterBounds(aoi)$
+  filterDate(start_date, end_date)$
+  filter(ee$Filter$lt("CLOUDY_PIXEL_PERCENTAGE", 20))$
+  map(function(img) {
+    # Scale reflectance bands
+    img <- img$divide(10000)
+    
+    # Calculate EVI
+    evi <- img$expression(
+      "2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))",
+      list(
+        NIR = img$select("B8"),
+        RED = img$select("B4"),
+        BLUE = img$select("B2")
+      )
+    )$rename("EVI")
+    
+    img$addBands(evi)
+  })
+
+# Create a median composite of EVI
+evi_median <- s2_sr$select("EVI")$median()$clip(aoi)
+
+# Visualize in RStudio viewer
+Map$centerObject(aoi)
+Map$addLayer(evi_median,
+             visParams = list(min = 0, max = 1, palette = c("white", "green")),
+             name = "Median EVI")
+
+# Get the number of images in the filtered ImageCollection used for EVI calculation
+s2_sr$size()$getInfo()
+
+# Export to Google Drive (optional)
+task <- ee_image_to_drive(
+  image = evi_median,
+  description = "median_EVI_2025",
+  folder = "rgee_evi",
+  fileNamePrefix = "EVI_2025_median",
+  region = aoi$geometry(),
+  scale = 10,
+  maxPixels = 1e13
+)
+task$start()
+
+# Monitor the task
+ee_monitoring(task)
+
+# Access rgee files
+# Gdrive access
+googledrive::drive_user()
+googledrive::drive_auth(email = "lukedanielemerson1982@gmail.com")
+
+# Check folders in gdrive to check connection
+rgee_folder <- googledrive::drive_get("rgee_evi")
+files_in_rgee <- googledrive::drive_ls(path = rgee_folder)
+print(files_in_rgee)
+
+# Create folder path
+target_name <- files_in_rgee$name
+target_file <- googledrive::drive_ls(path = rgee_folder) %>%
+  dplyr::filter(name == target_name)
+
+# Define the destination directory (Data folder in current working directory)
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/EVI")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+
+# Define the destination file path
+dest_file <- file.path(dest_dir, target_name)
+
+# Download it to your working directory
+googledrive::drive_download(file = target_file, path = dest_file, overwrite = TRUE)
+
+# Read raster
+evi <- rast(dest_file)
+evi
+plot(evi)
+
+summary(evi)
+
+# Need to work out why some values are above 1. 
+# Try extracting water areas
+# Check what is highest evi areas
+# Crop and mask
+
+evi_water <- classify(evi, cbind(-Inf, 0, 1))  # water = 1
+plot(evi_water)
+
+
+
+# Satellite basemap imagery ====================================================
+# Load required libraries
+library(rgee)
+library(sf)
+library(googledrive)
+library(dplyr)
+library(raster)
+library(terra)
+library(rgeeExtra) # Not available for this version of R
+library(tidyrgee)
+library(googleCloudStorageR)
+library(googledrive)
+library(reticulate)
+library(tidyverse)
+library(here)
+library(geojsonio)
+library(devtools)
+
+### Try starting here but if there are issues re-install python ###
+# After running above and restarting - Ensure reticulate is using the correct conda binary - i.e. correct version of python
+reticulate::use_condaenv("rgee", required = TRUE)
+reticulate::py_config()  # Verify it's using the correct Python
+rgee::ee_check()
+
+# Remove credentials before updating gcloud
+rgee::ee_clean_user_credentials('lukedanielemerson1982@gmail.com') #only fist time or need to clear credentials
+rgee::ee_Authenticate(
+  scopes = c(
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/earthengine"
+  )
+)
+
+# Initialize Earth Engine and GD :  /!\/!\/!\ NEED TO RUN RSTUDIO IN ADMINISTRATOR MODE FOR THIS LINE /!\/!\/!\
+rgee::ee_Initialize(user = "lukedanielemerson1982@gmail.com", drive = TRUE, gcs = FALSE)
+
+# Get your Earth Engine user info to confirm
+ee_user_info()
+
+# Check users, credentials, path 
+rgee::ee_users()
+rgee::ee_get_earthengine_path()
+rgee::ee_check()
+rgee::ee_check_python()
+rgee::ee_check_credentials()
+rgee::ee_check_python_packages()
+
+# Checking installation non-R dependencies
+reticulate::conda_list()
+reticulate::py_available()
+reticulate::py_config()
+reticulate::py_discover_config()
+reticulate::py_config()$version
+
+# Test code to check things are working
+srtm <- rgee::ee$Image("USGS/SRTMGL1_003")
+
+viz <- list(
+  max = 4000,
+  min = 0,
+  palette = c("#000000","#5AAD5A","#A9AD84","#FFFFFF")
+)
+
+rgee::Map$addLayer(
+  eeObject = srtm,
+  visParams =  viz,
+  name = 'SRTM',
+  # legend = TRUE
+)
+
+
+# Define study area path and read shapefile
+study_location <- "Bremer Bay"
+data_type <- "Study area bounding box"
+working_dir <- getwd()
+folder_path <- file.path(paste(study_location, "spatial layers", sep = " "))
+file_name <- paste(study_location, " ", tolower(data_type), ".shp", sep = "")
+file_path <- file.path(working_dir, folder_path, data_type, file_name)
+
+aoi_sf <- sf::st_read(file_path) %>%
+  st_transform(crs = 4326)
+
+# Check crs
+sf::st_crs(aoi_sf)
+
+# Convert to gee object
+aoi <- sf_as_ee(aoi_sf)
+class(aoi)
+
+# Visualise and ensure its in correct location
+Map$centerObject(aoi)
+Map$addLayer(aoi)
+
+# Define time range for June 2025
+start_date <- '2025-05-01'
+end_date <- '2025-06-30'
+
+# Filter Sentinel-2 SR collection for RGB bands (true color)
+s2_rgb <- ee$ImageCollection("COPERNICUS/S2_SR")$
+  filterBounds(aoi)$
+  filterDate(start_date, end_date)$
+  filter(ee$Filter$lt("CLOUDY_PIXEL_PERCENTAGE", 5))$
+  map(function(img) {
+    img$divide(10000)$select(c("B4", "B3", "B2"))$rename(c("Red", "Green", "Blue"))
+  })
+
+# Create median composite and clip to AOI
+rgb_median <- s2_rgb$median()$clip(aoi)
+
+# Visualize in R
+Map$centerObject(aoi)
+Map$addLayer(
+  rgb_median,
+  visParams = list(min = 0, max = 0.3, bands = c("Red", "Green", "Blue")),
+  name = "Sentinel-2 RGB June 2025"
+)
+
+# Count number of images used
+s2_rgb$size()$getInfo()  # Prints number of images used
+
+# Export the image to Google Drive
+task_rgb <- ee_image_to_drive(
+  image = rgb_median,
+  description = "RGB_May_June_2025",
+  folder = "rgee_rgb",
+  fileNamePrefix = "RGB_May_June_2025_median",
+  region = aoi$geometry(),
+  scale = 10,
+  maxPixels = 1e13
+)
+task_rgb$start()
+
+# Monitor task
+ee_monitoring(task_rgb)
+
+# OPTIONAL: After export completes, download it from Google Drive
+# Get exported file name
+rgee_folder <- googledrive::drive_get("rgee_rgb")
+files_in_rgee <- googledrive::drive_ls(path = rgee_folder)
+target_name <- files_in_rgee$name
+target_file <- googledrive::drive_ls(path = rgee_folder) %>%
+  dplyr::filter(name == target_name)
+
+# Set local download path
+dest_dir <- file.path(getwd(), "Bremer Bay spatial layers/RGB")
+if (!dir.exists(dest_dir)) dir.create(dest_dir)
+dest_file <- file.path(dest_dir, target_name)
+
+# Download file to disk
+googledrive::drive_download(file = target_file, path = dest_file, overwrite = TRUE)
+
+# Load the raster
+rgb_raster <- rast(dest_file)
+
+# Check the number of bands and value range
+print(rgb_raster)
+summary(rgb_raster)
+
+# Optional: If values are between 0–1, scale to 0–255 for better visualization
+if (max(values(rgb_raster), na.rm = TRUE) <= 1.5) {
+  rgb_raster <- rgb_raster * 255
+}
+
+# Plot with RGB coloring
+plotRGB(rgb_raster, r = 1, g = 2, b = 3, scale = 255, stretch = "lin", main = "True Color RGB Composite")
+
+
+
+# Extraction ===================================================================
+library(sf)
+library(dplyr)
+
+# Get all intersecting polygons per point
+intersections <- st_intersects(point_locations, fire_cropped)
+
+# Extract and summarize (e.g., minimum time since fire)
+tsf_by_point <- lapply(intersections, function(idxs) {
+  if (length(idxs) == 0) return(NA)
+  min(fire_cropped$time_since_fire_yrs[idxs], na.rm = TRUE)
+})
+
+# Convert to numeric vector or bind back to your point data
+point_locations$min_time_since_fire <- unlist(tsf_by_point)
+
+
+
+
+```
+
+

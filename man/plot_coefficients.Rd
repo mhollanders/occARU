@@ -40,26 +40,27 @@ Only used if \code{level} is \code{"species"}.}
 species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
 \item{restricted}{Logical. If \code{TRUE} (default), plots coefficients with
-orthogonal projection of the detection random site or survey effects, i.e.,
-\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P}_X)}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P}_X} is the orthogonal complement of the
-column space of the site or survey design matrix. If \code{FALSE}, recovers
+orthogonal projection of the detection random site or survey effects, e.g.,
+\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+\eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
+the column space of the site or survey design matrix. If \code{FALSE}, recovers
 coefficients without orthogonal projection, \eqn{\boldsymbol{\beta} -
-  \boldsymbol{\iota} \boldsymbol{X}^+}, where  \eqn{\boldsymbol{X}^+} is the
-pseudo-inverse of the design matrix. Only used if \code{submodel} is
-\code{"detection"}.}
+  \boldsymbol{\iota} \boldsymbol{X_2}^+}, where  \eqn{\boldsymbol{X_2}^+} is
+the pseudo-inverse of the design matrix. Only used for site predictors if
+\code{submodel} is \code{"detection"}, or if survey random effects were also
+projected with \code{project_kappa = TRUE} in \code{fit_model()}.}
 
 \item{ordinal_categories}{Logical. If \code{FALSE} (default), plots coefficients
 associated with maximum category (full effect). If \code{TRUE}, plots realised
 coefficient associated with each ordered category, where the first
 is used as the reference.}
 
-\item{...}{Additional arguments passed to \code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}}.}
+\item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{

@@ -20,12 +20,12 @@ plot_correlations(
 \item{species}{Character vector of species to plot. If \code{NULL} (default), all
 species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{...}{Additional arguments passed to \code{\link[tidybayes:reexports]{tidybayes::stat_pointinterval()}}.}
+\item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
 \value{
 A \code{ggplot} object with occARU-specific attributes attached:
 \describe{
-\item{\code{plot_data}}{The data structure used to produce the plot.}
+\item{\code{plot_data}}{The tibble used to produce the plot.}
 }
 }
 \description{

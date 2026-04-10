@@ -40,9 +40,8 @@ data <- make_data(
   deployments = deployments,
   observations = observations,
   failures = failures  # also accepts failure dates per site
-  survey_length = 7, # aggregate to weekly survey periods
+  survey_length = 14, # aggregate to 2-weekly survey periods
   thin_minutes = 30  # thin observations to 30 minutes, retaining highest count
-  occupancy_site_predictors = site_predictors,
   detection_site_predictors = site_predictors,
   survey_predictors = survey_predictors 
 )
@@ -56,11 +55,11 @@ data
 #> Deployment span: 2019-11-06 to 2024-03-06
 #> Survey length: 14 days
 #> Thinning: 30 minutes
-#> Occupancy predictors: 5
+#> Occupancy site predictors: 0
+#> Detection predictors: 5
 #>   Continuous: 3
 #>   Categorical: 1
 #>   Ordinal: 1
-#> Detection site predictors: 0
 #> Detection survey predictors: 4
 #>   Continuous: 3
 #>   Categorical: 0
@@ -68,8 +67,9 @@ data
 ```
 
 ### 2. Fit a model
+
 ```r
-# set some priors (unspecified use defaults)
+# set some priors for hyperparameters (unspecified use defaults)
 priors <- set_priors(
   psi_bar = c(1, 2),  # Beta(1, 2) for mean occupancy
   mu_W = c(3, 0, 1)   # Student-t+(3, 0, 1) for log detection variance
@@ -88,8 +88,9 @@ fit <- fit_model(data, prior = priors)
 
 By default this fits a model with spatial and temporal Gaussian processes,
 Dirichlet variance decomposition, and Poisson observation model, initialised
-with pathfinder across 4 chains. See `?fit_model` and `?set_priors` to
-customise the model structure and priors.
+with [Pathfinder](https://mc-stan.org/docs/reference-manual/pathfinder.html)
+across 4 chains. See `?fit_model` and `?set_priors` to customise the model 
+structure and priors.
 
 ### 3. Check some output
 
@@ -98,21 +99,29 @@ customise the model structure and priors.
 plot_sites(fit)
 ```
 
-![](man/figures/iota.png)
+![](man/figures/sites.png)
 
 ```r
 # temporal detection trends
-plot_surveys(fit)
+plot_surveys(fit, species = c("Species 1", "Species 2"))
 ```
 
-![](man/figures/kappa.png)
+![](man/figures/surveys.png)
 
 Key design choices in occARU are hierarchical multispecies spatial and temporal
-Gaussian processes, implemented with sum-to-zero constraints for 
-identifiability. Interspecific correlations are estimated for responses to 
-predictors, and residual spatial and temporal effects. To ensure recovery of 
-fixed effects, spatial and temporal effects are projected orthogonal to the 
-respective design matrices.
+Gaussian processes, implemented with sum-to-zero constraints for identifiability 
+and orthogonal projection to retain fixed effects. Interspecific correlations 
+are estimated for responses to predictors and random effects.
+
+```r
+# variance partitions
+plot_partitions(fit, scales = TRUE)
+```
+
+![](man/figures/partitions.png)
+
+Global-local shrinkage priors are used to handle model complexity through
+simplex decomposing variances of the occupancy and detection linear predictors.
 
 ### 4. Interrogate
 
@@ -124,7 +133,7 @@ fit$loo("log_lik2")  # log_lik2 uses Monte Carlo integration of random effects
 priorsense::powerscale_plot_dens(fit$draws("log_lik", "lprior", "psi_bar"))
 
 # posterior predictive checking of aggregated site-by-species counts
-bayesplot::pp_check(apply(data$y, c(1, 3), sum) |> unlist(),
+bayesplot::pp_check(apply(data$y, c(1, 3), sum) |> c(),
                     yrep = fit$draws("Qrep", format = "draws_matrix"),
                     group = rep(attr(data, "species"), each = data$I),
                     fun = "ppc_rootogram_grouped")
