@@ -35,3 +35,6 @@ Imports:
     tidybayes,
     tidyr
 URL: https://mhollanders.github.io/occARU/
+Remotes:
+    stan-dev/cmdstanr,
+    stan-dev/bayesplot
