@@ -8,3 +8,4 @@ scratch
 inst/stan/*
 !inst/stan/*.stan
 !inst/stan/*.stanfunctions
+docs
