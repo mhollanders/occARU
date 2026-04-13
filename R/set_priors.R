@@ -105,23 +105,21 @@ set_priors <- function(
     kappa_O_L = 1L,
     epsilon_O_L = 1L
   )
-  for (nm in names(expected_lengths)) {
-    if (length(get(nm)) != expected_lengths[[nm]]) {
+
+  # length and positivity
+  args <- mget(names(expected_lengths))
+  purrr::iwalk(expected_lengths, \(expected_len, nm) {
+    if (length(args[[nm]]) != expected_len) {
       cli::cli_abort(
-        "{.arg {nm}} must have length {expected_lengths[[nm]]}, \\
-         not {length(get(nm))}."
+        "{.arg {nm}} must have length {expected_len}, not {length(args[[nm]])}."
       )
     }
-  }
-
-  # positivity checks
-  args <- mget(ls())
-  for (nm in names(args)) {
     if (any(args[[nm]] < 0)) {
       cli::cli_abort("All values in {.arg {nm}} must not be negative.")
     }
-  }
+  })
 
+  # set priors
   priors <- structure(
     list(
       psi_bar_beta = psi_bar,

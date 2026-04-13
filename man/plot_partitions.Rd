@@ -9,7 +9,7 @@ plot_partitions(fit, scales = FALSE, ...)
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{scales}{Logical. If \code{FALSE} (default), plots variance simplex
+\item{scales}{\code{logical}. If \code{FALSE} (default), plots variance simplex
 partitions \eqn{\boldsymbol{\phi}}. If \code{TRUE}, produces component scales by
 plotting \eqn{\sqrt{W \cdot \boldsymbol{\phi}}}, where \eqn{W} are
 variances of linear predictors. Useful for sparse simplexes, where few

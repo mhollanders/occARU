@@ -4,20 +4,20 @@
 #' occupancy or detection submodels.
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param submodel Character. Predictors of submodel to plot. One of
+#' @param submodel `character`. Predictors of submodel to plot. One of
 #'   `"detection"` (default) or `"occupancy"`.
-#' @param component Character. Whether to plot `"site"` (default) or `"survey"`
+#' @param component `character`. Whether to plot `"site"` (default) or `"survey"`
 #'   predictors. If `"survey"`, `submodel` must be `"detection"`.
-#' @param type Character. Type of predictors to plot. One of `"continuous"`
+#' @param type `character`. Type of predictors to plot. One of `"continuous"`
 #'   (default), `"categorical"`, or `"ordinal"`.
-#' @param level Character. For multi-species models, whether to plot
+#' @param level `character`. For multi-species models, whether to plot
 #'   species-specific (`"species"`, default) or mean coefficients (`"mean"`).
-#' @param facet_by Character. Whether to use [ggplot2::facet_wrap()] or
+#' @param facet_by `character`. Whether to use [ggplot2::facet_wrap()] or
 #'   [ggh4x::facet_grid2()] to facet by `"predictor"` (default) or `"species"`.
 #'   Only used if `level` is `"species"`.
-#' @param species Character vector of species to plot. If `NULL` (default), all
-#'   species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param restricted Logical. If `TRUE` (default), plots coefficients with
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param restricted `logical`. If `TRUE` (default), plots coefficients with
 #'   orthogonal projection of the detection random site or survey effects, e.g.,
 #'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
 #'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
@@ -27,7 +27,7 @@
 #'   the pseudo-inverse of the design matrix. Only used for site predictors if
 #'   `submodel` is `"detection"`, or if survey random effects were also
 #'   projected with `project_kappa = TRUE` in `fit_model()`.
-#' @param ordinal_categories Logical. If `FALSE` (default), plots coefficients
+#' @param ordinal_categories `logical`. If `FALSE` (default), plots coefficients
 #'   associated with maximum category (full effect). If `TRUE`, plots realised
 #'   coefficient associated with each ordered category, where the first
 #'   is used as the reference.
@@ -441,10 +441,10 @@ plot_coefficients <- function(
 #' Poisson OLREs.
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param submodel Character. Correlations of submodel to plot. One of
+#' @param submodel `character`. Correlations of submodel to plot. One of
 #'   `"detection"` (default) or `"occupancy"`.
-#' @param species Character vector of species to plot. If `NULL` (default), all
-#'   species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
 #' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
@@ -588,9 +588,9 @@ plot_correlations <- function(
 #' back-transformed to the orginal scale.
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param species Character vector of species to plot. If `NULL` (default), all
-#'   species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param back_transform Logical. If `TRUE` (default), intercepts are
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param back_transform `logical`. If `TRUE` (default), intercepts are
 #'   back-transformed to the natural scale via `inv_logit()` for occupancy and
 #'   `exp()` for detection rates. If `FALSE`, values are left on the scale of
 #'   the link functions (logit for occupancy and log for detection).
@@ -696,7 +696,7 @@ plot_intercepts <- function(
 #' by additional simplex decomposition of the species-level components.
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param scales Logical. If `FALSE` (default), plots variance simplex
+#' @param scales `logical`. If `FALSE` (default), plots variance simplex
 #'   partitions \eqn{\boldsymbol{\phi}}. If `TRUE`, produces component scales by
 #'   plotting \eqn{\sqrt{W \cdot \boldsymbol{\phi}}}, where \eqn{W} are
 #'   variances of linear predictors. Useful for sparse simplexes, where few
@@ -942,25 +942,25 @@ plot_partitions <- function(
 #' rates are weighted by occupancy probability (`inv_logit(logit_psi[s, i])`).
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param species Character vector of species to plot. If `NULL` (default), all
-#'   species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param sites Character vector of sites to plot. If `NULL` (default), all
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param sites `character`. Vector of sites to plot. If `NULL` (default), all
 #'   sites are plotted. Must be one of `attr(occARU_data, "sites")`.
-#' @param map Logical. If `TRUE` (default), plot site effects summarised with
+#' @param map `logical`. If `TRUE` (default), plot site effects summarised with
 #'   posterior medians on a map using UTM coordinates. Requires site coordinates
 #'   to have been supplied to [make_data()]. If `FALSE`, or if no coordinates
 #'   are present, site effects are plotted with
 #'   [ggdist::stat_pointinterval()].
-#' @param intercepts Logical. If `TRUE` (default), species-level baseline log
+#' @param intercepts `logical`. If `TRUE` (default), species-level baseline log
 #'   detection rates are added to the site effects. If `FALSE`, only the site
 #'   deviations are plotted on the log scale.
-#' @param back_transform Logical. Only used when `intercepts = TRUE`. If `TRUE`
+#' @param back_transform `logical`. Only used when `intercepts = TRUE`. If `TRUE`
 #'   (default), log detection rates are back-transformed to the natural scale
 #'   via `exp()`. If `FALSE`, values are left on the log scale.
-#' @param include_predictors Logical. If `TRUE` (default), includes predictors
+#' @param include_predictors `logical`. If `TRUE` (default), includes predictors
 #'   in the site effects, if included. If `FALSE`, only plots the random
 #'   effects.
-#' @param restricted Logical. If `TRUE` (default), when `include_predictors` is
+#' @param restricted `logical`. If `TRUE` (default), when `include_predictors` is
 #'   `FALSE`, plots random site effects with orthogonal projection, i.e.,
 #'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
 #'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
@@ -968,8 +968,8 @@ plot_partitions <- function(
 #'   effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
 #'   Has no effect when `include_predictors` is `TRUE` as the linear predictor
 #'   is unaffected by orthogonal projection.
-#' @param ndraws  Number of draws to use for plotting, passed to
-#'   [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
+#' @param ndraws Positive integerish. Number of draws to use for plotting,
+#'   passed to [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
 #'   `ndraws` is not `NULL`. Default: random integer.
 #' @param ... Additional arguments passed to [ggplot2::geom_point()] when
@@ -1028,8 +1028,14 @@ plot_sites <- function(
       point-intervals."
     )
   }
-  if (!is.null(ndraws) && is.null(seed)) {
-    seed <- sample.int(.Machine$integer.max, 1)
+  if (!is.null(ndraws)) {
+    if (!rlang::is_integerish(ndraws) || ndraws < 0) {
+      cli::cli_abort(
+        "{.arg ndraws} must be a positive integer."
+      )
+    } else if (is.null(seed)) {
+      seed <- sample.int(.Machine$integer.max, 1)
+    }
   }
 
   # get species and site indices
@@ -1438,20 +1444,21 @@ plot_sites <- function(
 #' included via [make_data()]) and survey random effects (`kappa`).
 #'
 #' @param fit A fitted model object from [fit_model()].
-#' @param species Character vector of species to plot. If `NULL` (default), all
-#'   species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param surveys Character vector of survey dates to plot. If `NULL` (default),
-#'   all surveys are plotted. Must be one of `attr(occARU_data, "surveys")`.
-#' @param intercepts Logical. If `TRUE` (default), species-level baseline log
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param surveys `character`. Vector of survey dates to plot. If `NULL`
+#'   (default), all surveys are plotted. Must be one of
+#'   `attr(occARU_data, "surveys")`.
+#' @param intercepts `logical`. If `TRUE` (default), species-level baseline log
 #'   detection rates are added to the survey effects. If `FALSE`, only the
 #'   temporal deviations are plotted on the log scale.
-#' @param back_transform Logical. Only used when `intercepts = TRUE`. If `TRUE`
+#' @param back_transform `logical`. Only used when `intercepts = TRUE`. If `TRUE`
 #'   (default), log detection rates are back-transformed to the natural scale
 #'   via `exp()`. If `FALSE`, values are left on the log scale.
-#' @param include_predictors Logical. If `TRUE` (default), includes predictors
+#' @param include_predictors `logical`. If `TRUE` (default), includes predictors
 #'   in the survey effects, if included. If `FALSE`, only plots the random
 #'   effects.
-#' @param restricted Logical. If `TRUE` (default), when `include_predictors` is
+#' @param restricted `logical`. If `TRUE` (default), when `include_predictors` is
 #'   `FALSE` and the model was fit with `project_kappa = TRUE`, plots random
 #'   survey effects with orthogonal projection, i.e.,
 #'   \eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
@@ -1460,12 +1467,12 @@ plot_sites <- function(
 #'   plots random effects without orthogonal projection, i.e.,
 #'   \eqn{\boldsymbol{\kappa}} only. Has no effect when `include_predictors`
 #'   is `TRUE` as the linear predictor is unaffected by orthogonal projection.
-#' @param ndraws  Number of draws to use for plotting, passed to
-#'   [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
+#' @param ndraws Positive integer. Number of draws to use for plotting, passed
+#'   to [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
 #'   `ndraws` is not `NULL`. Default: random integer.
-#' @param palette Colour palette to be passed to [ggplot2::scale_fill_brewer()].
-#'   Default: `"YlGn"`.
+#' @param palette `character`. Colour palette to be passed to
+#'   [ggplot2::scale_fill_brewer()]. Default: `"YlGn"`.
 #' @param ... Additional arguments passed to [ggdist::stat_lineribbon()]
 #'   such as `.width` and `point_interval`.
 #'
@@ -1513,8 +1520,14 @@ plot_surveys <- function(
     )
   }
   transform <- back_transform && intercepts
-  if (!is.null(ndraws) && is.null(seed)) {
-    seed <- sample.int(.Machine$integer.max, 1)
+  if (!is.null(n_draws)) {
+    if (!rlang::is_integerish(ndraws) || ndraws < 0) {
+      cli::cli_abort(
+        "{.arg ndraws} must be a positive integer."
+      )
+    } else if (is.null(seed)) {
+      seed <- sample.int(.Machine$integer.max, 1)
+    }
   }
 
   # get species and survey indices

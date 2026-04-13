@@ -27,4 +27,6 @@ reference:
   - title: Setup
     contents:
       - setup_occARU
+      - thin_observations
+      - find_failures
 

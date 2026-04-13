@@ -49,18 +49,18 @@ data
 #> ── occARU data ─────────────────────────────────────────────────────
 #> Sites (I): 30
 #> Surveys (J): 114
-#> Species (S): 9
+#> Species (S): 6
 #> Detections: 11463
 #> Site coordinates: yes
 #> Deployment span: 2019-11-06 to 2024-03-06
 #> Survey length: 14 days
 #> Thinning: 30 minutes
 #> Occupancy site predictors: 0
-#> Detection predictors: 5
+#> Detection site predictors: 5
 #>   Continuous: 3
 #>   Categorical: 1
 #>   Ordinal: 1
-#> Detection survey predictors: 4
+#> Survey predictors: 4
 #>   Continuous: 3
 #>   Categorical: 0
 #>   Ordinal: 1
@@ -76,7 +76,7 @@ priors <- set_priors(
 )
 #> ── occARU priors ───────────────────────────────────────────────────────────
 #> psi_bar: Beta(1, 2)
-#> mu_bar: Gamma(1, 4)
+#> mu_bar: Gamma(1, 1)
 #> psi_W: Student-t+(3, 0, 1)
 #> mu_W: Student-t+(3, 0, 1)
 #> psi_theta: Gamma(1, 1)

@@ -20,26 +20,26 @@ plot_coefficients(
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{submodel}{Character. Predictors of submodel to plot. One of
+\item{submodel}{\code{character}. Predictors of submodel to plot. One of
 \code{"detection"} (default) or \code{"occupancy"}.}
 
-\item{component}{Character. Whether to plot \code{"site"} (default) or \code{"survey"}
+\item{component}{\code{character}. Whether to plot \code{"site"} (default) or \code{"survey"}
 predictors. If \code{"survey"}, \code{submodel} must be \code{"detection"}.}
 
-\item{type}{Character. Type of predictors to plot. One of \code{"continuous"}
+\item{type}{\code{character}. Type of predictors to plot. One of \code{"continuous"}
 (default), \code{"categorical"}, or \code{"ordinal"}.}
 
-\item{level}{Character. For multi-species models, whether to plot
+\item{level}{\code{character}. For multi-species models, whether to plot
 species-specific (\code{"species"}, default) or mean coefficients (\code{"mean"}).}
 
-\item{facet_by}{Character. Whether to use \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}} or
+\item{facet_by}{\code{character}. Whether to use \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}} or
 \code{\link[ggh4x:facet_grid2]{ggh4x::facet_grid2()}} to facet by \code{"predictor"} (default) or \code{"species"}.
 Only used if \code{level} is \code{"species"}.}
 
-\item{species}{Character vector of species to plot. If \code{NULL} (default), all
-species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{restricted}{Logical. If \code{TRUE} (default), plots coefficients with
+\item{restricted}{\code{logical}. If \code{TRUE} (default), plots coefficients with
 orthogonal projection of the detection random site or survey effects, e.g.,
 \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
@@ -50,7 +50,7 @@ the pseudo-inverse of the design matrix. Only used for site predictors if
 \code{submodel} is \code{"detection"}, or if survey random effects were also
 projected with \code{project_kappa = TRUE} in \code{fit_model()}.}
 
-\item{ordinal_categories}{Logical. If \code{FALSE} (default), plots coefficients
+\item{ordinal_categories}{\code{logical}. If \code{FALSE} (default), plots coefficients
 associated with maximum category (full effect). If \code{TRUE}, plots realised
 coefficient associated with each ordered category, where the first
 is used as the reference.}

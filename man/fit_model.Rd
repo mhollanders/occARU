@@ -16,38 +16,38 @@ fit_model(
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   latent = TRUE,
-  loo_draws = 100,
+  loo_draws = 100L,
   ppc = c("Q", "y", "both", "none"),
   prior = set_priors(verbose = FALSE),
   init = "pathfinder",
   pathfinder_args = list(),
-  threads = 1,
-  grainsize = 1,
+  threads = 1L,
+  grainsize = 1L,
   ...
 )
 }
 \arguments{
 \item{data}{A \code{occARU_data} object produced by \code{\link[=make_data]{make_data()}}.}
 
-\item{stan_file}{Character. Path to a custom Stan file. If \code{NULL} (default),
+\item{stan_file}{\code{character}. Path to a custom Stan file. If \code{NULL} (default),
 uses the built-in multispecies occARU model, or the single species version
 if only one species is included. Intended for advanced users who have
 modified the Stan program; note that custom models will likely require
 corresponding changes to the output of \code{\link[=make_data]{make_data()}}.}
 
-\item{spatial}{Character. Structure of site-level random effects. \code{"gp"}
+\item{spatial}{\code{character}. Structure of site-level random effects. \code{"gp"}
 (default) fits a hierarchical multi-species spatial Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. \code{"mvn"}
 fits an unstructured multivariate normal, and \code{"none"} omits site-level
 random effects entirely.}
 
-\item{temporal}{Character. Structure of survey-level random effects. \code{"gp"}
+\item{temporal}{\code{character}. Structure of survey-level random effects. \code{"gp"}
 (default) fits a hierarchical multi-species temporal Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. \code{"mvn"}
 fits an unstructured multivariate normal, and \code{"none"} omits survey-level
 random effects entirely.}
 
-\item{periodic_gp}{Logical. If \code{TRUE}, a periodic kernel is added to the
+\item{periodic_gp}{\code{logical}. If \code{TRUE}, a periodic kernel is added to the
 temporal GP kernel. Only used when \code{temporal = "gp"}. Default: \code{FALSE}.}
 
 \item{period}{Positive numeric. Period length in survey units (i.e. number
@@ -56,7 +56,7 @@ of survey periods per cycle). Only used when \code{temporal = "gp"} and
 an annual cycle. For example, with \code{survey_length = 7} the default is
 \code{period = 52.1}. Override if your data span a different temporal cycle.}
 
-\item{species_length_scales}{Logical. If \code{TRUE}, species-specific GP length
+\item{species_length_scales}{\code{logical}. If \code{TRUE}, species-specific GP length
 scales are estimated for each kernel, each drawn independently from the
 shared length scale priors. Note that enabling this requires additional
 Cholesky decompositions per species and GP per iteration, which can
@@ -64,18 +64,18 @@ substantially increase sampling time. If \code{FALSE} (default), only one
 Cholesky decomposition is performed per GP. Only used when multiple species
 are included, and \code{spatial = "gp"} or \code{temporal = "gp"}.}
 
-\item{project_kappa}{Logical. If \code{TRUE} (default), uses orthogonal projection
-for random survey effects using the site-averaged survey predictor design
-matrix. Ignored when no survey predictors are provided.}
+\item{project_kappa}{\code{logical}. If \code{TRUE} (default), uses orthogonal
+projection for random survey effects using the site-averaged survey
+predictor design matrix. Ignored when no survey predictors are provided.}
 
-\item{overdispersion}{Character. Overdispersion model for the observation
+\item{overdispersion}{\code{character}. Overdispersion model for the observation
 process. One of \code{"none"} (Poisson, default), \code{"nb"} (negative binomial),
 or \code{"olre"} (correlated observation-level random effects).}
 
-\item{variance_decomposition}{Character. Prior for variance partitions.
+\item{variance_decomposition}{\code{character}. Prior for variance partitions.
 One of \code{"dirichlet"} (default) or \code{"logistic-normal"}.}
 
-\item{latent}{Logical. If \code{TRUE} (default), latent occupancy states \code{z}
+\item{latent}{\code{logical}. If \code{TRUE} (default), latent occupancy states \code{z}
 are recovered for each species using the forward-backward sampling
 algorithm.}
 
@@ -88,7 +88,7 @@ integration. \code{log_lik2} is recommended over \code{log_lik} for PSIS-LOO-CV 
 produces better Pareto-k diagnostics. Set to \code{0} to disable, returning only
 \code{log_lik}. Only used when \code{spatial} is not \code{"none"} or \code{overdispersion = "olre"}.}
 
-\item{ppc}{Character. Posterior predictive checks to compute. One of \code{"Q"}
+\item{ppc}{\code{character}. Posterior predictive checks to compute. One of \code{"Q"}
 (default), \code{"y"}, \code{"both"}, or \code{"none"}. \code{"y"} returns the full
 \verb{[I, J, S]} prediction array (\code{yrep}); \code{"Q"} returns only aggregated
 counts \verb{[I, S]} (\code{Qrep}). For large datasets, \code{"Q"} or \code{"none"} can
@@ -97,8 +97,8 @@ substantially reduce memory usage and sampling time.}
 \item{prior}{An \code{occARU_priors} object from \code{\link[=set_priors]{set_priors()}}. If omitted,
 default priors are used.}
 
-\item{init}{Character, numeric, or list. Initialisation strategy passed to
-\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}. One of:
+\item{init}{\code{character}, \code{numeric}, or \code{list}. Initialisation strategy passed
+to \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}. One of:
 \describe{
 \item{\code{"pathfinder"}}{Default. Use pathfinder to generate initial values
 (see \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()}). Recommended for complex

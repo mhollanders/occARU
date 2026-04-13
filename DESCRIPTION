@@ -29,6 +29,7 @@ Imports:
     ggplot2,
     lubridate,
     posterior,
+    purrr,
     rlang,
     sf,
     tibble,

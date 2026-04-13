@@ -18,73 +18,74 @@ make_data(
   count = count,
   failureStart = failureStart,
   failureEnd = failureEnd,
-  survey_length = 7,
+  survey_length = 1L,
   thin_minutes = 30,
-  day_start = "midday",
+  day_start = c("midday", "midnight"),
   reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
   date = date,
-  survey_summary = NULL,
+  summary_functions = NULL,
   scale_predictors = TRUE
 )
 }
 \arguments{
-\item{deployments}{A data frame of deployment information, one row per
+\item{deployments}{A dataframe of deployment information, one row per
 site. Must contain columns \code{deploymentID}, \code{deploymentStart}, and
 \code{deploymentEnd} (or equivalents specified via the corresponding
 arguments). Optionally, \code{latitude} and \code{longitude} columns enable
 the spatial Gaussian process.}
 
-\item{observations}{A data frame of observation records. Must contain
+\item{observations}{A dataframe of observation records. Must contain
 columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
 (or equivalents specified via the corresponding arguments).}
 
-\item{failures}{Optional data frame of ARU failure periods. If supplied, must
-have the same \code{deploymentID} factor levels as \code{deployments}, with each row
+\item{failures}{Optional dataframe of ARU failure periods. Must contain
+columns \code{deploymentID}, \code{failureStart}, and \code{failureEnd}, with each row
 corresponding to one failure period at a \code{deploymentID} from \code{failureStart}
-to \code{failureEnd}.}
+to \code{failureEnd} (inclusive). See \code{\link[=find_failures]{find_failures()}}.}
 
 \item{deploymentID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for sites (ARUs). Must be a factor with identical levels in
-\code{deployments} and \code{observations}. Default: \code{deploymentID}.}
+name for sites (ARUs). Retains levels if supplied as factor.  Default:
+\code{deploymentID}.}
 
-\item{deploymentStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for deployment start dates in \code{deployments}. Must be a \code{Date}.
-Default: \code{deploymentStart}.}
+\item{deploymentStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{Date}.
+Column name for deployment start dates in \code{deployments}. Default:
+\code{deploymentStart}.}
 
-\item{deploymentEnd}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for deployment end dates in \code{deployments}. Must be a \code{Date}.
-Default: \code{deploymentEnd}.}
+\item{deploymentEnd}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{Date.}
+Column name for deployment end dates in \code{deployments}. Default:
+\code{deploymentEnd}.}
 
-\item{latitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
-for WGS84 latitude in \code{deployments}. If omitted alongside \code{longitude}, no
-spatial Gaussian process is fitted. Default: \code{latitude}.}
+\item{latitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{numeric}.
+Column name for WGS84 latitude in \code{deployments}. If omitted alongside
+\code{longitude}, no spatial Gaussian process is fitted. Default: \code{latitude}.}
 
-\item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
-for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
+\item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{numeric}.
+Column name for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
 
-\item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name
-for observation timestamps in \code{observations}. Must be \code{POSIXt}. Default:
+\item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
+Column name for observation timestamps in \code{observations}. Default:
 \code{eventStart}.}
 
 \item{scientificName}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for species names in \code{observations}. Must be a factor. Default:
-\code{scientificName}.}
+name for species names in \code{observations}. Retains levels if supplied as
+factor. Default: \code{scientificName}.}
 
-\item{count}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name for
-number of individuals per observation record. Default: \code{count}.}
+\item{count}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{integerish}.
+Column name for number of individuals per observation record. Default:
+\code{count}.}
 
-\item{failureStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for failure start dates in \code{failures}. Must be a \code{Date}. Default:
+\item{failureStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{Date}.
+Column name for failure start dates in \code{failures}. Default:
 \code{failureStart}.}
 
-\item{failureEnd}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for failure end dates (inclusive) in \code{failures}. Must be a \code{Date}.
-Default: \code{failureEnd}.}
+\item{failureEnd}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{Date}. Column
+name for failure end dates (inclusive) in \code{failures}. Default:
+\code{failureEnd}.}
 
-\item{survey_length}{Positive integer defining the length of each survey
+\item{survey_length}{Positive integer. Defines the length of each survey
 period in days. Observations are aggregated within each survey period by
 summing \code{count}, and recording effort (\code{Delta}) is computed as the fraction
 of the survey length the ARU was active. For example, \code{survey_length = 7}
@@ -92,50 +93,53 @@ aggregates to weekly survey periods, with \code{Delta} ranging from 0
 (ARU failed all week) to 1 (ARU active all week). Longer periods reduce the
 number of surveys \code{J} but increase the counts per survey, trading off
 temporal resolution against model complexity and the closure assumption
-within a survey period. Default: \code{7}.}
+within a survey period. Default: \code{1L}.}
 
-\item{thin_minutes}{Positive numeric. If supplied, observations within
+\item{thin_minutes}{Non-negative numeric. If supplied, observations within
 \code{thin_minutes} minutes of each other (per site and species) are thinned to
 a single observation, retaining the record with the highest \code{count}.
-Default: \code{30}.}
+Thinning is performed via \code{\link[=thin_observations]{thin_observations()}}. Default: \code{30}.}
 
-\item{day_start}{Character. Whether survey days start at \code{"midnight"} or
-\code{"midday"}. Default: \code{"midday"}.}
+\item{day_start}{Whether survey days start at \code{"midnight"} or \code{"midday"}.
+Default: \code{"midday"}.}
 
-\item{reference_date}{A \code{Date} defining the start of the first survey
-period. If \code{NULL} (default), uses the earliest deployment start date.}
+\item{reference_date}{\code{Date}. Defines the start of the first survey period.
+If \code{NULL} (default), uses the earliest \code{deploymentStart}.}
 
-\item{occupancy_site_predictors}{Optional data frame of site-level
-covariates for the occupancy submodel. Must contain a \code{deploymentID}
-column with the same factor levels as \code{deployments}. Predictor columns
-must be \code{numeric} (continuous), \code{factor} (unordered categorical), or
-\verb{ordered factor} (ordinal).}
+\item{occupancy_site_predictors}{Optional dataframe of site-level
+covariates for the occupancy submodel. Must contain a \code{deploymentID} column
+with the same entries as \code{deployments}. Predictor columns must be \code{numeric}
+(continuous), \code{factor} (unordered categorical), or \verb{ordered factor}
+(ordinal).}
 
-\item{detection_site_predictors}{Optional data frame of site-level
+\item{detection_site_predictors}{Optional dataframe of site-level
 covariates for the detection submodel. Same column-type rules as
 \code{occupancy_site_predictors}. If identical to
 \code{occupancy_site_predictors}, the same matrices are reused.}
 
-\item{survey_predictors}{Optional data frame of site-by-survey level
+\item{survey_predictors}{Optional dataframe of site-by-survey level
 covariates, with one row per site and date. Must contain \code{deploymentID}
 and \code{date} columns. Predictor columns follow the same type rules as the
-site-level predictor data frames. Must cover the full deployment period for
+site-level predictor dataframes. Must cover the full deployment period for
 each ARU.}
 
 \item{date}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name for
 dates in \code{survey_predictors}. Default: \code{date}.}
 
-\item{survey_summary}{An optional named list mapping continuous survey
+\item{summary_functions}{An optional named list mapping continuous survey
 predictor column names to summary functions, used when aggregating survey
 predictors over \code{survey_length}-length periods. Each value can be a
 function name as a string (e.g. \code{"sum"}) or a function object (e.g. \code{sum}).
-Numeric predictors not named in \code{survey_summary} are summarised with
+Numeric predictors not named in \code{summary_functions} are summarised with
 \code{mean}; categorical and ordinal predictors are summarised with the
 modal value. Default: \code{NULL}.}
 
 \item{scale_predictors}{Logical. If \code{TRUE}, continuous predictors are scaled
-to zero mean and unit variance. Scaling parameters are stored as an
-attribute. Default: \code{TRUE}.}
+to zero mean and unit variance. Survey predictors are scaled using
+parameters derived from site-averaged values per survey period (a \verb{[P, J]}
+matrix) rather than the raw \verb{[I, P, J]} array, so that spatial variation
+across sites does not inflate the scaling. Scaling parameters (means and
+SDs) are stored as an attribute. Default: \code{TRUE}.}
 }
 \value{
 A named list of class \code{"occARU_data"} containing all inputs
@@ -198,6 +202,6 @@ Site coordinates are automatically projected from WGS84 latitude/longitude
 to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=set_priors]{set_priors()}}.
+\code{\link[=fit_model]{fit_model()}}, \code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
 The model is described in detail in \code{vignette("model", package = "occARU")}.
 }

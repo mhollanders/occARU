@@ -9,10 +9,10 @@ plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{species}{Character vector of species to plot. If \code{NULL} (default), all
-species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{back_transform}{Logical. If \code{TRUE} (default), intercepts are
+\item{back_transform}{\code{logical}. If \code{TRUE} (default), intercepts are
 back-transformed to the natural scale via \code{inv_logit()} for occupancy and
 \code{exp()} for detection rates. If \code{FALSE}, values are left on the scale of
 the link functions (logit for occupancy and log for detection).}

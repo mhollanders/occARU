@@ -14,11 +14,11 @@ plot_correlations(
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{submodel}{Character. Correlations of submodel to plot. One of
+\item{submodel}{\code{character}. Correlations of submodel to plot. One of
 \code{"detection"} (default) or \code{"occupancy"}.}
 
-\item{species}{Character vector of species to plot. If \code{NULL} (default), all
-species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }

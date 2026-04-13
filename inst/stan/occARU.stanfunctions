@@ -6,12 +6,12 @@
  * @param Q            Aggregated detection history [I, S]
  * @param f_l          First and last survey [I, 2]
  * @param log_Delta    Offsets [J, I]
- * @param X2           Site predictors (numeric) for detection [P, I]
- * @param X_cat2       Site predictors (categorical) for detection [P, I]
- * @param X_ord2       Site predictors (ordinal) for detection [P, I]
- * @param X3           Survey predictors (numeric) for detection [I, P, J]
- * @param X_cat3       Survey predictors (categorical) for detection [I, P, J]
- * @param X_ord3       Survey predictors (ordinal) for detection [I, P, J]
+ * @param X2           Detection site predictors (numeric) [P, I]
+ * @param X_cat2       Detection site predictors (categorical) [P, I]
+ * @param X_ord2       Detection site predictors (ordinal) [P, I]
+ * @param X3           Survey predictors (numeric) [I, P, J]
+ * @param X_cat3       Survey predictors (categorical) [I, P, J]
+ * @param X_ord3       Survey predictors (ordinal) [I, P, J]
  * @param logit_psi    Occupancy logits [S, I]
  * @param alpha        Detection intercepts [S]
  * @param mu_beta      Site coefficients (numeric) [S, P]
@@ -25,9 +25,9 @@
  * @param epsilon      Poisson OLREs (OD = 1)
  * @param phi          Negative binomial overdispersion [S] (OD = 2)
  *
- * @return log_lik   Site-by-species log likelihood [S, I]
- * @return Omega     Marginal occupancy log likelihoods [I, S, 2]
- * @return log_mu    Log detection rates without Poisson OLREs [I, S, J]
+ * @return log_lik     Site-by-species log likelihood [S, I]
+ * @return Omega       Marginal occupancy log likelihoods [I, S, 2]
+ * @return log_mu      Log detection rates without Poisson OLREs [I, S, J]
  */
 tuple(matrix, array[] matrix, array[] matrix)
   occARU(data array[,,] int y, data array[,] int Q, data array[,] int f_l,
@@ -38,10 +38,9 @@ tuple(matrix, array[] matrix, array[] matrix)
          array[] matrix mu_beta_ord, matrix gamma, array[] matrix gamma_cat,
          array[] matrix gamma_ord, matrix iota, matrix kappa,
          array[] matrix epsilon, vector phi) {
-  int I = size(y), J = size(y[1]), S = size(y[1, 1]), OLRE = size(epsilon),
-      NB = size(phi), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
-      P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = cols(iota),
-      TE = cols(kappa);
+  int I = size(y), J = size(y[1]), S = size(y[1, 1]), P_cat2 = size(X_cat2),
+      P_ord2 = size(X_ord2), P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]),
+      SP = cols(iota), TE = cols(kappa), OLRE = size(epsilon), NB = size(phi);
   matrix[S, I] log_psi = log_inv_logit(logit_psi);
   array[I] matrix[S, J] log_mu;
   matrix[S, I] betaX = mu_beta * X2;
@@ -59,8 +58,8 @@ tuple(matrix, array[] matrix, array[] matrix)
     array[J_i, S] int y_i = y[i, f:l];
     Omega_i[:, 2] = log_psi[:, i];
     matrix[S, J_i] log_mu_i = rep_matrix(alpha + betaX[:, i], J_i)
-                                         + gamma * X3[i, :, f:l]
-                                         + rep_matrix(log_Delta[f:l, i]', S);
+                              + gamma * X3[i, :, f:l]
+                              + rep_matrix(log_Delta[f:l, i]', S);
     if (P_cat3) {
       array[P_cat3, J_i] int X_cat3_i = X_cat3[i, :, f:l];
       for (p in 1:P_cat3) {
@@ -119,10 +118,9 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
                  array[] matrix gamma_cat, array[] matrix gamma_ord,
                  matrix iota, matrix kappa, array[] matrix epsilon,
                  vector phi) {
-  int I = size(y), J = size(y[1]), S = size(y[1, 1]), OLRE = size(epsilon),
-      NB = size(phi), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
-      P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = cols(iota),
-      TE = cols(kappa);
+  int I = size(y), J = size(y[1]), S = size(y[1, 1]), P_cat2 = size(X_cat2),
+      P_ord2 = size(X_ord2), P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]),
+      SP = cols(iota), TE = cols(kappa), OLRE = size(epsilon), NB = size(phi);
   matrix[S, I] log_psi = log_inv_logit(logit_psi);
   matrix[S, I] betaX = mu_beta * X2;
   for (p in 1:P_cat2) {
@@ -179,7 +177,7 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
 }
 
 /**
- * Partial sum function for occARU_lpmf()
+ * Partial sum function for multispecies occARU_lpmf()
  *
  * @return  Joint log likelihood across partial sites and species
  */
@@ -212,12 +210,12 @@ real partial_occARU_lpmf(data array[] int sites, data int start, data int end,
  * @param Q            Aggregated detection history [I]
  * @param f_l          First and last survey [I, 2]
  * @param log_Delta    Offsets [J, I]
- * @param X2           Site predictors (numeric) for detection [P, I]
- * @param X_cat2       Site predictors (categorical) for detection [P, I]
- * @param X_ord2       Site predictors (ordinal) for detection [P, I]
- * @param X3           Survey predictors (numeric) for detection [I, P, J]
- * @param X_cat3       Survey predictors (categorical) for detection [I, P, J]
- * @param X_ord3       Survey predictors (ordinal) for detection [I, P, J]
+ * @param X2           Detection site predictors (numeric) [P, I]
+ * @param X_cat2       Detection site predictors (categorical) [P, I]
+ * @param X_ord2       Detection site predictors (ordinal) [P, I]
+ * @param X3           Survey predictors (numeric) [I, P, J]
+ * @param X_cat3       Survey predictors (categorical) [I, P, J]
+ * @param X_ord3       Survey predictors (ordinal) [I, P, J]
  * @param logit_psi    Occupancy logits [I]
  * @param alpha        Detection intercept
  * @param mu_beta      Site coefficients (numeric) [P]
@@ -244,10 +242,9 @@ tuple(vector, matrix, matrix)
          matrix mu_beta_cat, matrix mu_beta_ord, row_vector gamma,
          matrix gamma_cat, matrix gamma_ord, row_vector iota, vector kappa,
          matrix epsilon, vector phi) {
-  int I = size(y), J = size(y[1]), OLRE = size(epsilon),
-      NB = size(phi), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
+  int I = size(y), J = size(y[1]), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
       P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = size(iota),
-      TE = size(kappa);
+      TE = size(kappa), OLRE = size(epsilon), NB = size(phi);
   row_vector[I] log_psi = log_inv_logit(logit_psi),
                 log_mu_i = alpha + mu_beta * X2;
   for (p in 1:P_cat2) {
@@ -314,10 +311,9 @@ real occARU_lpmf(data array[,] int y, data array[] int Q, data array[,] int f_l,
                  row_vector mu_beta, matrix mu_beta_cat, matrix mu_beta_ord,
                  row_vector gamma, matrix gamma_cat, matrix gamma_ord,
                  row_vector iota, vector kappa, matrix epsilon, vector phi) {
-  int I = size(y), J = size(y[1]), OLRE = size(epsilon),
-      NB = size(phi), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
+  int I = size(y), J = size(y[1]), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
       P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = size(iota),
-      TE = size(kappa);
+      TE = size(kappa), OLRE = size(epsilon), NB = size(phi);
   row_vector[I] log_psi = log_inv_logit(logit_psi),
                 log_mu_i = alpha + mu_beta * X2;
   for (p in 1:P_cat2) {
@@ -366,7 +362,7 @@ real occARU_lpmf(data array[,] int y, data array[] int Q, data array[,] int f_l,
 }
 
 /**
- * Partial sum function for occARU_lpmf()
+ * Partial sum function for single species occARU_lpmf()
  *
  * @return  Joint log likelihood across partial sites
  */

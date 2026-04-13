@@ -5,44 +5,44 @@
 #' be installed with [setup_occARU()].
 #'
 #' @param data A `occARU_data` object produced by [make_data()].
-#' @param stan_file Character. Path to a custom Stan file. If `NULL` (default),
+#' @param stan_file `character`. Path to a custom Stan file. If `NULL` (default),
 #'   uses the built-in multispecies occARU model, or the single species version
 #'   if only one species is included. Intended for advanced users who have
 #'   modified the Stan program; note that custom models will likely require
 #'   corresponding changes to the output of [make_data()].
-#' @param spatial Character. Structure of site-level random effects. `"gp"`
+#' @param spatial `character`. Structure of site-level random effects. `"gp"`
 #'   (default) fits a hierarchical multi-species spatial Gaussian process with
 #'   exponentiated quadratic kernel, which is the recommended option. `"mvn"`
 #'   fits an unstructured multivariate normal, and `"none"` omits site-level
 #'   random effects entirely.
-#' @param temporal Character. Structure of survey-level random effects. `"gp"`
+#' @param temporal `character`. Structure of survey-level random effects. `"gp"`
 #'   (default) fits a hierarchical multi-species temporal Gaussian process with
 #'   exponentiated quadratic kernel, which is the recommended option. `"mvn"`
 #'   fits an unstructured multivariate normal, and `"none"` omits survey-level
 #'   random effects entirely.
-#' @param periodic_gp Logical. If `TRUE`, a periodic kernel is added to the
+#' @param periodic_gp `logical`. If `TRUE`, a periodic kernel is added to the
 #'   temporal GP kernel. Only used when `temporal = "gp"`. Default: `FALSE`.
 #' @param period Positive numeric. Period length in survey units (i.e. number
 #'   of survey periods per cycle). Only used when `temporal = "gp"` and
 #'   `periodic_gp = TRUE`. Defaults to `365 / survey_length`, corresponding to
 #'   an annual cycle. For example, with `survey_length = 7` the default is
 #'   `period = 52.1`. Override if your data span a different temporal cycle.
-#' @param species_length_scales Logical. If `TRUE`, species-specific GP length
+#' @param species_length_scales `logical`. If `TRUE`, species-specific GP length
 #'   scales are estimated for each kernel, each drawn independently from the
 #'   shared length scale priors. Note that enabling this requires additional
 #'   Cholesky decompositions per species and GP per iteration, which can
 #'   substantially increase sampling time. If `FALSE` (default), only one
 #'   Cholesky decomposition is performed per GP. Only used when multiple species
 #'   are included, and `spatial = "gp"` or `temporal = "gp"`.
-#' @param project_kappa Logical. If `TRUE` (default), uses orthogonal projection
-#'   for random survey effects using the site-averaged survey predictor design
-#'   matrix. Ignored when no survey predictors are provided.
-#' @param overdispersion Character. Overdispersion model for the observation
+#' @param project_kappa `logical`. If `TRUE` (default), uses orthogonal
+#'   projection for random survey effects using the site-averaged survey
+#'   predictor design matrix. Ignored when no survey predictors are provided.
+#' @param overdispersion `character`. Overdispersion model for the observation
 #'   process. One of `"none"` (Poisson, default), `"nb"` (negative binomial),
 #'   or `"olre"` (correlated observation-level random effects).
-#' @param variance_decomposition Character. Prior for variance partitions.
+#' @param variance_decomposition `character`. Prior for variance partitions.
 #'   One of `"dirichlet"` (default) or `"logistic-normal"`.
-#' @param latent Logical. If `TRUE` (default), latent occupancy states `z`
+#' @param latent `logical`. If `TRUE` (default), latent occupancy states `z`
 #'   are recovered for each species using the forward-backward sampling
 #'   algorithm.
 #' @param loo_draws Non-negative integer. Number of Monte Carlo draws for
@@ -54,15 +54,15 @@
 #'   produces better Pareto-k diagnostics. Set to `0` to disable, returning only
 #'   `log_lik`. Only used when `spatial` is not `"none"` or `overdispersion =
 #'   "olre"`.
-#' @param ppc Character. Posterior predictive checks to compute. One of `"Q"`
+#' @param ppc `character`. Posterior predictive checks to compute. One of `"Q"`
 #'   (default), `"y"`, `"both"`, or `"none"`. `"y"` returns the full
 #'   `[I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
 #'   counts `[I, S]` (`Qrep`). For large datasets, `"Q"` or `"none"` can
 #'   substantially reduce memory usage and sampling time.
 #' @param prior An `occARU_priors` object from [set_priors()]. If omitted,
 #'   default priors are used.
-#' @param init Character, numeric, or list. Initialisation strategy passed to
-#'   [cmdstanr::CmdStanModel]`$sample()`. One of:
+#' @param init `character`, `numeric`, or `list`. Initialisation strategy passed
+#'   to [cmdstanr::CmdStanModel]`$sample()`. One of:
 #'   \describe{
 #'     \item{`"pathfinder"`}{Default. Use pathfinder to generate initial values
 #'       (see [cmdstanr::CmdStanModel]`$pathfinder()`). Recommended for complex
@@ -118,16 +118,16 @@ fit_model <- function(
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   latent = TRUE,
-  loo_draws = 100,
+  loo_draws = 100L,
   ppc = c("Q", "y", "both", "none"),
   prior = set_priors(verbose = FALSE),
   init = "pathfinder",
   pathfinder_args = list(),
-  threads = 1,
-  grainsize = 1,
+  threads = 1L,
+  grainsize = 1L,
   ...
 ) {
-  # --- input checks -----------------------------------------------------------
+  # input checks
   if (!inherits(data, "occARU_data")) {
     cli::cli_abort(
       "{.arg data} must be a {.cls occARU_data} object from {.fun make_data}."
@@ -157,16 +157,16 @@ fit_model <- function(
   ppc <- match.arg(ppc)
 
   # scalar argument checks
-  if (!is.numeric(loo_draws) || loo_draws < 0 || loo_draws %% 1 != 0) {
+  if (!rlang::is_integerish(loo_draws) || loo_draws < 0) {
     cli::cli_abort("{.arg loo_draws} must be a non-negative integer.")
   } else if (!(spatial != "none" || overdispersion == "olre")) {
     cli::cli_warn(
       "{.arg loo_draws} only used when site effects or OLREs are included."
     )
   }
-  if (!is.numeric(threads) || threads < 1 || threads %% 1 != 0) {
+  if (!rlang::is_intgerish(threads) || threads < 1) {
     cli::cli_abort("{.arg threads} must be a positive integer.")
-  } else if (!is.numeric(grainsize) || grainsize < 0 || grainsize %% 1 != 0) {
+  } else if (!rlang::is_integerish(grainsize) || grainsize < 0) {
     cli::cli_abort("{.arg grainsize} must be a positive integer.")
   } else if (grainsize >= data$I) {
     (cli::cli_abort(
@@ -176,12 +176,11 @@ fit_model <- function(
 
   # spatial GP check — warn and downgrade if no coordinates
   if (spatial == "gp" && all(data$XY == 0)) {
-    cli::cli_warn(
-      'No site coordinates found in {.arg data}. Setting \\
-       {.arg spatial = "mvn"}. Supply {.arg latitude} and \\
-       {.arg longitude} in {.fun make_data} to enable the spatial GP.'
+    cli::cli_abort(
+      'No site coordinates found in {.arg data}. Set {.arg spatial = "mvn"} \\
+      or supply {.arg latitude} and {.arg longitude} in {.fun make_data} to \\
+      enable the spatial GP.'
     )
-    spatial <- "mvn"
   }
 
   # periodic GP checks
@@ -227,8 +226,7 @@ fit_model <- function(
     }
   }
 
-  # --- build Stan data list ---------------------------------------------------
-
+  # build Stan data list
   stan_data <- c(
     unclass(data),
     list(
@@ -260,17 +258,11 @@ fit_model <- function(
     "scaling"
   )] <- NULL
 
-  # --- compile ----------------------------------------------------------------
-
+  # compile model
   if (is.null(stan_file)) {
     stan_file <- system.file(
       if (data$S > 1L) "stan/occARU.stan" else "stan/occARUss.stan",
       package = "occARU"
-    )
-  }
-  if (!nzchar(stan_file)) {
-    cli::cli_abort(
-      "Stan model file not found. Try reinstalling {.pkg occARU}."
     )
   }
   mod <- cmdstanr::cmdstan_model(
@@ -278,7 +270,7 @@ fit_model <- function(
     cpp_options = list(stan_threads = TRUE)
   )
 
-  # --- log model components ---------------------------------------------------
+  # log model components
   cli::cli_inform(c(
     "Components: ",
     " " = "Variance decomposition: \\
@@ -316,8 +308,7 @@ fit_model <- function(
     " " = "LOO Monte Carlo draws: {loo_draws}"
   ))
 
-  # --- initialise and sample --------------------------------------------------
-
+  # initial values and sample
   dots <- list(...)
   chains <- dots[["chains"]] %||% 4L
 

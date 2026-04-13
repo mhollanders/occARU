@@ -21,31 +21,31 @@ plot_sites(
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{species}{Character vector of species to plot. If \code{NULL} (default), all
-species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{sites}{Character vector of sites to plot. If \code{NULL} (default), all
+\item{sites}{\code{character}. Vector of sites to plot. If \code{NULL} (default), all
 sites are plotted. Must be one of \code{attr(occARU_data, "sites")}.}
 
-\item{map}{Logical. If \code{TRUE} (default), plot site effects summarised with
+\item{map}{\code{logical}. If \code{TRUE} (default), plot site effects summarised with
 posterior medians on a map using UTM coordinates. Requires site coordinates
 to have been supplied to \code{\link[=make_data]{make_data()}}. If \code{FALSE}, or if no coordinates
 are present, site effects are plotted with
 \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 
-\item{intercepts}{Logical. If \code{TRUE} (default), species-level baseline log
+\item{intercepts}{\code{logical}. If \code{TRUE} (default), species-level baseline log
 detection rates are added to the site effects. If \code{FALSE}, only the site
 deviations are plotted on the log scale.}
 
-\item{back_transform}{Logical. Only used when \code{intercepts = TRUE}. If \code{TRUE}
+\item{back_transform}{\code{logical}. Only used when \code{intercepts = TRUE}. If \code{TRUE}
 (default), log detection rates are back-transformed to the natural scale
 via \code{exp()}. If \code{FALSE}, values are left on the log scale.}
 
-\item{include_predictors}{Logical. If \code{TRUE} (default), includes predictors
+\item{include_predictors}{\code{logical}. If \code{TRUE} (default), includes predictors
 in the site effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
-\item{restricted}{Logical. If \code{TRUE} (default), when \code{include_predictors} is
+\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
 \code{FALSE}, plots random site effects with orthogonal projection, i.e.,
 \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
@@ -54,8 +54,8 @@ effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
 Has no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
 is unaffected by orthogonal projection.}
 
-\item{ndraws}{Number of draws to use for plotting, passed to
-\code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
+\item{ndraws}{Positive integerish. Number of draws to use for plotting,
+passed to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
 
 \item{seed}{Positive numeric. Seed to use when subsampling draws when
 \code{ndraws} is not \code{NULL}. Default: random integer.}

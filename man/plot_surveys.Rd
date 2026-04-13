@@ -21,25 +21,26 @@ plot_surveys(
 \arguments{
 \item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
 
-\item{species}{Character vector of species to plot. If \code{NULL} (default), all
-species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{surveys}{Character vector of survey dates to plot. If \code{NULL} (default),
-all surveys are plotted. Must be one of \code{attr(occARU_data, "surveys")}.}
+\item{surveys}{\code{character}. Vector of survey dates to plot. If \code{NULL}
+(default), all surveys are plotted. Must be one of
+\code{attr(occARU_data, "surveys")}.}
 
-\item{intercepts}{Logical. If \code{TRUE} (default), species-level baseline log
+\item{intercepts}{\code{logical}. If \code{TRUE} (default), species-level baseline log
 detection rates are added to the survey effects. If \code{FALSE}, only the
 temporal deviations are plotted on the log scale.}
 
-\item{back_transform}{Logical. Only used when \code{intercepts = TRUE}. If \code{TRUE}
+\item{back_transform}{\code{logical}. Only used when \code{intercepts = TRUE}. If \code{TRUE}
 (default), log detection rates are back-transformed to the natural scale
 via \code{exp()}. If \code{FALSE}, values are left on the log scale.}
 
-\item{include_predictors}{Logical. If \code{TRUE} (default), includes predictors
+\item{include_predictors}{\code{logical}. If \code{TRUE} (default), includes predictors
 in the survey effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
-\item{restricted}{Logical. If \code{TRUE} (default), when \code{include_predictors} is
+\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
 \code{FALSE} and the model was fit with \code{project_kappa = TRUE}, plots random
 survey effects with orthogonal projection, i.e.,
 \eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
@@ -49,14 +50,14 @@ plots random effects without orthogonal projection, i.e.,
 \eqn{\boldsymbol{\kappa}} only. Has no effect when \code{include_predictors}
 is \code{TRUE} as the linear predictor is unaffected by orthogonal projection.}
 
-\item{ndraws}{Number of draws to use for plotting, passed to
-\code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
+\item{ndraws}{Positive integer. Number of draws to use for plotting, passed
+to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
 
 \item{seed}{Positive numeric. Seed to use when subsampling draws when
 \code{ndraws} is not \code{NULL}. Default: random integer.}
 
-\item{palette}{Colour palette to be passed to \code{\link[ggplot2:scale_brewer]{ggplot2::scale_fill_brewer()}}.
-Default: \code{"YlGn"}.}
+\item{palette}{\code{character}. Colour palette to be passed to
+\code{\link[ggplot2:scale_brewer]{ggplot2::scale_fill_brewer()}}. Default: \code{"YlGn"}.}
 
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_lineribbon]{ggdist::stat_lineribbon()}}
 such as \code{.width} and \code{point_interval}.}

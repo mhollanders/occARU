@@ -6,41 +6,48 @@
 #' Site coordinates are automatically projected from WGS84 latitude/longitude
 #' to UTM (km), with the zone auto-detected from the mean longitude.
 #'
-#' @param deployments A data frame of deployment information, one row per
+#' @param deployments A dataframe of deployment information, one row per
 #'   site. Must contain columns `deploymentID`, `deploymentStart`, and
 #'   `deploymentEnd` (or equivalents specified via the corresponding
 #'   arguments). Optionally, `latitude` and `longitude` columns enable
 #'   the spatial Gaussian process.
-#' @param observations A data frame of observation records. Must contain
+#' @param observations A dataframe of observation records. Must contain
 #'   columns `deploymentID`, `eventStart`, `scientificName`, and `count`
 #'   (or equivalents specified via the corresponding arguments).
-#' @param failures Optional data frame of ARU failure periods. If supplied, must
-#'   have the same `deploymentID` factor levels as `deployments`, with each row
+#' @param failures Optional dataframe of ARU failure periods. Must contain
+#'   columns `deploymentID`, `failureStart`, and `failureEnd`, with each row
 #'   corresponding to one failure period at a `deploymentID` from `failureStart`
-#'   to `failureEnd`.
+#'   to `failureEnd` (inclusive). See [find_failures()].
 #' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for sites (ARUs). Must be a factor with identical levels in
-#'   `deployments` and `observations`. Default: `deploymentID`.
-#' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for deployment start dates in `deployments`. Must be a `Date`.
-#'   Default: `deploymentStart`.
-#' @param deploymentEnd <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for deployment end dates in `deployments`. Must be a `Date`.
-#'   Default: `deploymentEnd`.
-#' @param eventStart <[`data-masking`][rlang::args_data_masking]> Column name
-#'   for observation timestamps in `observations`. Must be `POSIXt`. Default:
+#'   name for sites (ARUs). Retains levels if supplied as factor.  Default:
+#'   `deploymentID`.
+#' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> `Date`.
+#'   Column name for deployment start dates in `deployments`. Default:
+#'   `deploymentStart`.
+#' @param deploymentEnd <[`data-masking`][rlang::args_data_masking]> `Date.`
+#'   Column name for deployment end dates in `deployments`. Default:
+#'   `deploymentEnd`.
+#' @param latitude <[`data-masking`][rlang::args_data_masking]> `numeric`.
+#'   Column name for WGS84 latitude in `deployments`. If omitted alongside
+#'   `longitude`, no spatial Gaussian process is fitted. Default: `latitude`.
+#' @param longitude <[`data-masking`][rlang::args_data_masking]> `numeric`.
+#'   Column name for WGS84 longitude in `deployments`. Default: `longitude`.
+#' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
+#'   Column name for observation timestamps in `observations`. Default:
 #'   `eventStart`.
 #' @param scientificName <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for species names in `observations`. Must be a factor. Default:
-#'   `scientificName`.
-#' @param count <[`data-masking`][rlang::args_data_masking]> Column name for
-#'   number of individuals per observation record. Default: `count`.
-#' @param latitude <[`data-masking`][rlang::args_data_masking]> Column name
-#'   for WGS84 latitude in `deployments`. If omitted alongside `longitude`, no
-#'   spatial Gaussian process is fitted. Default: `latitude`.
-#' @param longitude <[`data-masking`][rlang::args_data_masking]> Column name
-#'   for WGS84 longitude in `deployments`. Default: `longitude`.
-#' @param survey_length Positive integer defining the length of each survey
+#'   name for species names in `observations`. Retains levels if supplied as
+#'   factor. Default: `scientificName`.
+#' @param count <[`data-masking`][rlang::args_data_masking]> `integerish`.
+#'   Column name for number of individuals per observation record. Default:
+#'   `count`.
+#' @param failureStart <[`data-masking`][rlang::args_data_masking]> `Date`.
+#'   Column name for failure start dates in `failures`. Default:
+#'   `failureStart`.
+#' @param failureEnd <[`data-masking`][rlang::args_data_masking]> `Date`. Column
+#'   name for failure end dates (inclusive) in `failures`. Default:
+#'   `failureEnd`.
+#' @param survey_length Positive integer. Defines the length of each survey
 #'   period in days. Observations are aggregated within each survey period by
 #'   summing `count`, and recording effort (`Delta`) is computed as the fraction
 #'   of the survey length the ARU was active. For example, `survey_length = 7`
@@ -48,47 +55,44 @@
 #'   (ARU failed all week) to 1 (ARU active all week). Longer periods reduce the
 #'   number of surveys `J` but increase the counts per survey, trading off
 #'   temporal resolution against model complexity and the closure assumption
-#'   within a survey period. Default: `7`.
-#' @param thin_minutes Positive numeric. If supplied, observations within
+#'   within a survey period. Default: `1L`.
+#' @param thin_minutes Non-negative numeric. If supplied, observations within
 #'   `thin_minutes` minutes of each other (per site and species) are thinned to
 #'   a single observation, retaining the record with the highest `count`.
-#'   Default: `30`.
-#' @param day_start Character. Whether survey days start at `"midnight"` or
-#'   `"midday"`. Default: `"midday"`.
-#' @param reference_date A `Date` defining the start of the first survey
-#'   period. If `NULL` (default), uses the earliest deployment start date.
-#' @param failureStart <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for failure start dates in `failures`. Must be a `Date`. Default:
-#'   `failureStart`.
-#' @param failureEnd <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for failure end dates (inclusive) in `failures`. Must be a `Date`.
-#'   Default: `failureEnd`.
-#' @param occupancy_site_predictors Optional data frame of site-level
-#'   covariates for the occupancy submodel. Must contain a `deploymentID`
-#'   column with the same factor levels as `deployments`. Predictor columns
-#'   must be `numeric` (continuous), `factor` (unordered categorical), or
-#'   `ordered factor` (ordinal).
-#' @param detection_site_predictors Optional data frame of site-level
+#'   Thinning is performed via [thin_observations()]. Default: `30`.
+#' @param day_start Whether survey days start at `"midnight"` or `"midday"`.
+#'    Default: `"midday"`.
+#' @param reference_date `Date`. Defines the start of the first survey period.
+#'   If `NULL` (default), uses the earliest `deploymentStart`.
+#' @param occupancy_site_predictors Optional dataframe of site-level
+#'   covariates for the occupancy submodel. Must contain a `deploymentID` column
+#'   with the same entries as `deployments`. Predictor columns must be `numeric`
+#'   (continuous), `factor` (unordered categorical), or `ordered factor`
+#'   (ordinal).
+#' @param detection_site_predictors Optional dataframe of site-level
 #'   covariates for the detection submodel. Same column-type rules as
 #'   `occupancy_site_predictors`. If identical to
 #'   `occupancy_site_predictors`, the same matrices are reused.
-#' @param survey_predictors Optional data frame of site-by-survey level
+#' @param survey_predictors Optional dataframe of site-by-survey level
 #'   covariates, with one row per site and date. Must contain `deploymentID`
 #'   and `date` columns. Predictor columns follow the same type rules as the
-#'   site-level predictor data frames. Must cover the full deployment period for
+#'   site-level predictor dataframes. Must cover the full deployment period for
 #'   each ARU.
 #' @param date <[`data-masking`][rlang::args_data_masking]> Column name for
 #'   dates in `survey_predictors`. Default: `date`.
-#' @param survey_summary An optional named list mapping continuous survey
+#' @param summary_functions An optional named list mapping continuous survey
 #'   predictor column names to summary functions, used when aggregating survey
 #'   predictors over `survey_length`-length periods. Each value can be a
 #'   function name as a string (e.g. `"sum"`) or a function object (e.g. `sum`).
-#'   Numeric predictors not named in `survey_summary` are summarised with
+#'   Numeric predictors not named in `summary_functions` are summarised with
 #'   `mean`; categorical and ordinal predictors are summarised with the
 #'   modal value. Default: `NULL`.
 #' @param scale_predictors Logical. If `TRUE`, continuous predictors are scaled
-#'   to zero mean and unit variance. Scaling parameters are stored as an
-#'   attribute. Default: `TRUE`.
+#'   to zero mean and unit variance. Survey predictors are scaled using
+#'   parameters derived from site-averaged values per survey period (a `[P, J]`
+#'   matrix) rather than the raw `[I, P, J]` array, so that spatial variation
+#'   across sites does not inflate the scaling. Scaling parameters (means and
+#'   SDs) are stored as an attribute. Default: `TRUE`.
 #'
 #' @return A named list of class `"occARU_data"` containing all inputs
 #'   required by the occARU Stan model, except for model specification
@@ -143,7 +147,7 @@
 #'   }
 #' @importFrom rlang :=
 #'
-#' @seealso [fit_model()], [set_priors()].
+#' @seealso [fit_model()], [thin_observations()], [find_failures()]
 #'   The model is described in detail in `vignette("model", package = "occARU")`.
 #' @export
 make_data <- function(
@@ -160,45 +164,36 @@ make_data <- function(
   count = count,
   failureStart = failureStart,
   failureEnd = failureEnd,
-  survey_length = 7,
+  survey_length = 1L,
   thin_minutes = 30,
-  day_start = "midday",
+  day_start = c("midday", "midnight"),
   reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
   date = date,
-  survey_summary = NULL,
+  summary_functions = NULL,
   scale_predictors = TRUE
 ) {
-  # --- capture column names as strings ----------------------------------------
-  dep_id_chr <- rlang::as_name(rlang::enquo(deploymentID))
-  dep_start_chr <- rlang::as_name(rlang::enquo(deploymentStart))
-  dep_end_chr <- rlang::as_name(rlang::enquo(deploymentEnd))
-  event_chr <- rlang::as_name(rlang::enquo(eventStart))
-  species_chr <- rlang::as_name(rlang::enquo(scientificName))
-  count_chr <- rlang::as_name(rlang::enquo(count))
-  date_chr <- rlang::as_name(rlang::enquo(date))
-  fail_start_chr <- rlang::as_name(rlang::enquo(failureStart))
-  fail_end_chr <- rlang::as_name(rlang::enquo(failureEnd))
-  lat_chr <- tryCatch(
-    rlang::as_name(rlang::enquo(latitude)),
-    error = function(e) NULL
+  # DEPLOYMENTS
+  check_cols_exist(
+    deployments,
+    {{ deploymentID }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
   )
-  lon_chr <- tryCatch(
-    rlang::as_name(rlang::enquo(longitude)),
-    error = function(e) NULL
+  check_cols_duplicates(deployments, {{ deploymentID }})
+  check_cols_class(
+    deployments,
+    "Date",
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
   )
-
-  # --- deployments checks -----------------------------------------------------
-  check_no_duplicates(deployments, dep_id_chr)
-  check_cols_exist(deployments, dep_id_chr, dep_start_chr, dep_end_chr)
-  check_cols_class(deployments, "Date", dep_start_chr, dep_end_chr)
-  if (!is.factor(deployments |> dplyr::pull({{ deploymentID }}))) {
+  if (is.factor(deployments |> dplyr::pull({{ deploymentID }}))) {
+    check_empty_levels(deployments, {{ deploymentID }})
+  } else {
     deployments <- deployments |>
       dplyr::mutate({{ deploymentID }} := factor({{ deploymentID }}))
-  } else {
-    check_no_empty_levels(deployments, dep_id_chr)
   }
   site_lvl <- deployments |> dplyr::pull({{ deploymentID }}) |> levels()
   I <- length(site_lvl)
@@ -206,37 +201,60 @@ make_data <- function(
     cli::cli_abort("occARU requires more than one site.")
   }
 
-  # --- observations -----------------------------------------------------------
-  check_cols_exist(observations, dep_id_chr, event_chr, species_chr, count_chr)
-  check_no_empty_levels(observations, dep_id_chr)
-  check_cols_class(observations, "POSIXt", event_chr)
-  observations <- align_factor(observations, dep_id_chr, site_lvl)
-  if (!is.factor(observations |> dplyr::pull({{ scientificName }}))) {
-    observations <- observations |>
-      dplyr::mutate({{ scientificName }} := factor({{ scientificName }}))
+  # expand deployments to individual dates
+  daily_grid <- deployments |>
+    dplyr::select(
+      {{ deploymentID }},
+      {{ deploymentStart }},
+      {{ deploymentEnd }}
+    ) |>
+    dplyr::mutate(
+      .date = purrr::map2(
+        {{ deploymentStart }},
+        {{ deploymentEnd }},
+        ~ seq.Date(.x, .y, by = "day")
+      ),
+      .by = {{ deploymentID }}
+    ) |>
+    tidyr::unnest(.date)
+
+  # identify failure dates
+  if (is.null(failures)) {
+    daily_grid <- daily_grid |> dplyr::mutate(.Delta = 1L)
   } else {
-    check_no_empty_levels(observations, species_chr)
-  }
-  species_lvl <- observations |> dplyr::pull({{ scientificName }}) |> levels()
-  S <- length(species_lvl)
+    # checks
+    check_cols_exist(
+      failures,
+      {{ deploymentID }},
+      {{ failureStart }},
+      {{ failureEnd }}
+    )
+    failures <- align_factor(failures, {{ deploymentID }}, site_lvl)
+    check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
 
-  # --- failures ---------------------------------------------------------------
-  if (!is.null(failures)) {
-    check_cols_exist(failures, dep_id_chr, fail_start_chr, fail_end_chr)
-    check_cols_class(failures, "Date", fail_start_chr, fail_end_chr)
-    failures <- align_factor(failures, dep_id_chr, site_lvl)
+    failure_dates <- failures |>
+      dplyr::select({{ deploymentID }}, {{ failureStart }}, {{ failureEnd }}) |>
+      dplyr::mutate(
+        .date = purrr::map2(
+          {{ failureStart }},
+          {{ failureEnd }},
+          ~ seq.Date(.x, .y, by = "day")
+        ),
+        .failure = 1L
+      ) |>
+      tidyr::unnest(.date) |>
+      dplyr::select({{ deploymentID }}, .date, .failure)
+
+    daily_grid <- daily_grid |>
+      dplyr::left_join(
+        failure_dates,
+        by = dplyr::join_by({{ deploymentID }}, .date)
+      ) |>
+      dplyr::mutate(.Delta = dplyr::if_else(is.na(.failure), 1L, 0L)) |>
+      dplyr::select(-.failure)
   }
 
-  # --- scalar arguments -------------------------------------------------------
-  day_start <- match.arg(day_start, c("midnight", "midday"))
-  if (survey_length %% 1 != 0 || survey_length < 1) {
-    cli::cli_abort("{.arg survey_length} must be a positive integer.")
-  }
-  if (!is.null(thin_minutes) && thin_minutes <= 0) {
-    cli::cli_abort("{.arg thin_minutes} must be a positive number of minutes.")
-  }
-
-  # --- reference date ---------------------------------------------------------
+  # reference date
   if (is.null(reference_date)) {
     reference_date <- deployments |>
       dplyr::pull({{ deploymentStart }}) |>
@@ -245,190 +263,133 @@ make_data <- function(
     cli::cli_abort("{.arg reference_date} must be a {.cls Date}.")
   }
 
-  # --- predictors -------------------------------------------------------------
-  if (!is.null(occupancy_site_predictors)) {
-    check_cols_exist(occupancy_site_predictors, dep_id_chr)
-    check_no_duplicates(occupancy_site_predictors, dep_id_chr)
-    check_mixed_predictors(
-      occupancy_site_predictors |> dplyr::select(-{{ deploymentID }}),
-      "occupancy_site_predictors"
-    )
-    occupancy_site_predictors <- align_factor(
-      occupancy_site_predictors,
-      dep_id_chr,
-      site_lvl,
-      strict = TRUE
-    )
-  }
-  if (
-    !is.null(detection_site_predictors) &&
-      !isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))
-  ) {
-    check_cols_exist(detection_site_predictors, dep_id_chr)
-    check_no_duplicates(detection_site_predictors, dep_id_chr)
-    check_mixed_predictors(
-      detection_site_predictors |> dplyr::select(-{{ deploymentID }}),
-      "detection_site_predictors"
-    )
-    detection_site_predictors <- align_factor(
-      detection_site_predictors,
-      dep_id_chr,
-      site_lvl,
-      strict = TRUE
-    )
-  }
-  if (!is.null(survey_predictors)) {
-    check_cols_exist(survey_predictors, dep_id_chr, date_chr)
-    check_mixed_predictors(
-      survey_predictors |> dplyr::select(-c({{ deploymentID }}, {{ date }})),
-      "survey_predictors"
-    )
-    survey_predictors <- align_factor(
-      survey_predictors,
-      dep_id_chr,
-      site_lvl,
-      strict = TRUE
-    )
-    check_survey_predictors_coverage(
-      survey_predictors,
-      deployments,
-      dep_id_chr,
-      dep_start_chr,
-      dep_end_chr,
-      date_chr
-    )
-  }
-
-  # --- deployment grid and Delta ----------------------------------------------
-  daily_grid <- deployments |>
-    dplyr::select(
-      {{ deploymentID }},
-      {{ deploymentStart }},
-      {{ deploymentEnd }}
-    ) |>
-    dplyr::mutate(
-      date = list(seq.Date(
-        {{ deploymentStart }},
-        {{ deploymentEnd }},
-        by = "day"
-      )),
-      .by = {{ deploymentID }}
-    ) |>
-    tidyr::unnest(c(date))
-
-  if (is.null(failures)) {
-    daily_grid <- daily_grid |> dplyr::mutate(Delta = 1L)
-  } else {
-    failure_dates <- failures |>
-      dplyr::select({{ deploymentID }}, {{ failureStart }}, {{ failureEnd }}) |>
-      dplyr::rowwise() |>
-      dplyr::mutate(
-        date = list(seq.Date({{ failureStart }}, {{ failureEnd }}, by = "day"))
-      ) |>
-      tidyr::unnest(c(date)) |>
-      dplyr::mutate(failure = 1L) |>
-      dplyr::select({{ deploymentID }}, date, failure)
-
-    daily_grid <- daily_grid |>
-      dplyr::left_join(
-        failure_dates,
-        by = dplyr::join_by({{ deploymentID }}, date)
-      ) |>
-      dplyr::mutate(Delta = dplyr::if_else(is.na(failure), 1L, 0L)) |>
-      dplyr::select(-failure)
+  # aggregate surveys and produce Delta
+  if (!rlang::is_integerish(survey_length) || survey_length < 1) {
+    cli::cli_abort("{.arg survey_length} must be a positive integer.")
   }
 
   deployments_aggregated <- daily_grid |>
     dplyr::mutate(
-      survey = aggregate_by_days(date, reference_date, survey_length)
+      .survey = aggregate_by_days(.date, reference_date, survey_length)
     ) |>
     dplyr::summarise(
-      Delta = sum(Delta) / survey_length,
-      .by = c({{ deploymentID }}, survey)
+      .Delta = sum(.Delta) / survey_length,
+      .by = c({{ deploymentID }}, .survey)
     )
 
   Delta <- deployments_aggregated |>
     tidyr::pivot_wider(
       names_from = {{ deploymentID }},
-      values_from = Delta,
+      values_from = .Delta,
       values_fill = 0,
       names_sort = TRUE
     ) |>
-    dplyr::arrange(survey) |>
-    tibble::column_to_rownames("survey") |>
+    dplyr::arrange(.survey) |>
+    tibble::column_to_rownames(".survey") |>
     t()
   surveys <- colnames(Delta)
   J <- length(surveys)
   if (J == 1L) {
     cli::cli_abort(
-      "occARU requires more than one survey. Did you make the survey length \\
-      too long? Reduce {.arg survey_length} and try again."
+      "occARU requires more than one survey. Is {.arg survey_length} too long?"
     )
   }
 
-  # --- detection history ------------------------------------------------------
-  if (day_start == "midday") {
+  # OBSERVATIONS
+  check_cols_exist(
+    observations,
+    {{ deploymentID }},
+    {{ eventStart }},
+    {{ scientificName }},
+    {{ count }}
+  )
+  observations <- align_factor(observations, {{ deploymentID }}, site_lvl)
+  check_cols_class(observations, "POSIXt", {{ eventStart }})
+  check_empty_levels(observations, {{ deploymentID }}, strict = FALSE)
+  if (is.factor(observations |> dplyr::pull({{ scientificName }}))) {
+    check_empty_levels(observations, {{ scientificName }})
+  } else {
     observations <- observations |>
-      dplyr::mutate(
-        {{ eventStart }} := {{ eventStart }} -
-          lubridate::hours(12)
-      )
+      dplyr::mutate({{ scientificName }} := factor({{ scientificName }}))
+  }
+  species_lvl <- observations |> dplyr::pull({{ scientificName }}) |> levels()
+  S <- length(species_lvl)
+  observations <- dplyr::arrange(
+    observations,
+    {{ deploymentID }},
+    {{ eventStart }}
+  )
+
+  # modify eventStart for midday
+  day_start <- match.arg(day_start, c("midday", "midnight"))
+  if (day_start == "midday") {
+    observations <- dplyr::mutate(
+      observations,
+      {{ eventStart }} := {{ eventStart }} -
+        lubridate::hours(12)
+    )
   }
 
-  sites_without_observations(deployments, observations, dep_id_chr)
+  # remove observations outside of supplied deployments
   observations <- filter_observations_window(
     deployments,
     observations,
-    dep_id_chr,
-    dep_start_chr,
-    dep_end_chr,
-    event_chr
+    {{ deploymentID }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }},
+    {{ eventStart }}
   )
 
+  # thin observations
   if (!is.null(thin_minutes)) {
-    n_before <- nrow(observations)
-    observations <- observations |>
-      dplyr::mutate(
-        cluster = assign_clusters({{ eventStart }}, thin_minutes),
-        .by = c({{ deploymentID }}, {{ scientificName }})
-      ) |>
-      dplyr::slice_max(
-        {{ count }},
-        with_ties = FALSE,
-        by = c({{ deploymentID }}, {{ scientificName }}, cluster)
-      )
-    n_removed <- n_before - nrow(observations)
-    cli::cli_inform(
-      "{n_removed} event{?s} removed by {thin_minutes}-minute thinning window \\
-      ({nrow(observations)} remaining)..."
+    observations <- thin_observations(
+      observations,
+      {{ deploymentID }},
+      {{ scientificName }},
+      {{ eventStart }},
+      {{ count }},
+      thin_minutes
     )
   }
 
+  # aggregate and fill array
   observations_aggregated <- observations |>
     dplyr::mutate(
-      date = lubridate::as_date({{ eventStart }}),
-      survey = aggregate_by_days(date, reference_date, survey_length)
+      .date = lubridate::as_date({{ eventStart }}),
+      .survey = aggregate_by_days(.date, reference_date, survey_length)
     ) |>
-    dplyr::filter(survey %in% lubridate::ymd(surveys)) |>
+    dplyr::filter(.survey %in% lubridate::ymd(surveys)) |>
     dplyr::summarise(
-      n = sum({{ count }}),
-      .by = c({{ deploymentID }}, survey, {{ scientificName }})
+      .y = sum({{ count }}),
+      .by = c({{ deploymentID }}, .survey, {{ scientificName }})
     )
 
   y <- observations_aggregated |>
     tidyr::complete(
-      {{ scientificName }} := factor(species_lvl, species_lvl),
-      survey := lubridate::ymd(surveys),
       {{ deploymentID }} := factor(site_lvl, site_lvl),
-      fill = list(n = 0)
+      .survey := lubridate::ymd(surveys),
+      {{ scientificName }} := factor(species_lvl, species_lvl),
+      fill = list(.y = 0)
     ) |>
-    dplyr::arrange({{ scientificName }}, survey, {{ deploymentID }}) |>
-    dplyr::pull(n) |>
+    dplyr::arrange({{ scientificName }}, .survey, {{ deploymentID }}) |>
+    dplyr::pull(.y) |>
     array(c(I, J, S), dimnames = list(site_lvl, surveys, species_lvl))
 
-  # --- coordinates ------------------------------------------------------------
-  if (!is.null(lat_chr) && !is.null(lon_chr)) {
-    utm <- coords_to_utm(deployments, dep_id_chr, lon_chr, lat_chr)
+  # SITE COORDINATES
+  lat_chr <- rlang::as_name(rlang::enquo(latitude))
+  lon_chr <- rlang::as_name(rlang::enquo(longitude))
+  has_coords <- rlang::has_name(
+    deployments,
+    rlang::as_name(rlang::enquo(latitude))
+  ) &&
+    rlang::has_name(deployments, lon_chr)
+  if (has_coords) {
+    utm <- coords_to_utm(
+      deployments,
+      {{ deploymentID }},
+      {{ latitude }},
+      {{ longitude }}
+    )
     XY <- utm$XY
     utm_crs <- utm$utm_crs
   } else {
@@ -436,11 +397,60 @@ make_data <- function(
     utm_crs <- NA_character_
   }
 
+  # PREDICTORS
+  if (!is.null(occupancy_site_predictors)) {
+    check_cols_exist(occupancy_site_predictors, {{ deploymentID }})
+    check_cols_duplicates(occupancy_site_predictors, {{ deploymentID }})
+    occupancy_site_predictors <- align_factor(
+      occupancy_site_predictors,
+      {{ deploymentID }},
+      site_lvl,
+      strict = TRUE
+    )
+    check_empty_levels(occupancy_site_predictors, {{ deploymentID }})
+    check_mixed_predictors(occupancy_site_predictors, {{ deploymentID }})
+  }
+  if (
+    !is.null(detection_site_predictors) &&
+      !isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))
+  ) {
+    check_cols_exist(detection_site_predictors, {{ deploymentID }})
+    check_cols_duplicates(detection_site_predictors, {{ deploymentID }})
+    detection_site_predictors <- align_factor(
+      detection_site_predictors,
+      {{ deploymentID }},
+      site_lvl,
+      strict = TRUE
+    )
+    check_empty_levels(detection_site_predictors, {{ deploymentID }})
+    check_mixed_predictors(detection_site_predictors, {{ deploymentID }})
+  }
+  if (!is.null(survey_predictors)) {
+    check_cols_exist(survey_predictors, {{ deploymentID }}, {{ date }})
+    survey_predictors <- align_factor(
+      survey_predictors,
+      {{ deploymentID }},
+      site_lvl,
+      strict = TRUE
+    )
+    check_empty_levels(survey_predictors, {{ deploymentID }})
+    check_mixed_predictors(survey_predictors, {{ deploymentID }}, {{ date }})
+    check_survey_predictors_coverage(
+      survey_predictors,
+      deployments,
+      {{ deploymentID }},
+      {{ deploymentStart }},
+      {{ deploymentEnd }},
+      {{ date }},
+      verbose = FALSE
+    )
+  }
+
   # --- encode predictors ------------------------------------------------------
   enc1 <- encode_predictors(
     occupancy_site_predictors,
     "site",
-    dep_id_chr,
+    {{ deploymentID }},
     site_lvl = site_lvl,
     scale_predictors = scale_predictors
   )
@@ -452,25 +462,26 @@ make_data <- function(
     encode_predictors(
       detection_site_predictors,
       "site",
-      dep_id_chr,
+      {{ deploymentID }},
       site_lvl = site_lvl,
       scale_predictors = scale_predictors
     )
   }
+
   enc3 <- encode_predictors(
     semi_join(
       survey_predictors,
-      daily_grid |> dplyr::filter(Delta == 1L),
-      by = dplyr::join_by({{ deploymentID }}, {{ date }})
+      daily_grid |> dplyr::filter(.Delta == 1L),
+      by = dplyr::join_by({{ deploymentID }}, {{ date }} == .date)
     ),
     "survey",
-    dep_id_chr,
-    date_chr = date_chr,
+    deploymentID = {{ deploymentID }},
+    date = {{ date }},
     site_lvl = site_lvl,
     surveys = surveys,
     reference_date = reference_date,
     scale_predictors = scale_predictors,
-    survey_summary = survey_summary,
+    summary_functions = summary_functions,
     survey_length = survey_length
   )
 
@@ -479,7 +490,7 @@ make_data <- function(
   P_cat <- c(nrow(enc1$X_cat), nrow(enc2$X_cat), dim(enc3$X_cat)[2])
   P_ord <- c(nrow(enc1$X_ord), nrow(enc2$X_ord), dim(enc3$X_ord)[2])
 
-  # --- return -----------------------------------------------------------------
+  # return
   structure(
     list(
       I = I,
@@ -574,4 +585,5 @@ print.occARU_data <- function(x, ...) {
       " " = "Ordinal: {x$P_ord[3]}"
     ))
   }
+  invisible(x)
 }
