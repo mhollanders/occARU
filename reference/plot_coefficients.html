@@ -67,38 +67,38 @@ occupancy or detection submodels.</p>
 
 
 <dt id="arg-submodel">submodel<a class="anchor" aria-label="anchor" href="#arg-submodel"></a></dt>
-<dd><p>Character. Predictors of submodel to plot. One of
+<dd><p><code>character</code>. Predictors of submodel to plot. One of
 <code>"detection"</code> (default) or <code>"occupancy"</code>.</p></dd>
 
 
 <dt id="arg-component">component<a class="anchor" aria-label="anchor" href="#arg-component"></a></dt>
-<dd><p>Character. Whether to plot <code>"site"</code> (default) or <code>"survey"</code>
+<dd><p><code>character</code>. Whether to plot <code>"site"</code> (default) or <code>"survey"</code>
 predictors. If <code>"survey"</code>, <code>submodel</code> must be <code>"detection"</code>.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
-<dd><p>Character. Type of predictors to plot. One of <code>"continuous"</code>
+<dd><p><code>character</code>. Type of predictors to plot. One of <code>"continuous"</code>
 (default), <code>"categorical"</code>, or <code>"ordinal"</code>.</p></dd>
 
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
-<dd><p>Character. For multi-species models, whether to plot
+<dd><p><code>character</code>. For multi-species models, whether to plot
 species-specific (<code>"species"</code>, default) or mean coefficients (<code>"mean"</code>).</p></dd>
 
 
 <dt id="arg-facet-by">facet_by<a class="anchor" aria-label="anchor" href="#arg-facet-by"></a></dt>
-<dd><p>Character. Whether to use <code><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">ggplot2::facet_wrap()</a></code> or
+<dd><p><code>character</code>. Whether to use <code><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">ggplot2::facet_wrap()</a></code> or
 <code><a href="https://teunbrand.github.io/ggh4x/reference/facet_grid2.html" class="external-link">ggh4x::facet_grid2()</a></code> to facet by <code>"predictor"</code> (default) or <code>"species"</code>.
 Only used if <code>level</code> is <code>"species"</code>.</p></dd>
 
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>
-<dd><p>Character vector of species to plot. If <code>NULL</code> (default), all
-species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
+<dd><p><code>character</code>. Vector of species to plot. If <code>NULL</code> (default),
+all species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
 
 
 <dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), plots coefficients with
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), plots coefficients with
 orthogonal projection of the detection random site or survey effects, e.g.,
 \(\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})\), where
 \(\boldsymbol{I} - \boldsymbol{P_{X_2}}\) is the orthogonal complement of
@@ -111,7 +111,7 @@ projected with <code>project_kappa = TRUE</code> in <code><a href="fit_model.htm
 
 
 <dt id="arg-ordinal-categories">ordinal_categories<a class="anchor" aria-label="anchor" href="#arg-ordinal-categories"></a></dt>
-<dd><p>Logical. If <code>FALSE</code> (default), plots coefficients
+<dd><p><code>logical</code>. If <code>FALSE</code> (default), plots coefficients
 associated with maximum category (full effect). If <code>TRUE</code>, plots realised
 coefficient associated with each ordered category, where the first
 is used as the reference.</p></dd>

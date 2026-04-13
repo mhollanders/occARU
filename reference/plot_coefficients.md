@@ -29,27 +29,28 @@ plot_coefficients(
 
 - submodel:
 
-  Character. Predictors of submodel to plot. One of `"detection"`
+  `character`. Predictors of submodel to plot. One of `"detection"`
   (default) or `"occupancy"`.
 
 - component:
 
-  Character. Whether to plot `"site"` (default) or `"survey"`
+  `character`. Whether to plot `"site"` (default) or `"survey"`
   predictors. If `"survey"`, `submodel` must be `"detection"`.
 
 - type:
 
-  Character. Type of predictors to plot. One of `"continuous"`
+  `character`. Type of predictors to plot. One of `"continuous"`
   (default), `"categorical"`, or `"ordinal"`.
 
 - level:
 
-  Character. For multi-species models, whether to plot species-specific
-  (`"species"`, default) or mean coefficients (`"mean"`).
+  `character`. For multi-species models, whether to plot
+  species-specific (`"species"`, default) or mean coefficients
+  (`"mean"`).
 
 - facet_by:
 
-  Character. Whether to use
+  `character`. Whether to use
   [`ggplot2::facet_wrap()`](https://ggplot2.tidyverse.org/reference/facet_wrap.html)
   or
   [`ggh4x::facet_grid2()`](https://teunbrand.github.io/ggh4x/reference/facet_grid2.html)
@@ -58,12 +59,12 @@ plot_coefficients(
 
 - species:
 
-  Character vector of species to plot. If `NULL` (default), all species
-  are plotted. Must be one of `attr(occARU_data, "species")`.
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
 
 - restricted:
 
-  Logical. If `TRUE` (default), plots coefficients with orthogonal
+  `logical`. If `TRUE` (default), plots coefficients with orthogonal
   projection of the detection random site or survey effects, e.g.,
   \\\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P\_{X_2}})\\, where
   \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
@@ -78,7 +79,7 @@ plot_coefficients(
 
 - ordinal_categories:
 
-  Logical. If `FALSE` (default), plots coefficients associated with
+  `logical`. If `FALSE` (default), plots coefficients associated with
   maximum category (full effect). If `TRUE`, plots realised coefficient
   associated with each ordered category, where the first is used as the
   reference.

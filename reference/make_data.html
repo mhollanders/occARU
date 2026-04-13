@@ -67,15 +67,15 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 <span>  count <span class="op">=</span> <span class="va">count</span>,</span>
 <span>  failureStart <span class="op">=</span> <span class="va">failureStart</span>,</span>
 <span>  failureEnd <span class="op">=</span> <span class="va">failureEnd</span>,</span>
-<span>  survey_length <span class="op">=</span> <span class="fl">7</span>,</span>
+<span>  survey_length <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  thin_minutes <span class="op">=</span> <span class="fl">30</span>,</span>
-<span>  day_start <span class="op">=</span> <span class="st">"midday"</span>,</span>
+<span>  day_start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"midday"</span>, <span class="st">"midnight"</span><span class="op">)</span>,</span>
 <span>  reference_date <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  occupancy_site_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  detection_site_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  survey_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  date <span class="op">=</span> <span class="va">date</span>,</span>
-<span>  survey_summary <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  summary_functions <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scale_predictors <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -85,7 +85,7 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 
 
 <dl><dt id="arg-deployments">deployments<a class="anchor" aria-label="anchor" href="#arg-deployments"></a></dt>
-<dd><p>A data frame of deployment information, one row per
+<dd><p>A dataframe of deployment information, one row per
 site. Must contain columns <code>deploymentID</code>, <code>deploymentStart</code>, and
 <code>deploymentEnd</code> (or equivalents specified via the corresponding
 arguments). Optionally, <code>latitude</code> and <code>longitude</code> columns enable
@@ -93,78 +93,79 @@ the spatial Gaussian process.</p></dd>
 
 
 <dt id="arg-observations">observations<a class="anchor" aria-label="anchor" href="#arg-observations"></a></dt>
-<dd><p>A data frame of observation records. Must contain
+<dd><p>A dataframe of observation records. Must contain
 columns <code>deploymentID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
 (or equivalents specified via the corresponding arguments).</p></dd>
 
 
 <dt id="arg-failures">failures<a class="anchor" aria-label="anchor" href="#arg-failures"></a></dt>
-<dd><p>Optional data frame of ARU failure periods. If supplied, must
-have the same <code>deploymentID</code> factor levels as <code>deployments</code>, with each row
+<dd><p>Optional dataframe of ARU failure periods. Must contain
+columns <code>deploymentID</code>, <code>failureStart</code>, and <code>failureEnd</code>, with each row
 corresponding to one failure period at a <code>deploymentID</code> from <code>failureStart</code>
-to <code>failureEnd</code>.</p></dd>
+to <code>failureEnd</code> (inclusive). See <code><a href="find_failures.html">find_failures()</a></code>.</p></dd>
 
 
 <dt id="arg-deploymentid">deploymentID<a class="anchor" aria-label="anchor" href="#arg-deploymentid"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for sites (ARUs). Must be a factor with identical levels in
-<code>deployments</code> and <code>observations</code>. Default: <code>deploymentID</code>.</p></dd>
+name for sites (ARUs). Retains levels if supplied as factor.  Default:
+<code>deploymentID</code>.</p></dd>
 
 
 <dt id="arg-deploymentstart">deploymentStart<a class="anchor" aria-label="anchor" href="#arg-deploymentstart"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for deployment start dates in <code>deployments</code>. Must be a <code>Date</code>.
-Default: <code>deploymentStart</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>Date</code>.
+Column name for deployment start dates in <code>deployments</code>. Default:
+<code>deploymentStart</code>.</p></dd>
 
 
 <dt id="arg-deploymentend">deploymentEnd<a class="anchor" aria-label="anchor" href="#arg-deploymentend"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for deployment end dates in <code>deployments</code>. Must be a <code>Date</code>.
-Default: <code>deploymentEnd</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>Date.</code>
+Column name for deployment end dates in <code>deployments</code>. Default:
+<code>deploymentEnd</code>.</p></dd>
 
 
 <dt id="arg-latitude">latitude<a class="anchor" aria-label="anchor" href="#arg-latitude"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column name
-for WGS84 latitude in <code>deployments</code>. If omitted alongside <code>longitude</code>, no
-spatial Gaussian process is fitted. Default: <code>latitude</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>numeric</code>.
+Column name for WGS84 latitude in <code>deployments</code>. If omitted alongside
+<code>longitude</code>, no spatial Gaussian process is fitted. Default: <code>latitude</code>.</p></dd>
 
 
 <dt id="arg-longitude">longitude<a class="anchor" aria-label="anchor" href="#arg-longitude"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column name
-for WGS84 longitude in <code>deployments</code>. Default: <code>longitude</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>numeric</code>.
+Column name for WGS84 longitude in <code>deployments</code>. Default: <code>longitude</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column name
-for observation timestamps in <code>observations</code>. Must be <code>POSIXt</code>. Default:
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>POSIXt</code>.
+Column name for observation timestamps in <code>observations</code>. Default:
 <code>eventStart</code>.</p></dd>
 
 
 <dt id="arg-scientificname">scientificName<a class="anchor" aria-label="anchor" href="#arg-scientificname"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for species names in <code>observations</code>. Must be a factor. Default:
-<code>scientificName</code>.</p></dd>
+name for species names in <code>observations</code>. Retains levels if supplied as
+factor. Default: <code>scientificName</code>.</p></dd>
 
 
 <dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column name for
-number of individuals per observation record. Default: <code>count</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>integerish</code>.
+Column name for number of individuals per observation record. Default:
+<code>count</code>.</p></dd>
 
 
 <dt id="arg-failurestart">failureStart<a class="anchor" aria-label="anchor" href="#arg-failurestart"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for failure start dates in <code>failures</code>. Must be a <code>Date</code>. Default:
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>Date</code>.
+Column name for failure start dates in <code>failures</code>. Default:
 <code>failureStart</code>.</p></dd>
 
 
 <dt id="arg-failureend">failureEnd<a class="anchor" aria-label="anchor" href="#arg-failureend"></a></dt>
-<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for failure end dates (inclusive) in <code>failures</code>. Must be a <code>Date</code>.
-Default: <code>failureEnd</code>.</p></dd>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>Date</code>. Column
+name for failure end dates (inclusive) in <code>failures</code>. Default:
+<code>failureEnd</code>.</p></dd>
 
 
 <dt id="arg-survey-length">survey_length<a class="anchor" aria-label="anchor" href="#arg-survey-length"></a></dt>
-<dd><p>Positive integer defining the length of each survey
+<dd><p>Positive integer. Defines the length of each survey
 period in days. Observations are aggregated within each survey period by
 summing <code>count</code>, and recording effort (<code>Delta</code>) is computed as the fraction
 of the survey length the ARU was active. For example, <code>survey_length = 7</code>
@@ -172,46 +173,46 @@ aggregates to weekly survey periods, with <code>Delta</code> ranging from 0
 (ARU failed all week) to 1 (ARU active all week). Longer periods reduce the
 number of surveys <code>J</code> but increase the counts per survey, trading off
 temporal resolution against model complexity and the closure assumption
-within a survey period. Default: <code>7</code>.</p></dd>
+within a survey period. Default: <code>1L</code>.</p></dd>
 
 
 <dt id="arg-thin-minutes">thin_minutes<a class="anchor" aria-label="anchor" href="#arg-thin-minutes"></a></dt>
-<dd><p>Positive numeric. If supplied, observations within
+<dd><p>Non-negative numeric. If supplied, observations within
 <code>thin_minutes</code> minutes of each other (per site and species) are thinned to
 a single observation, retaining the record with the highest <code>count</code>.
-Default: <code>30</code>.</p></dd>
+Thinning is performed via <code><a href="thin_observations.html">thin_observations()</a></code>. Default: <code>30</code>.</p></dd>
 
 
 <dt id="arg-day-start">day_start<a class="anchor" aria-label="anchor" href="#arg-day-start"></a></dt>
-<dd><p>Character. Whether survey days start at <code>"midnight"</code> or
-<code>"midday"</code>. Default: <code>"midday"</code>.</p></dd>
+<dd><p>Whether survey days start at <code>"midnight"</code> or <code>"midday"</code>.
+Default: <code>"midday"</code>.</p></dd>
 
 
 <dt id="arg-reference-date">reference_date<a class="anchor" aria-label="anchor" href="#arg-reference-date"></a></dt>
-<dd><p>A <code>Date</code> defining the start of the first survey
-period. If <code>NULL</code> (default), uses the earliest deployment start date.</p></dd>
+<dd><p><code>Date</code>. Defines the start of the first survey period.
+If <code>NULL</code> (default), uses the earliest <code>deploymentStart</code>.</p></dd>
 
 
 <dt id="arg-occupancy-site-predictors">occupancy_site_predictors<a class="anchor" aria-label="anchor" href="#arg-occupancy-site-predictors"></a></dt>
-<dd><p>Optional data frame of site-level
-covariates for the occupancy submodel. Must contain a <code>deploymentID</code>
-column with the same factor levels as <code>deployments</code>. Predictor columns
-must be <code>numeric</code> (continuous), <code>factor</code> (unordered categorical), or
-<code>ordered factor</code> (ordinal).</p></dd>
+<dd><p>Optional dataframe of site-level
+covariates for the occupancy submodel. Must contain a <code>deploymentID</code> column
+with the same entries as <code>deployments</code>. Predictor columns must be <code>numeric</code>
+(continuous), <code>factor</code> (unordered categorical), or <code>ordered factor</code>
+(ordinal).</p></dd>
 
 
 <dt id="arg-detection-site-predictors">detection_site_predictors<a class="anchor" aria-label="anchor" href="#arg-detection-site-predictors"></a></dt>
-<dd><p>Optional data frame of site-level
+<dd><p>Optional dataframe of site-level
 covariates for the detection submodel. Same column-type rules as
 <code>occupancy_site_predictors</code>. If identical to
 <code>occupancy_site_predictors</code>, the same matrices are reused.</p></dd>
 
 
 <dt id="arg-survey-predictors">survey_predictors<a class="anchor" aria-label="anchor" href="#arg-survey-predictors"></a></dt>
-<dd><p>Optional data frame of site-by-survey level
+<dd><p>Optional dataframe of site-by-survey level
 covariates, with one row per site and date. Must contain <code>deploymentID</code>
 and <code>date</code> columns. Predictor columns follow the same type rules as the
-site-level predictor data frames. Must cover the full deployment period for
+site-level predictor dataframes. Must cover the full deployment period for
 each ARU.</p></dd>
 
 
@@ -220,20 +221,23 @@ each ARU.</p></dd>
 dates in <code>survey_predictors</code>. Default: <code>date</code>.</p></dd>
 
 
-<dt id="arg-survey-summary">survey_summary<a class="anchor" aria-label="anchor" href="#arg-survey-summary"></a></dt>
+<dt id="arg-summary-functions">summary_functions<a class="anchor" aria-label="anchor" href="#arg-summary-functions"></a></dt>
 <dd><p>An optional named list mapping continuous survey
 predictor column names to summary functions, used when aggregating survey
 predictors over <code>survey_length</code>-length periods. Each value can be a
 function name as a string (e.g. <code>"sum"</code>) or a function object (e.g. <code>sum</code>).
-Numeric predictors not named in <code>survey_summary</code> are summarised with
+Numeric predictors not named in <code>summary_functions</code> are summarised with
 <code>mean</code>; categorical and ordinal predictors are summarised with the
 modal value. Default: <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-scale-predictors">scale_predictors<a class="anchor" aria-label="anchor" href="#arg-scale-predictors"></a></dt>
 <dd><p>Logical. If <code>TRUE</code>, continuous predictors are scaled
-to zero mean and unit variance. Scaling parameters are stored as an
-attribute. Default: <code>TRUE</code>.</p></dd>
+to zero mean and unit variance. Survey predictors are scaled using
+parameters derived from site-averaged values per survey period (a <code>[P, J]</code>
+matrix) rather than the raw <code>[I, P, J]</code> array, so that spatial variation
+across sites does not inflate the scaling. Scaling parameters (means and
+SDs) are stored as an attribute. Default: <code>TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -342,7 +346,7 @@ predictors</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="fit_model.html">fit_model()</a></code>, <code><a href="set_priors.html">set_priors()</a></code>.
+    <div class="dont-index"><p><code><a href="fit_model.html">fit_model()</a></code>, <code><a href="thin_observations.html">thin_observations()</a></code>, <code><a href="find_failures.html">find_failures()</a></code>
 The model is described in detail in <code><a href="../articles/model.html">vignette("model", package = "occARU")</a></code>.</p></div>
     </div>
 

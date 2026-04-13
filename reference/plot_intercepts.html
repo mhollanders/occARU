@@ -56,12 +56,12 @@ back-transformed to the orginal scale.</p>
 
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>
-<dd><p>Character vector of species to plot. If <code>NULL</code> (default), all
-species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
+<dd><p><code>character</code>. Vector of species to plot. If <code>NULL</code> (default),
+all species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
 
 
 <dt id="arg-back-transform">back_transform<a class="anchor" aria-label="anchor" href="#arg-back-transform"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), intercepts are
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), intercepts are
 back-transformed to the natural scale via <code>inv_logit()</code> for occupancy and
 <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code> for detection rates. If <code>FALSE</code>, values are left on the scale of
 the link functions (logit for occupancy and log for detection).</p></dd>

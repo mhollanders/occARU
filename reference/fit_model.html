@@ -59,13 +59,13 @@ be installed with <code><a href="setup_occARU.html">setup_occARU()</a></code>.</
 <span>  overdispersion <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"nb"</span>, <span class="st">"olre"</span><span class="op">)</span>,</span>
 <span>  variance_decomposition <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dirichlet"</span>, <span class="st">"logistic-normal"</span><span class="op">)</span>,</span>
 <span>  latent <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  loo_draws <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  loo_draws <span class="op">=</span> <span class="fl">100L</span>,</span>
 <span>  ppc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Q"</span>, <span class="st">"y"</span>, <span class="st">"both"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="set_priors.html">set_priors</a></span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="st">"pathfinder"</span>,</span>
 <span>  pathfinder_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  threads <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  grainsize <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  threads <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  grainsize <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -79,7 +79,7 @@ be installed with <code><a href="setup_occARU.html">setup_occARU()</a></code>.</
 
 
 <dt id="arg-stan-file">stan_file<a class="anchor" aria-label="anchor" href="#arg-stan-file"></a></dt>
-<dd><p>Character. Path to a custom Stan file. If <code>NULL</code> (default),
+<dd><p><code>character</code>. Path to a custom Stan file. If <code>NULL</code> (default),
 uses the built-in multispecies occARU model, or the single species version
 if only one species is included. Intended for advanced users who have
 modified the Stan program; note that custom models will likely require
@@ -87,7 +87,7 @@ corresponding changes to the output of <code><a href="make_data.html">make_data(
 
 
 <dt id="arg-spatial">spatial<a class="anchor" aria-label="anchor" href="#arg-spatial"></a></dt>
-<dd><p>Character. Structure of site-level random effects. <code>"gp"</code>
+<dd><p><code>character</code>. Structure of site-level random effects. <code>"gp"</code>
 (default) fits a hierarchical multi-species spatial Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. <code>"mvn"</code>
 fits an unstructured multivariate normal, and <code>"none"</code> omits site-level
@@ -95,7 +95,7 @@ random effects entirely.</p></dd>
 
 
 <dt id="arg-temporal">temporal<a class="anchor" aria-label="anchor" href="#arg-temporal"></a></dt>
-<dd><p>Character. Structure of survey-level random effects. <code>"gp"</code>
+<dd><p><code>character</code>. Structure of survey-level random effects. <code>"gp"</code>
 (default) fits a hierarchical multi-species temporal Gaussian process with
 exponentiated quadratic kernel, which is the recommended option. <code>"mvn"</code>
 fits an unstructured multivariate normal, and <code>"none"</code> omits survey-level
@@ -103,7 +103,7 @@ random effects entirely.</p></dd>
 
 
 <dt id="arg-periodic-gp">periodic_gp<a class="anchor" aria-label="anchor" href="#arg-periodic-gp"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, a periodic kernel is added to the
+<dd><p><code>logical</code>. If <code>TRUE</code>, a periodic kernel is added to the
 temporal GP kernel. Only used when <code>temporal = "gp"</code>. Default: <code>FALSE</code>.</p></dd>
 
 
@@ -116,7 +116,7 @@ an annual cycle. For example, with <code>survey_length = 7</code> the default is
 
 
 <dt id="arg-species-length-scales">species_length_scales<a class="anchor" aria-label="anchor" href="#arg-species-length-scales"></a></dt>
-<dd><p>Logical. If <code>TRUE</code>, species-specific GP length
+<dd><p><code>logical</code>. If <code>TRUE</code>, species-specific GP length
 scales are estimated for each kernel, each drawn independently from the
 shared length scale priors. Note that enabling this requires additional
 Cholesky decompositions per species and GP per iteration, which can
@@ -126,24 +126,24 @@ are included, and <code>spatial = "gp"</code> or <code>temporal = "gp"</code>.</
 
 
 <dt id="arg-project-kappa">project_kappa<a class="anchor" aria-label="anchor" href="#arg-project-kappa"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), uses orthogonal projection
-for random survey effects using the site-averaged survey predictor design
-matrix. Ignored when no survey predictors are provided.</p></dd>
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), uses orthogonal
+projection for random survey effects using the site-averaged survey
+predictor design matrix. Ignored when no survey predictors are provided.</p></dd>
 
 
 <dt id="arg-overdispersion">overdispersion<a class="anchor" aria-label="anchor" href="#arg-overdispersion"></a></dt>
-<dd><p>Character. Overdispersion model for the observation
+<dd><p><code>character</code>. Overdispersion model for the observation
 process. One of <code>"none"</code> (Poisson, default), <code>"nb"</code> (negative binomial),
 or <code>"olre"</code> (correlated observation-level random effects).</p></dd>
 
 
 <dt id="arg-variance-decomposition">variance_decomposition<a class="anchor" aria-label="anchor" href="#arg-variance-decomposition"></a></dt>
-<dd><p>Character. Prior for variance partitions.
+<dd><p><code>character</code>. Prior for variance partitions.
 One of <code>"dirichlet"</code> (default) or <code>"logistic-normal"</code>.</p></dd>
 
 
 <dt id="arg-latent">latent<a class="anchor" aria-label="anchor" href="#arg-latent"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), latent occupancy states <code>z</code>
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), latent occupancy states <code>z</code>
 are recovered for each species using the forward-backward sampling
 algorithm.</p></dd>
 
@@ -160,7 +160,7 @@ produces better Pareto-k diagnostics. Set to <code>0</code> to disable, returnin
 
 
 <dt id="arg-ppc">ppc<a class="anchor" aria-label="anchor" href="#arg-ppc"></a></dt>
-<dd><p>Character. Posterior predictive checks to compute. One of <code>"Q"</code>
+<dd><p><code>character</code>. Posterior predictive checks to compute. One of <code>"Q"</code>
 (default), <code>"y"</code>, <code>"both"</code>, or <code>"none"</code>. <code>"y"</code> returns the full
 <code>[I, J, S]</code> prediction array (<code>yrep</code>); <code>"Q"</code> returns only aggregated
 counts <code>[I, S]</code> (<code>Qrep</code>). For large datasets, <code>"Q"</code> or <code>"none"</code> can
@@ -173,8 +173,8 @@ default priors are used.</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>Character, numeric, or list. Initialisation strategy passed to
-<a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>. One of:</p><dl><dt><code>"pathfinder"</code></dt>
+<dd><p><code>character</code>, <code>numeric</code>, or <code>list</code>. Initialisation strategy passed
+to <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>. One of:</p><dl><dt><code>"pathfinder"</code></dt>
 <dd><p>Default. Use pathfinder to generate initial values
 (see <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$pathfinder()</code>). Recommended for complex
 models as it can substantially reduce warmup time and improve

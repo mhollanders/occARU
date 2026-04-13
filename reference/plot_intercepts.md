@@ -18,12 +18,12 @@ plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
 
 - species:
 
-  Character vector of species to plot. If `NULL` (default), all species
-  are plotted. Must be one of `attr(occARU_data, "species")`.
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
 
 - back_transform:
 
-  Logical. If `TRUE` (default), intercepts are back-transformed to the
+  `logical`. If `TRUE` (default), intercepts are back-transformed to the
   natural scale via `inv_logit()` for occupancy and
   [`exp()`](https://rdrr.io/r/base/Log.html) for detection rates. If
   `FALSE`, values are left on the scale of the link functions (logit for
