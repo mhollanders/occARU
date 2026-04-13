@@ -73,7 +73,7 @@ transformed data {
   }
 
   // deployment start and end and survey offsets (0-1)
-  array[I, 2] int f_l = first_last_survey(Delta);
+  array[I, 2] int f_l = first_last(Delta);
   matrix[J, I] log_Delta = log(Delta');
 
   // aggregated counts and total surveys

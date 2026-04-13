@@ -1,4 +1,4 @@
-#' Fit the occARU Stan model
+#' Fit the occARU model
 #'
 #' Fits a Bayesian multispecies occupancy model with count observation model to
 #' data prepared by [make_data()] in Stan. Requires CmdStan >= 2.36.0, which can
@@ -164,7 +164,7 @@ fit_model <- function(
       "{.arg loo_draws} only used when site effects or OLREs are included."
     )
   }
-  if (!rlang::is_intgerish(threads) || threads < 1) {
+  if (!rlang::is_integerish(threads) || threads < 1) {
     cli::cli_abort("{.arg threads} must be a positive integer.")
   } else if (!rlang::is_integerish(grainsize) || grainsize < 0) {
     cli::cli_abort("{.arg grainsize} must be a positive integer.")
@@ -261,7 +261,7 @@ fit_model <- function(
   # compile model
   if (is.null(stan_file)) {
     stan_file <- system.file(
-      if (data$S > 1L) "stan/occARU.stan" else "stan/occARUss.stan",
+      if (data$S > 1L) "stan/occARU.stan" else "stan/occARU-ss.stan",
       package = "occARU"
     )
   }

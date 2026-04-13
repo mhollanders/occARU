@@ -1,4 +1,4 @@
-# Prepare data for the occARU Stan model
+# Prepare data for the occARU model
 
 Transforms raw deployment and observation data into a named list
 suitable for passing to

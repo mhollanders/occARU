@@ -2,7 +2,7 @@
 % Please edit documentation in R/set_priors.R
 \name{set_priors}
 \alias{set_priors}
-\title{Set priors for an occARU model}
+\title{Set priors for the occARU model}
 \usage{
 set_priors(
   psi_bar = c(1, 1),

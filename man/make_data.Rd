@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_data.R
 \name{make_data}
 \alias{make_data}
-\title{Prepare data for the occARU Stan model}
+\title{Prepare data for the occARU model}
 \usage{
 make_data(
   deployments,

@@ -203,8 +203,8 @@ check_survey_predictors_coverage <- function(
 ) {
   first_last <- survey_predictors |>
     dplyr::summarise(
-      .first = min({{ date }}),
-      .last = max({{ date }}),
+      first = min({{ date }}),
+      last = max({{ date }}),
       .by = {{ deploymentID }}
     ) |>
     dplyr::left_join(
@@ -219,8 +219,8 @@ check_survey_predictors_coverage <- function(
 
   incomplete <- first_last |>
     dplyr::filter(
-      .first > {{ deploymentStart }} |
-        .last < {{ deploymentEnd }}
+      first > {{ deploymentStart }} |
+        last < {{ deploymentEnd }}
     ) |>
     dplyr::pull({{ deploymentID }})
 
@@ -306,7 +306,7 @@ coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
     ) |>
     sf::st_transform(utm_crs) |>
     sf::st_coordinates()
-  row.names(XY) <- pull(deployments, {{ deploymentID }}) |> levels()
+  row.names(XY) <- dplyr::pull(deployments, {{ deploymentID }}) |> levels()
 
   list(XY = XY, utm_crs = utm_crs)
 }
@@ -516,11 +516,11 @@ encode_predictors <- function(
         )
 
       if (survey_length == 1L) {
-        df <- dplyr::mutate(df, .survey = {{ date }})
+        df <- dplyr::mutate(df, survey = {{ date }})
       } else {
         df <- df |>
           dplyr::mutate(
-            .survey = aggregate_by_days(
+            survey = aggregate_by_days(
               {{ date }},
               reference_date,
               survey_length
@@ -531,10 +531,10 @@ encode_predictors <- function(
               dplyr::all_of(pred_cols),
               ~ summary_fns[[dplyr::cur_column()]](.)
             ),
-            .by = c({{ deploymentID }}, .survey)
+            .by = c({{ deploymentID }}, survey)
           )
       }
-      surveys <- unique(df$.survey)
+      surveys <- unique(df$survey)
       J <- length(surveys)
     }
 
@@ -558,7 +558,7 @@ encode_predictors <- function(
         survey_means <- df_num |>
           dplyr::summarise(
             dplyr::across(dplyr::all_of(num_cols), mean),
-            .by = .survey
+            .by = survey
           )
         scale_params <- scaling_parameters(survey_means, num_cols)
         df <- df |>
@@ -578,7 +578,9 @@ encode_predictors <- function(
         if (length(cols)) {
           df |>
             dplyr::select({{ deploymentID }}, dplyr::all_of(cols)) |>
-            column_to_rownames(rlang::as_name(rlang::enquo(deploymentID))) |>
+            tibble::column_to_rownames(rlang::as_name(rlang::enquo(
+              deploymentID
+            ))) |>
             t()
         } else {
           empty_matrix
@@ -593,10 +595,10 @@ encode_predictors <- function(
         P <- length(cols)
         if (P) {
           df |>
-            dplyr::select({{ deploymentID }}, .survey, all_of(cols)) |>
+            dplyr::select({{ deploymentID }}, survey, dplyr::all_of(cols)) |>
             tidyr::complete(
               {{ deploymentID }},
-              .survey,
+              survey,
               fill = as.list(purrr::set_names(
                 ifelse(cols %in% num_cols, 0L, 1L),
                 cols
@@ -604,12 +606,12 @@ encode_predictors <- function(
             ) |>
             tidyr::pivot_longer(
               dplyr::all_of(cols),
-              names_to = ".p",
-              values_to = ".x"
+              names_to = "p",
+              values_to = "x"
             ) |>
-            dplyr::mutate(.p = factor(.p, levels = num_cols)) |>
-            dplyr::arrange(.survey, .p, {{ deploymentID }}) |>
-            dplyr::pull(.x) |>
+            dplyr::mutate(p = factor(p, levels = num_cols)) |>
+            dplyr::arrange(survey, p, {{ deploymentID }}) |>
+            dplyr::pull(x) |>
             array(
               c(I, P, J),
               dimnames = list(site_lvl, cols, as.character(surveys))

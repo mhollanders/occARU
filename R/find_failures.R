@@ -41,7 +41,7 @@ find_failures <- function(
   df |>
     dplyr::arrange({{ deploymentID }}, {{ eventStart }}) |>
     dplyr::mutate(
-      .gap = difftime(
+      gap = difftime(
         dplyr::lead({{ eventStart }}),
         {{ eventStart }},
         units = "days"
@@ -50,6 +50,6 @@ find_failures <- function(
       failureEnd = as.Date(dplyr::lead({{ eventStart }})) - buffer_days,
       .by = {{ deploymentID }}
     ) |>
-    dplyr::filter(.gap > 2 * buffer_days) |>
+    dplyr::filter(gap > 2 * buffer_days) |>
     dplyr::select({{ deploymentID }}, failureStart, failureEnd)
 }

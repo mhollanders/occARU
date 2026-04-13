@@ -1,4 +1,4 @@
-#' Prepare data for the occARU Stan model
+#' Prepare data for the occARU model
 #'
 #' Transforms raw deployment and observation data into a named list suitable
 #' for passing to [fit_model()]. Follows the
@@ -469,7 +469,7 @@ make_data <- function(
   }
 
   enc3 <- encode_predictors(
-    semi_join(
+    dplyr::semi_join(
       survey_predictors,
       daily_grid |> dplyr::filter(.Delta == 1L),
       by = dplyr::join_by({{ deploymentID }}, {{ date }} == .date)

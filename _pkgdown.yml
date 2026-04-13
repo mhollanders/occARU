@@ -24,7 +24,7 @@ reference:
       - plot_sites
       - plot_surveys
       - plot_partitions
-  - title: Setup
+  - title: Helpers
     contents:
       - setup_occARU
       - thin_observations

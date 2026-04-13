@@ -546,13 +546,13 @@ plot_correlations <- function(
     values_to = ".value"
   ) |>
     dplyr::mutate(
-      across(c(s, ss), ~ factor(., labels = species_lvl)),
+      dplyr::across(c(s, ss), ~ factor(., labels = species_lvl)),
       .variable = factor(
         .variable,
-        levels = c(str_c(
+        levels = paste0(
           c("psi_beta", "mu_beta", "gamma", "iota", "kappa", "epsilon"),
           "_O"
-        )),
+        ),
         labels = c(
           "Site Predictors",
           "Site Predictors",
@@ -577,7 +577,7 @@ plot_correlations <- function(
       limits = c(-1, 1),
       expand = c(0, 0)
     ) +
-    labs(x = "Correlation", y = "Species")
+    ggplot2::labs(x = "Correlation", y = "Species")
   attr(p, "plot_data") <- draws
   p
 }
@@ -1520,7 +1520,7 @@ plot_surveys <- function(
     )
   }
   transform <- back_transform && intercepts
-  if (!is.null(n_draws)) {
+  if (!is.null(ndraws)) {
     if (!rlang::is_integerish(ndraws) || ndraws < 0) {
       cli::cli_abort(
         "{.arg ndraws} must be a positive integer."
@@ -1836,7 +1836,7 @@ predictor_matrix_to_tibble <- function(X) {
   categorical <- all(X == round(X))
   P <- nrow(X)
   tidyr::as_tibble(t(X)) |>
-    setNames(1:P) |>
+    purrr::set_names(1:P) |>
     dplyr::mutate(i = dplyr::row_number()) |>
     tidyr::pivot_longer(-i, names_to = "p", values_to = "x") |>
     dplyr::mutate(p = as.integer(p), x = if (categorical) as.integer(x) else x)

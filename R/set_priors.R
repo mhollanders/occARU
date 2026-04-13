@@ -1,4 +1,4 @@
-#' Set priors for an occARU model
+#' Set priors for the occARU model
 #'
 #' Constructs and validates a named list of prior hyperparameters for use with
 #' [fit_model()]. Any unspecified priors use the defaults listed below.

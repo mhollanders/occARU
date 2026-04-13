@@ -156,13 +156,64 @@ matrix coef_ord_realised(data array[] int O, row_vector beta,
 }
 
 /**
+ * Get first and last seasons and surveys per site
+ *
+ * @param Delta  Deployment times [I, K, J]
+ *
+ * @return       First and last season [I, 2]
+ * @return       First and last survey [I, K, 2]
+ */
+tuple(array[,] int, array[,,] int) first_last(data array[] matrix Delta) {
+  int I = size(Delta), J = cols(Delta[1]), K = rows(Delta[1]);
+  array[I, 2] int f_l_k;
+  array[I, K, 2] int f_l_j = rep_array(0, I, K, 2);
+  for (i in 1:I) {
+    for (k in 1:K) {
+      for (j in 1:J) {
+        if (Delta[i, k, j] > 0) {
+          f_l_j[i, k] = rep_array(j, 2);
+          break;
+        }
+      }
+      int f = f_l_j[i, k, 1], JJ = J - f;
+      if (JJ) {
+        array[JJ] int idx = linspaced_int_array(JJ, f + 1, J);
+        for (j in reverse(idx)) {
+          if (Delta[i, k, j] > 0) {
+            f_l_j[i, k, 2] = j;
+            break;
+          }
+        }
+      }
+    }
+    for (k in 1:K) {
+      if (f_l_j[i, k, 1]) {
+        f_l_k[i] = rep_array(k, 2);
+        break;
+      }
+    }
+    int f = f_l_k[i, 1], KK = K - f;
+    if (KK) {
+      array[KK] int idx = linspaced_int_array(KK, f + 1, K);
+      for (k in reverse(idx)) {
+        if (f_l_j[i, k, 1]) {
+          f_l_k[i, 2] = k;
+          break;
+        }
+      }
+    }
+  }
+  return (f_l_k, f_l_j);
+}
+
+/**
  * Get first and last survey per site
  *
  * @param Delta  Activity times per survey [I, J]
  *
  * @return  First and last survey per site [I, 2]
  */
-array[,] int first_last_survey(data matrix Delta) {
+array[,] int first_last(data matrix Delta) {
   int I = rows(Delta), J = cols(Delta);
   array[I, 2] int f_l = rep_array(0, I, 2);
   for (i in 1:I) {

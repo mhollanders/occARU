@@ -66,15 +66,14 @@ transformed data {
   }
 
   // deployment start and end and survey offsets (0-1)
-  array[I, 2] int f_l = first_last_survey(Delta);
+  array[I, 2] int f_l = first_last(Delta);
   matrix[J, I] log_Delta = log(Delta');
 
   // aggregated counts and total surveys
   array[I] int Q = zeros_int_array(I);
   int N = 0;
   for (i in 1:I) {
-    int f = f_l[i, 1], l = f_l[i, 2];
-    for (j in f:l) {
+    for (j in f_l[i, 1]:f_l[i, 2]) {
       if (!is_inf(log_Delta[j, i])) {
         N += 1;
         Q[i] += y[i, j];

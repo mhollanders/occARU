@@ -49,13 +49,13 @@ thin_observations <- function(
         {{ eventStart }}
       ) |>
       dplyr::mutate(
-        .cluster = assign_clusters({{ eventStart }}, thin_minutes),
+        cluster = assign_clusters({{ eventStart }}, thin_minutes),
         .by = c({{ deploymentID }}, {{ scientificName }})
       ) |>
       dplyr::slice_max(
         {{ count }},
         with_ties = FALSE,
-        by = c({{ deploymentID }}, {{ scientificName }}, .cluster)
+        by = c({{ deploymentID }}, {{ scientificName }}, cluster)
       )
   } else if (thin_minutes < 0) {
     cli::cli_abort(
