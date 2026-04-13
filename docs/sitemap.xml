@@ -7,6 +7,7 @@
 <url><loc>https://mhollanders.github.io/occARU/authors.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/index.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/check_no_empty_levels.html</loc></url>
+<url><loc>https://mhollanders.github.io/occARU/reference/find_failures.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/fit_model.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/index.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/make_data.html</loc></url>
@@ -21,5 +22,6 @@
 <url><loc>https://mhollanders.github.io/occARU/reference/set_priors.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/setup_occARU.html</loc></url>
 <url><loc>https://mhollanders.github.io/occARU/reference/theme_occARU.html</loc></url>
+<url><loc>https://mhollanders.github.io/occARU/reference/thin_observations.html</loc></url>
 </urlset>
 

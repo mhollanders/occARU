@@ -68,17 +68,17 @@
 
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>
-<dd><p>Character vector of species to plot. If <code>NULL</code> (default), all
-species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
+<dd><p><code>character</code>. Vector of species to plot. If <code>NULL</code> (default),
+all species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
 
 
 <dt id="arg-sites">sites<a class="anchor" aria-label="anchor" href="#arg-sites"></a></dt>
-<dd><p>Character vector of sites to plot. If <code>NULL</code> (default), all
+<dd><p><code>character</code>. Vector of sites to plot. If <code>NULL</code> (default), all
 sites are plotted. Must be one of <code>attr(occARU_data, "sites")</code>.</p></dd>
 
 
 <dt id="arg-map">map<a class="anchor" aria-label="anchor" href="#arg-map"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), plot site effects summarised with
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), plot site effects summarised with
 posterior medians on a map using UTM coordinates. Requires site coordinates
 to have been supplied to <code><a href="make_data.html">make_data()</a></code>. If <code>FALSE</code>, or if no coordinates
 are present, site effects are plotted with
@@ -86,25 +86,25 @@ are present, site effects are plotted with
 
 
 <dt id="arg-intercepts">intercepts<a class="anchor" aria-label="anchor" href="#arg-intercepts"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), species-level baseline log
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), species-level baseline log
 detection rates are added to the site effects. If <code>FALSE</code>, only the site
 deviations are plotted on the log scale.</p></dd>
 
 
 <dt id="arg-back-transform">back_transform<a class="anchor" aria-label="anchor" href="#arg-back-transform"></a></dt>
-<dd><p>Logical. Only used when <code>intercepts = TRUE</code>. If <code>TRUE</code>
+<dd><p><code>logical</code>. Only used when <code>intercepts = TRUE</code>. If <code>TRUE</code>
 (default), log detection rates are back-transformed to the natural scale
 via <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code>. If <code>FALSE</code>, values are left on the log scale.</p></dd>
 
 
 <dt id="arg-include-predictors">include_predictors<a class="anchor" aria-label="anchor" href="#arg-include-predictors"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), includes predictors
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), includes predictors
 in the site effects, if included. If <code>FALSE</code>, only plots the random
 effects.</p></dd>
 
 
 <dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), when <code>include_predictors</code> is
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), when <code>include_predictors</code> is
 <code>FALSE</code>, plots random site effects with orthogonal projection, i.e.,
 \(\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})\), where
 \(\boldsymbol{I} - \boldsymbol{P_{X_2}}\) is the orthogonal complement of
@@ -115,8 +115,8 @@ is unaffected by orthogonal projection.</p></dd>
 
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
-<dd><p>Number of draws to use for plotting, passed to
-<code><a href="https://mjskay.github.io/tidybayes/reference/spread_rvars.html" class="external-link">tidybayes::spread_rvars()</a></code>. Default: <code>NULL</code> (uses all draws).</p></dd>
+<dd><p>Positive integerish. Number of draws to use for plotting,
+passed to <code><a href="https://mjskay.github.io/tidybayes/reference/spread_rvars.html" class="external-link">tidybayes::spread_rvars()</a></code>. Default: <code>NULL</code> (uses all draws).</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>

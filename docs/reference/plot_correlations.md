@@ -27,13 +27,13 @@ plot_correlations(
 
 - submodel:
 
-  Character. Correlations of submodel to plot. One of `"detection"`
+  `character`. Correlations of submodel to plot. One of `"detection"`
   (default) or `"occupancy"`.
 
 - species:
 
-  Character vector of species to plot. If `NULL` (default), all species
-  are plotted. Must be one of `attr(occARU_data, "species")`.
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
 
 - ...:
 

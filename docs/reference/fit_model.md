@@ -21,13 +21,13 @@ fit_model(
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   latent = TRUE,
-  loo_draws = 100,
+  loo_draws = 100L,
   ppc = c("Q", "y", "both", "none"),
   prior = set_priors(verbose = FALSE),
   init = "pathfinder",
   pathfinder_args = list(),
-  threads = 1,
-  grainsize = 1,
+  threads = 1L,
+  grainsize = 1L,
   ...
 )
 ```
@@ -41,7 +41,7 @@ fit_model(
 
 - stan_file:
 
-  Character. Path to a custom Stan file. If `NULL` (default), uses the
+  `character`. Path to a custom Stan file. If `NULL` (default), uses the
   built-in multispecies occARU model, or the single species version if
   only one species is included. Intended for advanced users who have
   modified the Stan program; note that custom models will likely require
@@ -50,7 +50,7 @@ fit_model(
 
 - spatial:
 
-  Character. Structure of site-level random effects. `"gp"` (default)
+  `character`. Structure of site-level random effects. `"gp"` (default)
   fits a hierarchical multi-species spatial Gaussian process with
   exponentiated quadratic kernel, which is the recommended option.
   `"mvn"` fits an unstructured multivariate normal, and `"none"` omits
@@ -58,15 +58,15 @@ fit_model(
 
 - temporal:
 
-  Character. Structure of survey-level random effects. `"gp"` (default)
-  fits a hierarchical multi-species temporal Gaussian process with
-  exponentiated quadratic kernel, which is the recommended option.
+  `character`. Structure of survey-level random effects. `"gp"`
+  (default) fits a hierarchical multi-species temporal Gaussian process
+  with exponentiated quadratic kernel, which is the recommended option.
   `"mvn"` fits an unstructured multivariate normal, and `"none"` omits
   survey-level random effects entirely.
 
 - periodic_gp:
 
-  Logical. If `TRUE`, a periodic kernel is added to the temporal GP
+  `logical`. If `TRUE`, a periodic kernel is added to the temporal GP
   kernel. Only used when `temporal = "gp"`. Default: `FALSE`.
 
 - period:
@@ -80,7 +80,7 @@ fit_model(
 
 - species_length_scales:
 
-  Logical. If `TRUE`, species-specific GP length scales are estimated
+  `logical`. If `TRUE`, species-specific GP length scales are estimated
   for each kernel, each drawn independently from the shared length scale
   priors. Note that enabling this requires additional Cholesky
   decompositions per species and GP per iteration, which can
@@ -90,24 +90,24 @@ fit_model(
 
 - project_kappa:
 
-  Logical. If `TRUE` (default), uses orthogonal projection for random
+  `logical`. If `TRUE` (default), uses orthogonal projection for random
   survey effects using the site-averaged survey predictor design matrix.
   Ignored when no survey predictors are provided.
 
 - overdispersion:
 
-  Character. Overdispersion model for the observation process. One of
+  `character`. Overdispersion model for the observation process. One of
   `"none"` (Poisson, default), `"nb"` (negative binomial), or `"olre"`
   (correlated observation-level random effects).
 
 - variance_decomposition:
 
-  Character. Prior for variance partitions. One of `"dirichlet"`
+  `character`. Prior for variance partitions. One of `"dirichlet"`
   (default) or `"logistic-normal"`.
 
 - latent:
 
-  Logical. If `TRUE` (default), latent occupancy states `z` are
+  `logical`. If `TRUE` (default), latent occupancy states `z` are
   recovered for each species using the forward-backward sampling
   algorithm.
 
@@ -126,7 +126,7 @@ fit_model(
 
 - ppc:
 
-  Character. Posterior predictive checks to compute. One of `"Q"`
+  `character`. Posterior predictive checks to compute. One of `"Q"`
   (default), `"y"`, `"both"`, or `"none"`. `"y"` returns the full
   `[I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
   counts `[I, S]` (`Qrep`). For large datasets, `"Q"` or `"none"` can
@@ -140,7 +140,7 @@ fit_model(
 
 - init:
 
-  Character, numeric, or list. Initialisation strategy passed to
+  `character`, `numeric`, or `list`. Initialisation strategy passed to
   [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$sample()`.
   One of:
 

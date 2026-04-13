@@ -66,7 +66,7 @@
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"mhollanders/occARU"</span><span class="op">)</span></span></code></pre></div>
 <p>occARU requires CmdStan &gt;= 2.36.0. If you have not used Stan before, run:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">occARU</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mhollanders.github.io/occARU/">occARU</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/setup_occARU.html">setup_occARU</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>This checks your C++ toolchain and installs CmdStan automatically.</p>
 </div>
@@ -90,18 +90,18 @@
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; ── occARU data ─────────────────────────────────────────────────────</span></span>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; Sites (I): 30</span></span>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; Surveys (J): 114</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; Species (S): 9</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; Species (S): 6</span></span>
 <span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; Detections: 11463</span></span>
 <span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; Site coordinates: yes</span></span>
 <span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt; Deployment span: 2019-11-06 to 2024-03-06</span></span>
 <span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt; Survey length: 14 days</span></span>
 <span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co">#&gt; Thinning: 30 minutes</span></span>
 <span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co">#&gt; Occupancy site predictors: 0</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; Detection predictors: 5</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; Detection site predictors: 5</span></span>
 <span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
 <span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co">#&gt;   Categorical: 1</span></span>
 <span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co">#&gt; Detection survey predictors: 4</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co">#&gt; Survey predictors: 4</span></span>
 <span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
 <span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co">#&gt;   Categorical: 0</span></span>
 <span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span></code></pre></div>
@@ -117,7 +117,7 @@
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt; ── occARU priors ───────────────────────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; psi_bar: Beta(1, 2)</span></span>
-<span><span class="co">#&gt; mu_bar: Gamma(1, 4)</span></span>
+<span><span class="co">#&gt; mu_bar: Gamma(1, 1)</span></span>
 <span><span class="co">#&gt; psi_W: Student-t+(3, 0, 1)</span></span>
 <span><span class="co">#&gt; mu_W: Student-t+(3, 0, 1)</span></span>
 <span><span class="co">#&gt; psi_theta: Gamma(1, 1)</span></span>

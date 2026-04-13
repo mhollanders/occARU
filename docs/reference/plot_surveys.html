@@ -68,35 +68,36 @@ included via <code><a href="make_data.html">make_data()</a></code>) and survey r
 
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>
-<dd><p>Character vector of species to plot. If <code>NULL</code> (default), all
-species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
+<dd><p><code>character</code>. Vector of species to plot. If <code>NULL</code> (default),
+all species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
 
 
 <dt id="arg-surveys">surveys<a class="anchor" aria-label="anchor" href="#arg-surveys"></a></dt>
-<dd><p>Character vector of survey dates to plot. If <code>NULL</code> (default),
-all surveys are plotted. Must be one of <code>attr(occARU_data, "surveys")</code>.</p></dd>
+<dd><p><code>character</code>. Vector of survey dates to plot. If <code>NULL</code>
+(default), all surveys are plotted. Must be one of
+<code>attr(occARU_data, "surveys")</code>.</p></dd>
 
 
 <dt id="arg-intercepts">intercepts<a class="anchor" aria-label="anchor" href="#arg-intercepts"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), species-level baseline log
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), species-level baseline log
 detection rates are added to the survey effects. If <code>FALSE</code>, only the
 temporal deviations are plotted on the log scale.</p></dd>
 
 
 <dt id="arg-back-transform">back_transform<a class="anchor" aria-label="anchor" href="#arg-back-transform"></a></dt>
-<dd><p>Logical. Only used when <code>intercepts = TRUE</code>. If <code>TRUE</code>
+<dd><p><code>logical</code>. Only used when <code>intercepts = TRUE</code>. If <code>TRUE</code>
 (default), log detection rates are back-transformed to the natural scale
 via <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code>. If <code>FALSE</code>, values are left on the log scale.</p></dd>
 
 
 <dt id="arg-include-predictors">include_predictors<a class="anchor" aria-label="anchor" href="#arg-include-predictors"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), includes predictors
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), includes predictors
 in the survey effects, if included. If <code>FALSE</code>, only plots the random
 effects.</p></dd>
 
 
 <dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), when <code>include_predictors</code> is
+<dd><p><code>logical</code>. If <code>TRUE</code> (default), when <code>include_predictors</code> is
 <code>FALSE</code> and the model was fit with <code>project_kappa = TRUE</code>, plots random
 survey effects with orthogonal projection, i.e.,
 \(\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})\), where
@@ -108,8 +109,8 @@ is <code>TRUE</code> as the linear predictor is unaffected by orthogonal project
 
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
-<dd><p>Number of draws to use for plotting, passed to
-<code><a href="https://mjskay.github.io/tidybayes/reference/spread_rvars.html" class="external-link">tidybayes::spread_rvars()</a></code>. Default: <code>NULL</code> (uses all draws).</p></dd>
+<dd><p>Positive integer. Number of draws to use for plotting, passed
+to <code><a href="https://mjskay.github.io/tidybayes/reference/spread_rvars.html" class="external-link">tidybayes::spread_rvars()</a></code>. Default: <code>NULL</code> (uses all draws).</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
@@ -118,8 +119,8 @@ is <code>TRUE</code> as the linear predictor is unaffected by orthogonal project
 
 
 <dt id="arg-palette">palette<a class="anchor" aria-label="anchor" href="#arg-palette"></a></dt>
-<dd><p>Colour palette to be passed to <code><a href="https://ggplot2.tidyverse.org/reference/scale_brewer.html" class="external-link">ggplot2::scale_fill_brewer()</a></code>.
-Default: <code>"YlGn"</code>.</p></dd>
+<dd><p><code>character</code>. Colour palette to be passed to
+<code><a href="https://ggplot2.tidyverse.org/reference/scale_brewer.html" class="external-link">ggplot2::scale_fill_brewer()</a></code>. Default: <code>"YlGn"</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

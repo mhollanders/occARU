@@ -32,17 +32,17 @@ plot_sites(
 
 - species:
 
-  Character vector of species to plot. If `NULL` (default), all species
-  are plotted. Must be one of `attr(occARU_data, "species")`.
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
 
 - sites:
 
-  Character vector of sites to plot. If `NULL` (default), all sites are
-  plotted. Must be one of `attr(occARU_data, "sites")`.
+  `character`. Vector of sites to plot. If `NULL` (default), all sites
+  are plotted. Must be one of `attr(occARU_data, "sites")`.
 
 - map:
 
-  Logical. If `TRUE` (default), plot site effects summarised with
+  `logical`. If `TRUE` (default), plot site effects summarised with
   posterior medians on a map using UTM coordinates. Requires site
   coordinates to have been supplied to
   [`make_data()`](https://mhollanders.github.io/occARU/reference/make_data.md).
@@ -52,25 +52,25 @@ plot_sites(
 
 - intercepts:
 
-  Logical. If `TRUE` (default), species-level baseline log detection
+  `logical`. If `TRUE` (default), species-level baseline log detection
   rates are added to the site effects. If `FALSE`, only the site
   deviations are plotted on the log scale.
 
 - back_transform:
 
-  Logical. Only used when `intercepts = TRUE`. If `TRUE` (default), log
-  detection rates are back-transformed to the natural scale via
+  `logical`. Only used when `intercepts = TRUE`. If `TRUE` (default),
+  log detection rates are back-transformed to the natural scale via
   [`exp()`](https://rdrr.io/r/base/Log.html). If `FALSE`, values are
   left on the log scale.
 
 - include_predictors:
 
-  Logical. If `TRUE` (default), includes predictors in the site effects,
-  if included. If `FALSE`, only plots the random effects.
+  `logical`. If `TRUE` (default), includes predictors in the site
+  effects, if included. If `FALSE`, only plots the random effects.
 
 - restricted:
 
-  Logical. If `TRUE` (default), when `include_predictors` is `FALSE`,
+  `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`,
   plots random site effects with orthogonal projection, i.e.,
   \\\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P\_{X_2}})\\, where
   \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
@@ -82,7 +82,7 @@ plot_sites(
 
 - ndraws:
 
-  Number of draws to use for plotting, passed to
+  Positive integerish. Number of draws to use for plotting, passed to
   [`tidybayes::spread_rvars()`](https://mjskay.github.io/tidybayes/reference/spread_rvars.html).
   Default: `NULL` (uses all draws).
 

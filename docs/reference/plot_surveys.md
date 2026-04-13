@@ -32,36 +32,36 @@ plot_surveys(
 
 - species:
 
-  Character vector of species to plot. If `NULL` (default), all species
-  are plotted. Must be one of `attr(occARU_data, "species")`.
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
 
 - surveys:
 
-  Character vector of survey dates to plot. If `NULL` (default), all
+  `character`. Vector of survey dates to plot. If `NULL` (default), all
   surveys are plotted. Must be one of `attr(occARU_data, "surveys")`.
 
 - intercepts:
 
-  Logical. If `TRUE` (default), species-level baseline log detection
+  `logical`. If `TRUE` (default), species-level baseline log detection
   rates are added to the survey effects. If `FALSE`, only the temporal
   deviations are plotted on the log scale.
 
 - back_transform:
 
-  Logical. Only used when `intercepts = TRUE`. If `TRUE` (default), log
-  detection rates are back-transformed to the natural scale via
+  `logical`. Only used when `intercepts = TRUE`. If `TRUE` (default),
+  log detection rates are back-transformed to the natural scale via
   [`exp()`](https://rdrr.io/r/base/Log.html). If `FALSE`, values are
   left on the log scale.
 
 - include_predictors:
 
-  Logical. If `TRUE` (default), includes predictors in the survey
+  `logical`. If `TRUE` (default), includes predictors in the survey
   effects, if included. If `FALSE`, only plots the random effects.
 
 - restricted:
 
-  Logical. If `TRUE` (default), when `include_predictors` is `FALSE` and
-  the model was fit with `project_kappa = TRUE`, plots random survey
+  `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`
+  and the model was fit with `project_kappa = TRUE`, plots random survey
   effects with orthogonal projection, i.e.,
   \\\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P\_{X_3}})\\, where
   \\\boldsymbol{I} - \boldsymbol{P\_{X_3}}\\ is the orthogonal
@@ -73,7 +73,7 @@ plot_surveys(
 
 - ndraws:
 
-  Number of draws to use for plotting, passed to
+  Positive integer. Number of draws to use for plotting, passed to
   [`tidybayes::spread_rvars()`](https://mjskay.github.io/tidybayes/reference/spread_rvars.html).
   Default: `NULL` (uses all draws).
 
@@ -84,7 +84,7 @@ plot_surveys(
 
 - palette:
 
-  Colour palette to be passed to
+  `character`. Colour palette to be passed to
   [`ggplot2::scale_fill_brewer()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html).
   Default: `"YlGn"`.
 

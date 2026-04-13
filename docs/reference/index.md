@@ -28,3 +28,7 @@
 
 - [`setup_occARU()`](https://mhollanders.github.io/occARU/reference/setup_occARU.md)
   : Set up CmdStan for use with occARU
+- [`thin_observations()`](https://mhollanders.github.io/occARU/reference/thin_observations.md)
+  : Thin observations
+- [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
+  : Find potential ARU failure periods

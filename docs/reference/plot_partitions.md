@@ -18,7 +18,7 @@ plot_partitions(fit, scales = FALSE, ...)
 
 - scales:
 
-  Logical. If `FALSE` (default), plots variance simplex partitions
+  `logical`. If `FALSE` (default), plots variance simplex partitions
   \\\boldsymbol{\phi}\\. If `TRUE`, produces component scales by
   plotting \\\sqrt{W \cdot \boldsymbol{\phi}}\\, where \\W\\ are
   variances of linear predictors. Useful for sparse simplexes, where few
