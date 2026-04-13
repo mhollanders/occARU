@@ -1,4 +1,4 @@
-# Set priors for an occARU model
+# Set priors for the occARU model
 
 Constructs and validates a named list of prior hyperparameters for use
 with

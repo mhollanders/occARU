@@ -3,11 +3,11 @@
 ## Core Functions
 
 - [`make_data()`](https://mhollanders.github.io/occARU/reference/make_data.md)
-  : Prepare data for the occARU Stan model
+  : Prepare data for the occARU model
 - [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md)
-  : Fit the occARU Stan model
+  : Fit the occARU model
 - [`set_priors()`](https://mhollanders.github.io/occARU/reference/set_priors.md)
-  : Set priors for an occARU model
+  : Set priors for the occARU model
 
 ## Plotting
 
@@ -24,7 +24,7 @@
 - [`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)
   : Plot variance partitions
 
-## Setup
+## Helpers
 
 - [`setup_occARU()`](https://mhollanders.github.io/occARU/reference/setup_occARU.md)
   : Set up CmdStan for use with occARU

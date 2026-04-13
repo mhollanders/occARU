@@ -1,4 +1,4 @@
-# Fit the occARU Stan model
+# Fit the occARU model
 
 Fits a Bayesian multispecies occupancy model with count observation
 model to data prepared by
