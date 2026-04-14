@@ -77,7 +77,7 @@
 #'   covariates, with one row per site and date. Must contain `deploymentID`
 #'   and `date` columns. Predictor columns follow the same type rules as the
 #'   site-level predictor dataframes. Must cover the full deployment period for
-#'   each ARU.
+#'   each `deploymentID`.
 #' @param date <[`data-masking`][rlang::args_data_masking]> Column name for
 #'   dates in `survey_predictors`. Default: `date`.
 #' @param summary_functions An optional named list mapping continuous survey

@@ -240,7 +240,7 @@ array[,] int first_last(data matrix Delta) {
 /**
  * Add ordinal coefficients to linear predictor using realised ordinal
  * coefficients produced from coef_ord_realised(). Overloaded for
- * single-species scenario.
+ * single-species and dynamic models.
  *
  * @param X     Integer design array [P, I]
  * @param beta  Realised ordinal coefficients [P, (S, )O_max]
@@ -250,13 +250,15 @@ array[,] int first_last(data matrix Delta) {
 matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
   int P = size(X), I = size(X[1]), S = rows(beta[1]);
   array[I] int X_p;
+  matrix[S, cols(beta[1])] beta_p;
   matrix[S, I] mu = rep_matrix(0, S, I);
   for (p in 1:P) {
     X_p = X[p];
+    beta_p = beta[p];
     for (i in 1:I) {
       int X_i = X_p[i];
       if (X_i) {
-        mu[:, i] += beta[p, :, X_i];
+        mu[:, i] += beta_p[:, X_i];
       }
     }
   }
@@ -266,13 +268,15 @@ matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
 row_vector increment_ordinal(data array[,] int X, matrix beta) {
   int P = size(X), I = size(X[1]);
   array[I] int X_p;
+  row_vector[cols(beta)] beta_p;
   row_vector[I] mu = zeros_row_vector(I);
   for (p in 1:P) {
     X_p = X[p];
+    beta_p = beta[p];
     for (i in 1:I) {
       int X_i = X_p[i];
       if (X_i) {
-        mu[i] += beta[p, X_i];
+        mu[i] += beta_p[X_i];
       }
     }
   }
@@ -318,6 +322,70 @@ array[] matrix fill_epsilon(data array[,] int f_l, data matrix log_Delta,
     }
   }
   return epsilon;
+}
+
+/**
+ * Log 2x2 transition probability matrix from log transition rates and interval.
+ *
+ * @param log_q  Log colonisation and emigration rates
+ * @param tau    Time interval
+ *
+ * @return   log(matrix_exp(Q) * tau), where Q is a 2x2 generator matrix
+ */
+matrix log_matrix_exp(array[] real log_q, real tau) {
+  if (size(log_q) != 2) {
+    reject("log_matrix_exp() only works for a 2x2 generator matrix and requires two transition rates.");
+  }
+  real log_S = log_sum_exp(log_q),
+       Stau = exp(log_S) * tau,
+       log_1mexp_Stau = log1m_exp(-Stau);
+  array[2] real log_pi = { log_q[1] - log_S, log_q[2] - log_S };
+  return [[ log_sum_exp(log_pi[2], log_pi[1] - Stau),
+            log_pi[1] + log_1mexp_Stau ],
+          [ log_pi[2] + log_1mexp_Stau,
+            log_sum_exp(log_pi[1], log_pi[2] - Stau) ]];
+}
+
+/**
+ * Elementwise natural logarithm of the product of the elementwise
+ * exponentiation of two matrices
+ *
+ * @param A  First matrix or (row-)vector
+ * @param B  Second matrix or (row-)vector
+ *
+ * @return   log(exp(A) * exp(B))
+ */
+matrix log_prod_exp(matrix A, matrix B) {
+  int I = rows(A), J = cols(A), K = cols(B);
+  matrix[J, I] A_tr = A';
+  matrix[I, K] C;
+  for (k in 1:K) {
+    for (i in 1:I) {
+      C[i, k] = log_sum_exp(A_tr[:, i] + B[:, k]);
+    }
+  }
+  return C;
+}
+vector log_prod_exp(matrix A, vector B) {
+  int I = rows(A), J = cols(A);
+  matrix[J, I] A_tr = A';
+  vector[I] C;
+  for (i in 1:I) {
+    C[i] = log_sum_exp(A_tr[:, i] + B);
+  }
+  return C;
+}
+row_vector log_prod_exp(row_vector A, matrix B) {
+  int K = cols(B);
+  vector[size(A)] A_tr = A';
+  row_vector[K] C;
+  for (k in 1:K) {
+    C[k] = log_sum_exp(A_tr + B[:, k]);
+  }
+  return C;
+}
+real log_prod_exp(row_vector A, vector B) {
+  return log_sum_exp(A' + B);
 }
 
 /**

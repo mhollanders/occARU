@@ -10,3 +10,4 @@ inst/stan/*
 !inst/stan/*.stanfunctions
 inst/stan/*dyn.stan
 docs
+R/make_data2.R

@@ -48,7 +48,7 @@ data {
                      iota_ell_inv_gamma,  // spat. GP l-scale
                      kappa_ell_inv_gamma,  // temp. GP l-scale
                      kappa_ell_periodic_inv_gamma,  // periodic temp. GP l-scale
-                     kappa_v_dirichlet,  // temp. GPs var. partitions
+                     K_phi_dirichlet,  // temp. GPs var. partitions
                      phi_inv_gamma;  // negbin overdispersion
   vector<lower=0>[3] psi_W_t,  // occ. log odds var.
                      mu_W_t;  // log det. var.
@@ -227,7 +227,7 @@ parameters {
   vector<lower=0>[I_GP] iota_ell;
   array[TE] sum_to_zero_vector[J] kappa_z;
   vector<lower=0>[J_GP + periodic] kappa_ell;
-  array[periodic] simplex[2] kappa_v;
+  array[periodic] simplex[2] K_phi;
 
   // OLRE residuals or negbin overdispersion
   array[OLRE] sum_to_zero_vector[N] epsilon_z;
@@ -262,17 +262,17 @@ transformed parameters {
   // intercepts
   vector[2] alpha = [ logit(psi_bar), log(mu_bar) ]';
 
-  // mean and species-level continuous predictor coefficients
+  // continuous predictor coefficients
   row_vector[P[1]] psi_beta;
   row_vector[P[2]] mu_beta;
   row_vector[P[3]] gamma;
 
-  // mean and species-level categorical predictor coefficients
+  // categorical predictor coefficients
   matrix[P_cat[1], C_max[1]] psi_beta_cat_z, psi_beta_cat;
   matrix[P_cat[2], C_max[2]] mu_beta_cat_z, mu_beta_cat;
   matrix[P_cat[3], C_max[3]] gamma_cat_z, gamma_cat;
 
-  // mean and species-level ordinal predictor coefficients
+  // ordinal predictor coefficients
   row_vector[P_ord[1]] psi_beta_ord;
   matrix[P_ord[1], O_max[1]] psi_beta_ord_cs;
   row_vector[P_ord[2]] mu_beta_ord;
@@ -280,7 +280,7 @@ transformed parameters {
   row_vector[P_ord[3]] gamma_ord;
   matrix[P_ord[3], O_max[3]] gamma_ord_cs;
 
-  // species-level conditional and unconditional site and survey effects
+  // conditional and unconditional site and survey effects
   row_vector[SP * I] iota;
   row_vector[SP * P_sum[2] ? I : 0] iota2;
   vector[TE * J] kappa;
@@ -396,7 +396,7 @@ transformed parameters {
         matrix[J, J] kappa_K, kappa_L;
         vector[periodic * 2] kappa_t;
         if (periodic) {
-          kappa_t = sqrt(kappa_v[1]);
+          kappa_t = sqrt(K_phi[1]);
           kappa_K = gp_exp_quad_cov(surveys, kappa_t[1], kappa_ell[1])
                     + gp_periodic_cov(surveys, kappa_t[2], kappa_ell[2],
                                       period);
@@ -429,20 +429,21 @@ transformed parameters {
   real lprior = beta_lpdf(psi_bar | psi_bar_beta[1], psi_bar_beta[2])
                 + gamma_lpdf(mu_bar | mu_bar_gamma[1], mu_bar_gamma[2]);
   if (psi_V) {
-    lprior += student_t_lpdf(psi_W | psi_W_t[1], psi_W_t[2], psi_W_t[3]);
+    lprior += student_t_lpdf(psi_W[1] | psi_W_t[1], psi_W_t[2], psi_W_t[3]);
     if (psi_V > 1) {
-      lprior += gamma_lpdf(psi_theta | psi_theta_gamma[1], psi_theta_gamma[2]);
+      lprior += gamma_lpdf(psi_theta[1] | psi_theta_gamma[1],
+                                          psi_theta_gamma[2]);
     }
   }
   if (mu_V) {
-    lprior += student_t_lpdf(mu_W | mu_W_t[1], mu_W_t[2], mu_W_t[3]);
+    lprior += student_t_lpdf(mu_W[1] | mu_W_t[1], mu_W_t[2], mu_W_t[3]);
     if (mu_V > 1) {
-      lprior += gamma_lpdf(mu_theta | mu_theta_gamma[1], mu_theta_gamma[2]);
+      lprior += gamma_lpdf(mu_theta[1] | mu_theta_gamma[1], mu_theta_gamma[2]);
     }
   }
   if (I_GP) {
-    lprior += inv_gamma_lpdf(iota_ell | iota_ell_inv_gamma[1],
-                                        iota_ell_inv_gamma[2]);
+    lprior += inv_gamma_lpdf(iota_ell[1] | iota_ell_inv_gamma[1],
+                                           iota_ell_inv_gamma[2]);
   }
   if (J_GP) {
     lprior += inv_gamma_lpdf(kappa_ell[1] | kappa_ell_inv_gamma[1],
@@ -450,11 +451,11 @@ transformed parameters {
     if (periodic) {
       lprior += inv_gamma_lpdf(kappa_ell[2] | kappa_ell_periodic_inv_gamma[1],
                                               kappa_ell_periodic_inv_gamma[2])
-                + dirichlet_lpdf(kappa_v | kappa_v_dirichlet);
+                + dirichlet_lpdf(K_phi | K_phi_dirichlet);
     }
   }
   if (NB) {
-    lprior += inv_gamma_lpdf(phi | phi_inv_gamma[1], phi_inv_gamma[2]);
+    lprior += inv_gamma_lpdf(phi[1] | phi_inv_gamma[1], phi_inv_gamma[2]);
   }
 }
 

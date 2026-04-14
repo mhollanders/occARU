@@ -2,28 +2,28 @@
  * Multispecies occupancy model (MSOM) for automated recording unit (ARU) data
  * with Poisson or negative binomial observation process.
  *
- * @param y            Detection history [I, J, S]
- * @param Q            Aggregated detection history [I, S]
- * @param f_l          First and last survey [I, 2]
- * @param log_Delta    Offsets [J, I]
- * @param X2           Detection site predictors (numeric) [P, I]
- * @param X_cat2       Detection site predictors (categorical) [P, I]
- * @param X_ord2       Detection site predictors (ordinal) [P, I]
- * @param X3           Survey predictors (numeric) [I, P, J]
- * @param X_cat3       Survey predictors (categorical) [I, P, J]
- * @param X_ord3       Survey predictors (ordinal) [I, P, J]
- * @param logit_psi    Occupancy logits [S, I]
- * @param alpha        Detection intercepts [S]
- * @param mu_beta      Site coefficients (numeric) [S, P]
- * @param mu_beta_cat  Site coefficients (categorical) [P, S, C_max]
- * @param mu_beta_ord  Site coefficients (realised ordinal) [P, S, O_max]
- * @param gamma        Survey coefficients (numeric) [S, P]
- * @param gamma_cat    Survey coefficients (categorical) [P, S, C_max]
- * @param gamma_ord    Survey coefficients (realised ordinal) [P, S, O_max]
- * @param iota         Site effects [S, I]
- * @param kappa        Survey effects [S, J]
- * @param epsilon      Poisson OLREs (OD = 1)
- * @param phi          Negative binomial overdispersion [S] (OD = 2)
+ * @param y          Detection history [I, J, S]
+ * @param Q          Aggregated detection history [I, S]
+ * @param f_l        First and last survey [I, 2]
+ * @param log_Delta  Offsets [J, I]
+ * @param X2         Detection site predictors (numeric) [P, I]
+ * @param X_cat2     Detection site predictors (categorical) [P, I]
+ * @param X_ord2     Detection site predictors (ordinal) [P, I]
+ * @param X3         Survey predictors (numeric) [I, P, J]
+ * @param X_cat3     Survey predictors (categorical) [I, P, J]
+ * @param X_ord3     Survey predictors (ordinal) [I, P, J]
+ * @param logit_psi  Occupancy logits [S, I]
+ * @param alpha      Detection intercepts [S]
+ * @param beta       Detection site coefficients (numeric) [S, P]
+ * @param beta_cat   Detection site coefficients (categorical) [P, S, C_max]
+ * @param beta_ord   Detection site coefficients (realised ordinal) [P, S, O_max]
+ * @param gamma      Survey coefficients (numeric) [S, P]
+ * @param gamma_cat  Survey coefficients (categorical) [P, S, C_max]
+ * @param gamma_ord  Survey coefficients (realised ordinal) [P, S, O_max]
+ * @param iota       Site effects [S, I]
+ * @param kappa      Survey effects [S, J]
+ * @param epsilon    Poisson OLREs (OD = 1)
+ * @param phi        Negative binomial overdispersion [S] (OD = 2)
  *
  * @return log_lik     Site-by-species log likelihood [S, I]
  * @return Omega       Marginal occupancy log likelihoods [I, S, 2]
@@ -34,8 +34,8 @@ tuple(matrix, array[] matrix, array[] matrix)
          data matrix log_Delta, data matrix X2, data array[,] int X_cat2,
          data array[,] int X_ord2, data array[] matrix X3,
          data array[,,] int X_cat3, data array[,,] int X_ord3, matrix logit_psi,
-         vector alpha, matrix mu_beta, array[] matrix mu_beta_cat,
-         array[] matrix mu_beta_ord, matrix gamma, array[] matrix gamma_cat,
+         vector alpha, matrix beta, array[] matrix beta_cat,
+         array[] matrix beta_ord, matrix gamma, array[] matrix gamma_cat,
          array[] matrix gamma_ord, matrix iota, matrix kappa,
          array[] matrix epsilon, vector phi) {
   int I = size(y), J = size(y[1]), S = size(y[1, 1]), P_cat2 = size(X_cat2),
@@ -43,12 +43,12 @@ tuple(matrix, array[] matrix, array[] matrix)
       SP = cols(iota), TE = cols(kappa), OLRE = size(epsilon), NB = size(phi);
   matrix[S, I] log_psi = log_inv_logit(logit_psi);
   array[I] matrix[S, J] log_mu;
-  matrix[S, I] betaX = mu_beta * X2;
+  matrix[S, I] betaX = beta * X2;
   for (p in 1:P_cat2) {
-    betaX += mu_beta_cat[p, :, X_cat2[p]];
+    betaX += beta_cat[p, :, X_cat2[p]];
   }
   if (P_ord2) {
-    betaX += increment_ordinal(X_ord2, mu_beta_ord);
+    betaX += increment_ordinal(X_ord2, beta_ord);
   }
   matrix[S, 2] Omega_i;
   array[I] matrix[S, 2] Omega;
@@ -113,21 +113,20 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
                  data array[,] int X_cat2, data array[,] int X_ord2,
                  data array[] matrix X3, data array[,,] int X_cat3,
                  data array[,,] int X_ord3, matrix logit_psi, vector alpha,
-                 matrix mu_beta, array[] matrix mu_beta_cat,
-                 array[] matrix mu_beta_ord, matrix gamma,
-                 array[] matrix gamma_cat, array[] matrix gamma_ord,
-                 matrix iota, matrix kappa, array[] matrix epsilon,
-                 vector phi) {
+                 matrix beta, array[] matrix beta_cat, array[] matrix beta_ord,
+                 matrix gamma, array[] matrix gamma_cat,
+                 array[] matrix gamma_ord, matrix iota, matrix kappa,
+                 array[] matrix epsilon, vector phi) {
   int I = size(y), J = size(y[1]), S = size(y[1, 1]), P_cat2 = size(X_cat2),
       P_ord2 = size(X_ord2), P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]),
       SP = cols(iota), TE = cols(kappa), OLRE = size(epsilon), NB = size(phi);
   matrix[S, I] log_psi = log_inv_logit(logit_psi);
-  matrix[S, I] betaX = mu_beta * X2;
+  matrix[S, I] betaX = beta * X2;
   for (p in 1:P_cat2) {
-    betaX += mu_beta_cat[p, :, X_cat2[p]];
+    betaX += beta_cat[p, :, X_cat2[p]];
   }
   if (P_ord2) {
-    betaX += increment_ordinal(X_ord2, mu_beta_ord);
+    betaX += increment_ordinal(X_ord2, beta_ord);
   }
   vector[S] Omega;
   real log_lik = 0.0;
@@ -187,16 +186,16 @@ real partial_occARU_lpmf(data array[] int sites, data int start, data int end,
                          data matrix X2, data array[,] int X_cat2,
                          data array[,] int X_ord2, data array[] matrix X3,
                          data array[,,] int X_cat3, data array[,,] int X_ord3,
-                         matrix logit_psi, vector alpha, matrix mu_beta,
-                         array[] matrix mu_beta_cat, array[] matrix mu_beta_ord,
+                         matrix logit_psi, vector alpha, matrix beta,
+                         array[] matrix beta_cat, array[] matrix beta_ord,
                          matrix gamma, array[] matrix gamma_cat,
                          array[] matrix gamma_ord, matrix iota, matrix kappa,
                          array[] matrix epsilon, vector phi) {
   return occARU_lpmf(y[sites] | Q[sites], f_l[sites], log_Delta[:, sites],
                      X2[:, sites], X_cat2[:, sites], X_ord2[:, sites],
                      X3[sites], X_cat3[sites], X_ord3[sites],
-                     logit_psi[:, sites], alpha, mu_beta, mu_beta_cat,
-                     mu_beta_ord, gamma, gamma_cat, gamma_ord,
+                     logit_psi[:, sites], alpha, beta, beta_cat, beta_ord,
+                     gamma, gamma_cat, gamma_ord,
                      cols(iota) ? iota[:, sites] : iota, kappa,
                      size(epsilon) ? epsilon[sites] : epsilon, phi);
 }
@@ -206,28 +205,28 @@ real partial_occARU_lpmf(data array[] int sites, data int start, data int end,
  * Single species occupancy model for automated recording unit (ARU) data with
  * Poisson or negative binomial observation process.
  *
- * @param y            Detection history [I, J]
- * @param Q            Aggregated detection history [I]
- * @param f_l          First and last survey [I, 2]
- * @param log_Delta    Offsets [J, I]
- * @param X2           Detection site predictors (numeric) [P, I]
- * @param X_cat2       Detection site predictors (categorical) [P, I]
- * @param X_ord2       Detection site predictors (ordinal) [P, I]
- * @param X3           Survey predictors (numeric) [I, P, J]
- * @param X_cat3       Survey predictors (categorical) [I, P, J]
- * @param X_ord3       Survey predictors (ordinal) [I, P, J]
- * @param logit_psi    Occupancy logits [I]
- * @param alpha        Detection intercept
- * @param mu_beta      Site coefficients (numeric) [P]
- * @param mu_beta_cat  Site coefficients (categorical) [P, C_max]
- * @param mu_beta_ord  Site coefficients (realised ordinal) [P, O_max]
- * @param gamma        Survey coefficients (numeric) [P]
- * @param gamma_cat    Survey coefficients (categorical) [P, C_max]
- * @param gamma_ord    Survey coefficients (realised ordinal) [P, O_max]
- * @param iota         Site effects [I]
- * @param kappa        Survey effects [J]
- * @param epsilon      Poisson OLREs [J, I] (OD = 1)
- * @param phi          Negative binomial overdispersion (OD = 2)
+ * @param y          Detection history [I, J]
+ * @param Q          Aggregated detection history [I]
+ * @param f_l        First and last survey [I, 2]
+ * @param log_Delta  Offsets [J, I]
+ * @param X2         Detection site predictors (numeric) [P, I]
+ * @param X_cat2     Detection site predictors (categorical) [P, I]
+ * @param X_ord2     Detection site predictors (ordinal) [P, I]
+ * @param X3         Survey predictors (numeric) [I, P, J]
+ * @param X_cat3     Survey predictors (categorical) [I, P, J]
+ * @param X_ord3     Survey predictors (ordinal) [I, P, J]
+ * @param logit_psi  Occupancy logits [I]
+ * @param alpha      Detection intercept
+ * @param beta       Detection site coefficients (numeric) [P]
+ * @param beta_cat   Detection site coefficients (categorical) [P, C_max]
+ * @param beta_ord   Detection site coefficients (realised ordinal) [P, O_max]
+ * @param gamma      Survey coefficients (numeric) [P]
+ * @param gamma_cat  Survey coefficients (categorical) [P, C_max]
+ * @param gamma_ord  Survey coefficients (realised ordinal) [P, O_max]
+ * @param iota       Site effects [I]
+ * @param kappa      Survey effects [J]
+ * @param epsilon    Poisson OLREs [J, I] (OD = 1)
+ * @param phi        Negative binomial overdispersion (OD = 2)
  *
  * @return log_lik   Site-by-species log likelihood [I]
  * @return Omega     Marginal occupancy log likelihoods [2, I]
@@ -238,20 +237,19 @@ tuple(vector, matrix, matrix)
          data matrix log_Delta, data matrix X2, data array[,] int X_cat2,
          data array[,] int X_ord2, data array[] matrix X3,
          data array[,,] int X_cat3, data array[,,] int X_ord3,
-         row_vector logit_psi, real alpha, row_vector mu_beta,
-         matrix mu_beta_cat, matrix mu_beta_ord, row_vector gamma,
-         matrix gamma_cat, matrix gamma_ord, row_vector iota, vector kappa,
-         matrix epsilon, vector phi) {
+         row_vector logit_psi, real alpha, row_vector beta, matrix beta_cat,
+         matrix beta_ord, row_vector gamma, matrix gamma_cat, matrix gamma_ord,
+         row_vector iota, vector kappa, matrix epsilon, vector phi) {
   int I = size(y), J = size(y[1]), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
       P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = size(iota),
       TE = size(kappa), OLRE = size(epsilon), NB = size(phi);
   row_vector[I] log_psi = log_inv_logit(logit_psi),
-                log_mu_i = alpha + mu_beta * X2;
+                log_mu_i = alpha + beta * X2;
   for (p in 1:P_cat2) {
-    log_mu_i += mu_beta_cat[p, X_cat2[p]];
+    log_mu_i += beta_cat[p, X_cat2[p]];
   }
   if (P_ord2) {
-    log_mu_i += increment_ordinal(X_ord2, mu_beta_ord);
+    log_mu_i += increment_ordinal(X_ord2, beta_ord);
   }
   if (SP) {
     log_mu_i += iota;
@@ -308,19 +306,19 @@ real occARU_lpmf(data array[,] int y, data array[] int Q, data array[,] int f_l,
                  data array[,] int X_cat2, data array[,] int X_ord2,
                  data array[] matrix X3, data array[,,] int X_cat3,
                  data array[,,] int X_ord3, row_vector logit_psi, real alpha,
-                 row_vector mu_beta, matrix mu_beta_cat, matrix mu_beta_ord,
+                 row_vector beta, matrix beta_cat, matrix beta_ord,
                  row_vector gamma, matrix gamma_cat, matrix gamma_ord,
                  row_vector iota, vector kappa, matrix epsilon, vector phi) {
   int I = size(y), J = size(y[1]), P_cat2 = size(X_cat2), P_ord2 = size(X_ord2),
       P_cat3 = size(X_cat3[1]), P_ord3 = size(X_ord3[1]), SP = size(iota),
       TE = size(kappa), OLRE = size(epsilon), NB = size(phi);
   row_vector[I] log_psi = log_inv_logit(logit_psi),
-                log_mu_i = alpha + mu_beta * X2;
+                log_mu_i = alpha + beta * X2;
   for (p in 1:P_cat2) {
-    log_mu_i += mu_beta_cat[p, X_cat2[p]];
+    log_mu_i += beta_cat[p, X_cat2[p]];
   }
   if (P_ord2) {
-    log_mu_i += increment_ordinal(X_ord2, mu_beta_ord);
+    log_mu_i += increment_ordinal(X_ord2, beta_ord);
   }
   if (SP) {
     log_mu_i += iota;
@@ -372,14 +370,14 @@ real partial_occARU_lpmf(data array[] int sites, data int start, data int end,
                          data matrix X2, data array[,] int X_cat2,
                          data array[,] int X_ord2, data array[] matrix X3,
                          data array[,,] int X_cat3, data array[,,] int X_ord3,
-                         row_vector logit_psi, real alpha, row_vector mu_beta,
-                         matrix mu_beta_cat, matrix mu_beta_ord,
-                         row_vector gamma, matrix gamma_cat, matrix gamma_ord,
-                         row_vector iota, vector kappa, matrix epsilon, vector phi) {
+                         row_vector logit_psi, real alpha, row_vector beta,
+                         matrix beta_cat, matrix beta_ord, row_vector gamma,
+                         matrix gamma_cat, matrix gamma_ord, row_vector iota,
+                         vector kappa, matrix epsilon, vector phi) {
   return occARU_lpmf(y[sites] | Q[sites], f_l[sites], log_Delta[:, sites],
                      X2[:, sites], X_cat2[:, sites], X_ord2[:, sites],
                      X3[sites], X_cat3[sites], X_ord3[sites], logit_psi[sites],
-                     alpha, mu_beta, mu_beta_cat, mu_beta_ord, gamma, gamma_cat,
+                     alpha, beta, beta_cat, beta_ord, gamma, gamma_cat,
                      gamma_ord, size(iota) ? iota[sites] : iota, kappa,
                      size(epsilon) ? epsilon[:, sites] : epsilon, phi);
 }
