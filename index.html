@@ -56,7 +56,7 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>occARU fits Bayesian (multispecies) occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. It implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
+<p>occARU fits Bayesian (multispecies) occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. The approach differs from standard occupancy models in that the focus is on quantifying detection rates, rather than treating detection as a nuisance parameter to correct for. It implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -138,12 +138,12 @@
 <code class="sourceCode R"><span><span class="co"># temporal detection trends</span></span>
 <span><span class="fu"><a href="reference/plot_surveys.html">plot_surveys</a></span><span class="op">(</span><span class="va">fit</span>, species <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Species 1"</span>, <span class="st">"Species 2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/surveys.png"></p>
-<p>Key design choices in occARU are hierarchical multispecies spatial and temporal Gaussian processes, implemented with sum-to-zero constraints for identifiability and orthogonal projection to retain fixed effects. Interspecific correlations are estimated for responses to predictors and random effects.</p>
+<p>Key design choices in occARU are hierarchical multispecies spatial and temporal Gaussian processes, implemented with orthogonal projection to retain fixed effects. Interspecific correlations are estimated for responses to predictors and random effects to explore species interactions.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># variance partitions</span></span>
 <span><span class="fu"><a href="reference/plot_partitions.html">plot_partitions</a></span><span class="op">(</span><span class="va">fit</span>, scales <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/partitions.png"></p>
-<p>Global-local shrinkage priors are used to handle model complexity through simplex decomposing variances of the occupancy and detection linear predictors.</p>
+<p>Global-local shrinkage priors are used to handle model complexity through variance decomposition of the occupancy and detection linear predictors.</p>
 </div>
 <div class="section level3">
 <h3 id="id_4-interrogate">4. Interrogate<a class="anchor" aria-label="anchor" href="#id_4-interrogate"></a>
@@ -152,7 +152,7 @@
 <code class="sourceCode R"><span><span class="co"># use PSIS-LOO-CV on the site-by-species level log likelihood</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">loo</span><span class="op">(</span><span class="st">"log_lik2"</span><span class="op">)</span>  <span class="co"># log_lik2 uses Monte Carlo integration of random effects</span></span>
 <span></span>
-<span><span class="co"># check prior sensitivy using power-scaling</span></span>
+<span><span class="co"># check prior sensitivity using power-scaling</span></span>
 <span><span class="fu">priorsense</span><span class="fu">::</span><span class="fu"><a href="https://n-kall.github.io/priorsense/reference/powerscale_plots.html" class="external-link">powerscale_plot_dens</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"log_lik"</span>, <span class="st">"lprior"</span>, <span class="st">"psi_bar"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># posterior predictive checking of aggregated site-by-species counts</span></span>
