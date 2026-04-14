@@ -6,11 +6,14 @@
 [![R-CMD-check](https://github.com/mhollanders/occARU/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mhollanders/occARU/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-occARU fits Bayesian (multispecies) occupancy models with count observation models 
-to autonomous recording unit (ARU) data like those derived from camera traps and 
-passive acoustic monitoring. It implements hierarchical species-level random 
-effects with spatial and temporal Gaussian processes, variance decomposition via 
-global-local shrinkage priors, and is built on [Stan](https://mc-stan.org/) via 
+occARU fits Bayesian (multispecies) occupancy models with count observation 
+models to autonomous recording unit (ARU) data like those derived from camera 
+traps and passive acoustic monitoring. The approach differs from standard 
+occupancy models in that the focus is on quantifying detection rates, rather 
+than treating detection as a nuisance parameter to correct for. It implements 
+hierarchical species-level random effects with spatial and temporal Gaussian 
+processes, variance decomposition via  global-local shrinkage priors, and is 
+built on [Stan](https://mc-stan.org/) via 
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
 ## Installation
@@ -108,10 +111,10 @@ plot_surveys(fit, species = c("Species 1", "Species 2"))
 
 ![](man/figures/surveys.png)
 
-Key design choices in occARU are hierarchical multispecies spatial and temporal
-Gaussian processes, implemented with sum-to-zero constraints for identifiability 
-and orthogonal projection to retain fixed effects. Interspecific correlations 
-are estimated for responses to predictors and random effects.
+Key design choices in occARU are hierarchical multispecies spatial and temporal 
+Gaussian processes, implemented with orthogonal projection to retain fixed 
+effects. Interspecific correlations are estimated for responses to predictors 
+and random effects to explore species interactions.
 
 ```r
 # variance partitions
@@ -121,7 +124,7 @@ plot_partitions(fit, scales = TRUE)
 ![](man/figures/partitions.png)
 
 Global-local shrinkage priors are used to handle model complexity through
-simplex decomposing variances of the occupancy and detection linear predictors.
+variance decomposition of the occupancy and detection linear predictors.
 
 ### 4. Interrogate
 
@@ -129,7 +132,7 @@ simplex decomposing variances of the occupancy and detection linear predictors.
 # use PSIS-LOO-CV on the site-by-species level log likelihood
 fit$loo("log_lik2")  # log_lik2 uses Monte Carlo integration of random effects
 
-# check prior sensitivy using power-scaling
+# check prior sensitivity using power-scaling
 priorsense::powerscale_plot_dens(fit$draws("log_lik", "lprior", "psi_bar"))
 
 # posterior predictive checking of aggregated site-by-species counts
