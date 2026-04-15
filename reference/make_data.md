@@ -28,7 +28,6 @@ make_data(
   survey_length = 1L,
   thin_minutes = 30,
   day_start = c("midday", "midnight"),
-  reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
@@ -149,11 +148,6 @@ make_data(
   Whether survey days start at `"midnight"` or `"midday"`. Default:
   `"midday"`.
 
-- reference_date:
-
-  `Date`. Defines the start of the first survey period. If `NULL`
-  (default), uses the earliest `deploymentStart`.
-
 - occupancy_site_predictors:
 
   Optional dataframe of site-level covariates for the occupancy
@@ -174,7 +168,7 @@ make_data(
   per site and date. Must contain `deploymentID` and `date` columns.
   Predictor columns follow the same type rules as the site-level
   predictor dataframes. Must cover the full deployment period for each
-  ARU.
+  `deploymentID`.
 
 - date:
 
@@ -293,7 +287,7 @@ The object also carries the following attributes, accessible via
 
 - `surveys`:
 
-  Character vector of start dates for each survey period).
+  Character vector of start dates for each survey period.
 
 - `species`:
 
@@ -316,8 +310,6 @@ The object also carries the following attributes, accessible via
 - `survey_length`:
 
 - `thin_minutes`:
-
-- `reference_date`:
 
 ## See also
 

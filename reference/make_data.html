@@ -70,7 +70,6 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 <span>  survey_length <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  thin_minutes <span class="op">=</span> <span class="fl">30</span>,</span>
 <span>  day_start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"midday"</span>, <span class="st">"midnight"</span><span class="op">)</span>,</span>
-<span>  reference_date <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  occupancy_site_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  detection_site_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  survey_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -188,11 +187,6 @@ Thinning is performed via <code><a href="thin_observations.html">thin_observatio
 Default: <code>"midday"</code>.</p></dd>
 
 
-<dt id="arg-reference-date">reference_date<a class="anchor" aria-label="anchor" href="#arg-reference-date"></a></dt>
-<dd><p><code>Date</code>. Defines the start of the first survey period.
-If <code>NULL</code> (default), uses the earliest <code>deploymentStart</code>.</p></dd>
-
-
 <dt id="arg-occupancy-site-predictors">occupancy_site_predictors<a class="anchor" aria-label="anchor" href="#arg-occupancy-site-predictors"></a></dt>
 <dd><p>Optional dataframe of site-level
 covariates for the occupancy submodel. Must contain a <code>deploymentID</code> column
@@ -213,7 +207,7 @@ covariates for the detection submodel. Same column-type rules as
 covariates, with one row per site and date. Must contain <code>deploymentID</code>
 and <code>date</code> columns. Predictor columns follow the same type rules as the
 site-level predictor dataframes. Must cover the full deployment period for
-each ARU.</p></dd>
+each <code>deploymentID</code>.</p></dd>
 
 
 <dt id="arg-date">date<a class="anchor" aria-label="anchor" href="#arg-date"></a></dt>
@@ -314,7 +308,7 @@ array.</p></dd>
 
 <dt><code>surveys</code></dt>
 <dd><p>Character vector of start dates for each survey
-period).</p></dd>
+period.</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>
@@ -337,9 +331,6 @@ predictors</p></dd>
 <dd></dd>
 
 <dt><code>thin_minutes</code></dt>
-<dd></dd>
-
-<dt><code>reference_date</code></dt>
 <dd></dd>
 
 
