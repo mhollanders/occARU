@@ -21,7 +21,6 @@ make_data(
   survey_length = 1L,
   thin_minutes = 30,
   day_start = c("midday", "midnight"),
-  reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
@@ -103,9 +102,6 @@ Thinning is performed via \code{\link[=thin_observations]{thin_observations()}}.
 \item{day_start}{Whether survey days start at \code{"midnight"} or \code{"midday"}.
 Default: \code{"midday"}.}
 
-\item{reference_date}{\code{Date}. Defines the start of the first survey period.
-If \code{NULL} (default), uses the earliest \code{deploymentStart}.}
-
 \item{occupancy_site_predictors}{Optional dataframe of site-level
 covariates for the occupancy submodel. Must contain a \code{deploymentID} column
 with the same entries as \code{deployments}. Predictor columns must be \code{numeric}
@@ -121,7 +117,7 @@ covariates for the detection submodel. Same column-type rules as
 covariates, with one row per site and date. Must contain \code{deploymentID}
 and \code{date} columns. Predictor columns follow the same type rules as the
 site-level predictor dataframes. Must cover the full deployment period for
-each ARU.}
+each \code{deploymentID}.}
 
 \item{date}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name for
 dates in \code{survey_predictors}. Default: \code{date}.}
@@ -179,7 +175,7 @@ The object also carries the following attributes, accessible via
 \describe{
 \item{\code{sites}}{Character vector of site identifiers.}
 \item{\code{surveys}}{Character vector of start dates for each survey
-period).}
+period.}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates
@@ -191,7 +187,6 @@ standardise continuous predictors, or \code{NULL} if
 predictors}
 \item{\code{survey_length}}{}
 \item{\code{thin_minutes}}{}
-\item{\code{reference_date}}{}
 }
 }
 \description{
