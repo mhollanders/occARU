@@ -62,8 +62,6 @@
 #'   Thinning is performed via [thin_observations()]. Default: `30`.
 #' @param day_start Whether survey days start at `"midnight"` or `"midday"`.
 #'    Default: `"midday"`.
-#' @param reference_date `Date`. Defines the start of the first survey period.
-#'   If `NULL` (default), uses the earliest `deploymentStart`.
 #' @param occupancy_site_predictors Optional dataframe of site-level
 #'   covariates for the occupancy submodel. Must contain a `deploymentID` column
 #'   with the same entries as `deployments`. Predictor columns must be `numeric`
@@ -131,7 +129,7 @@
 #'   \describe{
 #'     \item{`sites`}{Character vector of site identifiers.}
 #'     \item{`surveys`}{Character vector of start dates for each survey
-#'       period).}
+#'       period.}
 #'     \item{`species`}{Character vector species names.}
 #'     \item{`utm_crs`}{Character. PROJ string of the UTM coordinate reference
 #'       system used to transform site coordinates, or `NULL` if no coordinates
@@ -143,7 +141,6 @@
 #'       predictors}
 #'     \item{`survey_length`}{}
 #'     \item{`thin_minutes`}{}
-#'     \item{`reference_date`}{}
 #'   }
 #' @importFrom rlang :=
 #'
@@ -167,7 +164,6 @@ make_data <- function(
   survey_length = 1L,
   thin_minutes = 30,
   day_start = c("midday", "midnight"),
-  reference_date = NULL,
   occupancy_site_predictors = NULL,
   detection_site_predictors = NULL,
   survey_predictors = NULL,
@@ -186,6 +182,12 @@ make_data <- function(
   check_cols_class(
     deployments,
     "Date",
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
+  )
+  check_dates(
+    deployments,
+    {{ deploymentID }},
     {{ deploymentStart }},
     {{ deploymentEnd }}
   )
@@ -231,6 +233,12 @@ make_data <- function(
     )
     failures <- align_factor(failures, {{ deploymentID }}, site_lvl)
     check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
+    check_dates(
+      failures,
+      {{ deploymentID }},
+      {{ failureStart }},
+      {{ failureEnd }}
+    )
 
     failure_dates <- failures |>
       dplyr::select({{ deploymentID }}, {{ failureStart }}, {{ failureEnd }}) |>
@@ -255,13 +263,9 @@ make_data <- function(
   }
 
   # reference date
-  if (is.null(reference_date)) {
-    reference_date <- deployments |>
-      dplyr::pull({{ deploymentStart }}) |>
-      min()
-  } else if (!inherits(reference_date, "Date")) {
-    cli::cli_abort("{.arg reference_date} must be a {.cls Date}.")
-  }
+  reference_date <- deployments |>
+    dplyr::pull({{ deploymentStart }}) |>
+    min()
 
   # aggregate surveys and produce Delta
   if (!rlang::is_integerish(survey_length) || survey_length < 1) {
@@ -444,6 +448,11 @@ make_data <- function(
       {{ date }},
       verbose = FALSE
     )
+    survey_predictors <- dplyr::semi_join(
+      survey_predictors,
+      daily_grid |> dplyr::filter(.Delta == 1L),
+      by = dplyr::join_by({{ deploymentID }}, {{ date }} == .date)
+    )
   }
 
   # --- encode predictors ------------------------------------------------------
@@ -469,11 +478,7 @@ make_data <- function(
   }
 
   enc3 <- encode_predictors(
-    dplyr::semi_join(
-      survey_predictors,
-      daily_grid |> dplyr::filter(.Delta == 1L),
-      by = dplyr::join_by({{ deploymentID }}, {{ date }} == .date)
-    ),
+    survey_predictors,
     "survey",
     deploymentID = {{ deploymentID }},
     date = {{ date }},
