@@ -62,6 +62,7 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 <span>  deploymentEnd <span class="op">=</span> <span class="va">deploymentEnd</span>,</span>
 <span>  latitude <span class="op">=</span> <span class="va">latitude</span>,</span>
 <span>  longitude <span class="op">=</span> <span class="va">longitude</span>,</span>
+<span>  season <span class="op">=</span> <span class="va">season</span>,</span>
 <span>  eventStart <span class="op">=</span> <span class="va">eventStart</span>,</span>
 <span>  scientificName <span class="op">=</span> <span class="va">scientificName</span>,</span>
 <span>  count <span class="op">=</span> <span class="va">count</span>,</span>
@@ -85,10 +86,11 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 
 <dl><dt id="arg-deployments">deployments<a class="anchor" aria-label="anchor" href="#arg-deployments"></a></dt>
 <dd><p>A dataframe of deployment information, one row per
-site. Must contain columns <code>deploymentID</code>, <code>deploymentStart</code>, and
-<code>deploymentEnd</code> (or equivalents specified via the corresponding
-arguments). Optionally, <code>latitude</code> and <code>longitude</code> columns enable
-the spatial Gaussian process.</p></dd>
+site (and potentially season). Must contain columns <code>deploymentID</code>,
+<code>deploymentStart</code>, and <code>deploymentEnd</code> (or equivalents specified via the
+corresponding arguments). Optionally, <code>latitude</code> and <code>longitude</code> columns
+enable the spatial Gaussian process. If multiple seasons, must also contain
+column <code>season</code>.</p></dd>
 
 
 <dt id="arg-observations">observations<a class="anchor" aria-label="anchor" href="#arg-observations"></a></dt>
@@ -131,6 +133,13 @@ Column name for WGS84 latitude in <code>deployments</code>. If omitted alongside
 <dt id="arg-longitude">longitude<a class="anchor" aria-label="anchor" href="#arg-longitude"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>numeric</code>.
 Column name for WGS84 longitude in <code>deployments</code>. Default: <code>longitude</code>.</p></dd>
+
+
+<dt id="arg-season">season<a class="anchor" aria-label="anchor" href="#arg-season"></a></dt>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Optional column
+specifying season. The column must be a factor to ensure correct ordering.
+If the column is not present in <code>deployments</code>, all observations are treated
+as a single season. Default: <code>season</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
@@ -192,7 +201,8 @@ Default: <code>"midday"</code>.</p></dd>
 covariates for the occupancy submodel. Must contain a <code>deploymentID</code> column
 with the same entries as <code>deployments</code>. Predictor columns must be <code>numeric</code>
 (continuous), <code>factor</code> (unordered categorical), or <code>ordered factor</code>
-(ordinal).</p></dd>
+(ordinal). If multiple seasons, each <code>deploymentID</code> requires a value for
+each <code>season</code> it was deployed.</p></dd>
 
 
 <dt id="arg-detection-site-predictors">detection_site_predictors<a class="anchor" aria-label="anchor" href="#arg-detection-site-predictors"></a></dt>
@@ -308,7 +318,7 @@ array.</p></dd>
 
 <dt><code>surveys</code></dt>
 <dd><p>Character vector of start dates for each survey
-period.</p></dd>
+period).</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>
@@ -331,6 +341,9 @@ predictors</p></dd>
 <dd></dd>
 
 <dt><code>thin_minutes</code></dt>
+<dd></dd>
+
+<dt><code>reference_date</code></dt>
 <dd></dd>
 
 

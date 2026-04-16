@@ -20,6 +20,7 @@ make_data(
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
+  season = season,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -41,11 +42,12 @@ make_data(
 
 - deployments:
 
-  A dataframe of deployment information, one row per site. Must contain
-  columns `deploymentID`, `deploymentStart`, and `deploymentEnd` (or
-  equivalents specified via the corresponding arguments). Optionally,
-  `latitude` and `longitude` columns enable the spatial Gaussian
-  process.
+  A dataframe of deployment information, one row per site (and
+  potentially season). Must contain columns `deploymentID`,
+  `deploymentStart`, and `deploymentEnd` (or equivalents specified via
+  the corresponding arguments). Optionally, `latitude` and `longitude`
+  columns enable the spatial Gaussian process. If multiple seasons, must
+  also contain column `season`.
 
 - observations:
 
@@ -91,6 +93,14 @@ make_data(
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
   `numeric`. Column name for WGS84 longitude in `deployments`. Default:
   `longitude`.
+
+- season:
+
+  \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
+  Optional column specifying season. The column must be a factor to
+  ensure correct ordering. If the column is not present in
+  `deployments`, all observations are treated as a single season.
+  Default: `season`.
 
 - eventStart:
 
@@ -153,7 +163,9 @@ make_data(
   Optional dataframe of site-level covariates for the occupancy
   submodel. Must contain a `deploymentID` column with the same entries
   as `deployments`. Predictor columns must be `numeric` (continuous),
-  `factor` (unordered categorical), or `ordered factor` (ordinal).
+  `factor` (unordered categorical), or `ordered factor` (ordinal). If
+  multiple seasons, each `deploymentID` requires a value for each
+  `season` it was deployed.
 
 - detection_site_predictors:
 
@@ -287,7 +299,7 @@ The object also carries the following attributes, accessible via
 
 - `surveys`:
 
-  Character vector of start dates for each survey period.
+  Character vector of start dates for each survey period).
 
 - `species`:
 
@@ -310,6 +322,8 @@ The object also carries the following attributes, accessible via
 - `survey_length`:
 
 - `thin_minutes`:
+
+- `reference_date`:
 
 ## See also
 
