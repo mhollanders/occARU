@@ -23,21 +23,22 @@ aggregate_by_days <- function(dates, reference, survey_length = 1) {
 #' @noRd
 align_factor <- function(df, col, ref_levels, strict = FALSE) {
   df_name <- deparse(substitute(df))
-  check_cols_exist(df, {{ col }})
+  col_name <- rlang::as_name(rlang::enquo(col))
   df <- dplyr::mutate(df, {{ col }} := factor({{ col }}, levels = ref_levels))
   n_missing <- dplyr::filter(df, is.na({{ col }})) |> nrow()
   if (n_missing) {
     if (strict) {
       cli::cli_abort(
-        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col}} \\
-        values not found."
+        "{.arg {df_name}} contains {n_missing} record{?s} with \\
+        {.val {col_name}} values not found."
       )
     } else {
       cli::cli_warn(
-        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col}} \\
-        values not found. {?This record/These records} will be ignored."
+        "{.arg {df_name}} contains {n_missing} record{?s} with \\
+        {.val {col_name}} values not found. \\
+        {cli::qty(n_missing)}{?This record/These records} will be ignored."
       )
-      df <- tidyr::drop_na(df, col)
+      df <- tidyr::drop_na(df, {{ col }})
     }
   }
   df
@@ -121,6 +122,65 @@ check_cols_exist <- function(df, ...) {
   }
 }
 
+#' Check that unique deployments are aligned with the right season
+#'
+#' Aborts if deployments in one season start before the last deployment ended
+#' in the previous season.
+#'
+#' @param deployments A dataframe of deployment information, one row per
+#'   site and season. Must contain columns `deploymentID`, `deploymentStart`,
+#'   `deploymentEnd`, and `.season`.
+#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Default: `deploymentID`.
+#' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for deployment start dates. Must be a `Date`. Default:
+#'   `deploymentStart`.
+#' @param deploymentEnd <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for deployment end dates. Must be a `Date`. Default: `deploymentEnd`.
+#' @param .season <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for season. Default: `.season`.
+#' @noRd
+check_deployment_times <- function(
+  deployments,
+  deploymentID = deploymentID,
+  deploymentStart = deploymentStart,
+  deploymentEnd = deploymentEnd,
+  .season = .season
+) {
+  deployments <- dplyr::arrange(deployments, {{ deploymentID }}, {{ .season }})
+
+  last_first <- deployments |>
+    dplyr::summarise(
+      last = max({{ deploymentEnd }}),
+      first = min({{ deploymentStart }}),
+      .by = c({{ deploymentID }}, {{ .season }})
+    ) |>
+    dplyr::mutate(
+      prev_last = dplyr::lag(last),
+      .by = {{ deploymentID }}
+    )
+
+  wrong_deps <- dplyr::left_join(
+    deployments,
+    last_first,
+    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+  ) |>
+    dplyr::filter(
+      {{ deploymentStart }} < prev_last,
+      .by = {{ deploymentID }}
+    ) |>
+    dplyr::pull({{ deploymentID }})
+
+  if (length(wrong_deps)) {
+    cli::cli_abort(
+      "The following {.arg deploymentID}{?s} in {.arg deployments} contain \\
+      {.arg deploymentStart} that occur before the last {.arg deploymentEnd} \\
+      of the previous season: {.val {wrong_deps}}. All deployment periods in \\
+      each season must occur before the start of the next season."
+    )
+  }
+}
+
 #' Check that all factor levels are present in the data
 #'
 #' Aborts if any factor column contains levels with no corresponding rows.
@@ -175,22 +235,68 @@ check_mixed_predictors <- function(df, ...) {
 
 #' Check that survey predictors cover the full deployment period for each site
 #'
-#' @param survey_predictors A dataframe of survey-level predictors. Must
-#'    contain columns `deploymentID` and `date`.
+#' @param site_predictors A dataframe of site-level predictors. Must contain
+#'   columns `deploymentID` and `.season`.
 #' @param deployments A dataframe of deployment information, one row per
-#'   site. Must contain columns `deploymentID`, `deploymentStart`, and
-#'   `deploymentEnd`.
+#'   site. Must contain columns `deploymentID` and `season`.
 #' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Must be a factor with identical levels in
 #'   `deployments` and `survey_predictors`. Default: `deploymentID`.
-#' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for deployment start dates in `deployments`. Must be a `Date`.
-#'   Default: `deploymentStart`.
-#' @param deploymentEnd <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for deployment end dates in `deployments`. Must be a `Date`.
-#'   Default: `deploymentEnd`.
-#' @param date <[`data-masking`][rlang::args_data_masking]> Column name for
-#'   dates in `survey_predictors`. Default: `date`.
+#' @param .season <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for season. Must be a factor with identical levels in `deployments`
+#'   and `survey_predictors`. Default: `.season`.
+#' @noRd
+check_site_predictors_coverage <- function(
+  site_predictors,
+  deployments,
+  deploymentID = deploymentID,
+  .season = .season,
+  verbose = TRUE
+) {
+  df_name <- deparse(substitute(site_predictors))
+  site_lvl <- dplyr::pull(deployments, {{ deploymentID }}) |> levels()
+  complete <- dplyr::right_join(
+    site_predictors,
+    dplyr::distinct(deployments, {{ deploymentID }}, {{ .season }}),
+    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+  ) |>
+    tidyr::drop_na() |>
+    dplyr::pull({{ deploymentID }})
+  missing <- setdiff(site_lvl, complete)
+  if (length(missing)) {
+    cli::cli_abort(
+      "{.arg {df_name}} has incomplete predictor values for the following \\
+      {.arg deploymentID}: {.vals {missing}}. Predictor values must be \\
+      supplied for each season a {.arg deploymentID} was active."
+    )
+  } else if (verbose) {
+    cli::cli_alert_success(
+      "{.arg {df_name}} covers the full deployment period."
+    )
+  }
+}
+
+#' Check that survey predictors cover the full deployment period for each site
+#'
+#' @param survey_predictors A dataframe of survey-level predictors. Must
+#'    contain columns `deploymentID`, `.season`, and `date`.
+#' @param deployments A dataframe of deployment information, one row per
+#'   site. Must contain columns `deploymentID`, `deploymentStart`,
+#'   `deploymentEnd`, and `season`.
+#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Must be a factor with identical levels in
+#'   `deployments` and `survey_predictors`. Default: `deploymentID`.
+#' @param deploymentStart `Date`. <[`data-masking`][rlang::args_data_masking]>
+#'   Column name for deployment start dates in `deployments`. Default:
+#'   `deploymentStart`.
+#' @param deploymentEnd `Date`. <[`data-masking`][rlang::args_data_masking]>
+#'   Column name for deployment end dates in `deployments`. Default:
+#'   `deploymentEnd`.
+#' @param .season <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for season. Must be a factor with identical levels in `deployments`
+#'   and `survey_predictors`. Default: `.season`.
+#' @param date `Date`. <[`data-masking`][rlang::args_data_masking]> Column name
+#'   for dates in `survey_predictors`. Default: `date`.
 #' @noRd
 check_survey_predictors_coverage <- function(
   survey_predictors,
@@ -198,6 +304,7 @@ check_survey_predictors_coverage <- function(
   deploymentID = deploymentID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
+  .season = .season,
   date = date,
   verbose = TRUE
 ) {
@@ -205,16 +312,17 @@ check_survey_predictors_coverage <- function(
     dplyr::summarise(
       first = min({{ date }}),
       last = max({{ date }}),
-      .by = {{ deploymentID }}
+      .by = c({{ deploymentID }}, {{ .season }})
     ) |>
     dplyr::left_join(
       deployments |>
         dplyr::select(
           {{ deploymentID }},
           {{ deploymentStart }},
-          {{ deploymentEnd }}
+          {{ deploymentEnd }},
+          {{ .season }}
         ),
-      by = dplyr::join_by({{ deploymentID }})
+      by = dplyr::join_by({{ deploymentID }}, {{ .season }})
     )
 
   incomplete <- first_last |>
@@ -247,6 +355,35 @@ classify_predictors <- function(df) {
     categorical = names(purrr::keep(df, \(x) is.factor(x) && !is.ordered(x))),
     ordinal = names(purrr::keep(df, is.ordered))
   )
+}
+
+#' Check that end dates are after start dates
+#'
+#' @param df A dataframe.
+#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Default: `deploymentID`.
+#' @param start <[`data-masking`][rlang::args_data_masking]> `Date`. Column name
+#'   for start dates to check. Default: `deploymentStart`.
+#' @param end <[`data-masking`][rlang::args_data_masking]> `Date`. Column name
+#'   for end dates to check. Default: `deploymentEnd`.
+#' @noRd
+check_dates <- function(
+  df,
+  deploymentID = deploymentID,
+  start = deploymentStart,
+  end = deploymentEnd
+) {
+  df_name <- deparse(substitute(df))
+  wrong_sites <- df |>
+    dplyr::filter({{ end }} <= {{ start }}) |>
+    dplyr::distinct({{ deploymentID }}) |>
+    dplyr::pull({{ deploymentID }})
+  if (length(wrong_sites)) {
+    cli::cli_abort(
+      "The following {.arg deploymentID} in {.arg {df_name}} have end \\
+      times before start times: {.val {wrong_sites}}."
+    )
+  }
 }
 
 #' Project site coordinates from WGS84 to UTM
@@ -311,332 +448,6 @@ coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
   list(XY = XY, utm_crs = utm_crs)
 }
 
-#' Extract factor levels from an encoder output
-#'
-#' @param enc Output of `encode_predictors()` or `NULL`.
-#' @return A named list with elements `cat` and `ord`, each a named list of
-#'   character vectors.
-#' @noRd
-enc_levels <- function(enc) {
-  if (is.null(enc)) {
-    NULL
-  }
-  list(
-    cat = if (!rlang::is_empty(enc$C)) enc$C,
-    ord = if (!rlang::is_empty(enc$O)) enc$O
-  )
-}
-
-#' Encode a predictor dataframe for the occARU Stan model
-#'
-#' Splits a predictor dataframe into separate matrices/arrays for continuous,
-#' categorical, and ordinal predictors, optionally scaling continuous
-#' predictors, and extracts factor levels for use in the Stan model and for
-#' post-processing.
-#'
-#' @param df A dataframe of predictors including the deployment ID column,
-#'   and for survey mode a date column. If `NULL`, returns `NULL` immediately.
-#' @param mode Character. Either `"site"` (returns `[I, P]` matrices) or
-#'   `"survey"` (returns `[I, P, J]` arrays).
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Name of the
-#'   site column.
-#' @param date <[`data-masking`][rlang::args_data_masking]> Name of the date
-#'   column.
-#' @param reference_date A `Date` defining the start of the first survey
-#'   period.
-#' @param scale_predictors Logical. If `TRUE` (default), continuous predictors
-#'   are scaled to zero mean and unit variance. When `mode = "survey"`, scaling
-#'   parameters are derived from the site-averaged values per survey period
-#'   rather than the raw site-by-survey values.
-#' @param summary_functions An optional named list mapping continuous survey
-#'   predictor column names to summary functions, used when aggregating survey
-#'   predictors over `survey_length`-length periods. Each value can be a
-#'   function name as a string (e.g. `"sum"`) or a function object (e.g. `sum`).
-#'   Numeric predictors not named in `summary_functions` are summarised with
-#'   `mean`; categorical and ordinal
-#' @param survey_length Positive integer. Number of days per survey period. Only
-#'   used when `mode = "survey"`.
-#'
-#' @return A named list or `NULL` if `df` is `NULL`:
-#'   \describe{
-#'     \item{`X`}{Continuous predictor matrix `[I, P]` or array `[I, P, J]`.}
-#'     \item{`X_cat`}{Categorical integer matrix `[I, P_cat]` or array
-#'       `[I, P_cat, J]`.}
-#'     \item{`X_ord`}{Ordinal integer matrix `[I, P_ord]` or array
-#'       `[I, P_ord, J]`.}
-#'     \item{`C`}{Named list of factor levels per categorical predictor.}
-#'     \item{`O`}{Named list of factor levels per ordinal predictor.}
-#'     \item{`scale_params`}{Named list of `list(mean, sd)` per continuous
-#'       predictor, or `NULL`.}
-#'   }
-#' @noRd
-encode_predictors <- function(
-  df,
-  mode = c("site", "survey"),
-  deploymentID,
-  date = NULL,
-  site_lvl,
-  surveys = NULL,
-  reference_date,
-  scale_predictors = TRUE,
-  summary_functions = NULL,
-  survey_length = 1
-) {
-  mode <- match.arg(mode)
-
-  # produce empty matrix and array
-  I <- length(site_lvl)
-  if (mode == "site") {
-    empty_matrix <- matrix(
-      0L,
-      nrow = 0,
-      ncol = I,
-      dimnames = list(NULL, site_lvl)
-    )
-  } else {
-    J <- length(surveys)
-    empty_array <- array(
-      0L,
-      dim = c(I, 0, J),
-      dimnames = list(site_lvl, NULL, as.character(surveys))
-    )
-  }
-
-  # return empties
-  if (is.null(df)) {
-    if (mode == "site") {
-      list(
-        X = empty_matrix,
-        X_cat = empty_matrix,
-        X_ord = empty_matrix
-      )
-    } else {
-      list(
-        X = empty_array,
-        X_cat = empty_array,
-        X_ord = empty_array
-      )
-    }
-  } else {
-    # classify
-    df_pred <- df |>
-      dplyr::select(-{{ deploymentID }})
-    if (mode == "survey") {
-      df_pred <- df_pred |>
-        dplyr::select(-{{ date }})
-    }
-    pred_cols <- colnames(df_pred)
-    types <- classify_predictors(df_pred)
-    num_cols <- types$numeric
-    cat_cols <- types$categorical
-    ord_cols <- types$ordinal
-    fct_cols <- c(cat_cols, ord_cols)
-
-    P <- length(num_cols)
-    P_cat <- length(cat_cols)
-    C <- lapply(df[cat_cols], levels)
-    P_ord <- length(ord_cols)
-    O <- lapply(df[ord_cols], levels)
-
-    # check factors and convert to integers
-    single_cat <- names(C)[sapply(C, length) < 2]
-    if (length(single_cat)) {
-      cli::cli_abort(
-        "The following categorical predictor{?s} {?has/have} fewer than 2 \\
-        levels: {.val {single_cat}}. Remove {?it/them} before passing to \\
-        {.fun make_data}."
-      )
-    }
-
-    double_ord <- names(O)[sapply(O, length) < 3]
-    if (length(double_ord)) {
-      cli::cli_abort(
-        "The following ordinal predictor{?s} {?has/have} fewer than 3 levels: \\
-        {.val {double_ord}}. Should be supplied as categorical instead?"
-      )
-    }
-
-    check_empty_levels(df, !!!rlang::syms(fct_cols))
-
-    df <- df |>
-      dplyr::mutate(
-        dplyr::across(dplyr::all_of(fct_cols), as.integer)
-      )
-
-    # survey aggregation
-    if (mode == "survey") {
-      # check summary functions
-      if (!is.null(summary_functions)) {
-        unknown <- setdiff(names(summary_functions), pred_cols)
-        if (length(unknown)) {
-          cli::cli_abort(
-            "The following predictors in {.arg summary_functions} were not \\
-            found in {.arg survey_predictors}: {.val {unknown}}."
-          )
-        }
-
-        invalid_fns <- names(purrr::discard(
-          summary_functions,
-          ~ is.function(.) || exists(as.character(.), mode = "function")
-        ))
-        if (length(invalid_fns)) {
-          cli::cli_abort(
-            "The following entries in {.arg summary_functions} have invalid \\
-            functions: {.val {invalid_fns}}."
-          )
-        }
-
-        overrides <- intersect(names(summary_functions), fct_cols)
-        if (length(overrides)) {
-          cli::cli_warn(
-            "Ignoring {.arg summary_functions} entries for non-numeric \\
-            predictor{?s} {.val {overrides}}. Factor and ordinal predictors \\
-            always use modal aggregation."
-          )
-        }
-      }
-
-      # produce final summary functions
-      summary_fns <- purrr::set_names(pred_cols) |>
-        purrr::map(
-          ~ {
-            if (
-              . %in%
-                num_cols &&
-                !is.null(summary_functions) &&
-                . %in% names(summary_functions)
-            ) {
-              match.fun(summary_functions[[.]])
-            } else if (. %in% num_cols) {
-              mean
-            } else {
-              int_mode
-            }
-          }
-        )
-
-      if (survey_length == 1L) {
-        df <- dplyr::mutate(df, survey = {{ date }})
-      } else {
-        df <- df |>
-          dplyr::mutate(
-            survey = aggregate_by_days(
-              {{ date }},
-              reference_date,
-              survey_length
-            )
-          ) |>
-          dplyr::summarise(
-            dplyr::across(
-              dplyr::all_of(pred_cols),
-              ~ summary_fns[[dplyr::cur_column()]](.)
-            ),
-            .by = c({{ deploymentID }}, survey)
-          )
-      }
-      surveys <- unique(df$survey)
-      J <- length(surveys)
-    }
-
-    # scale continuous predictors
-    scale_params <- NULL
-    if (scale_predictors && P) {
-      if (mode == "site") {
-        scale_params <- scaling_parameters(df, num_cols)
-        df <- df |>
-          dplyr::mutate(
-            dplyr::across(
-              all_of(num_cols),
-              ~ (. - scale_params[[dplyr::cur_column()]][1]) /
-                scale_params[[dplyr::cur_column()]][2]
-            )
-          )
-      } else {
-        # use survey values averaged across sites for scaling
-        df_num <- df |>
-          dplyr::select(-dplyr::all_of(fct_cols))
-        survey_means <- df_num |>
-          dplyr::summarise(
-            dplyr::across(dplyr::all_of(num_cols), mean),
-            .by = survey
-          )
-        scale_params <- scaling_parameters(survey_means, num_cols)
-        df <- df |>
-          dplyr::mutate(
-            dplyr::across(
-              all_of(num_cols),
-              ~ (. - scale_params[[dplyr::cur_column()]][1]) /
-                scale_params[[dplyr::cur_column()]][2]
-            )
-          )
-      }
-    }
-
-    # build return matrices/arrays
-    if (mode == "site") {
-      to_matrix <- function(df, cols) {
-        if (length(cols)) {
-          df |>
-            dplyr::select({{ deploymentID }}, dplyr::all_of(cols)) |>
-            tibble::column_to_rownames(rlang::as_name(rlang::enquo(
-              deploymentID
-            ))) |>
-            t()
-        } else {
-          empty_matrix
-        }
-      }
-
-      X <- to_matrix(df, num_cols)
-      X_cat <- to_matrix(df, cat_cols)
-      X_ord <- to_matrix(df, ord_cols)
-    } else {
-      to_array <- function(df, cols) {
-        P <- length(cols)
-        if (P) {
-          df |>
-            dplyr::select({{ deploymentID }}, survey, dplyr::all_of(cols)) |>
-            tidyr::complete(
-              {{ deploymentID }},
-              survey,
-              fill = as.list(purrr::set_names(
-                ifelse(cols %in% num_cols, 0L, 1L),
-                cols
-              ))
-            ) |>
-            tidyr::pivot_longer(
-              dplyr::all_of(cols),
-              names_to = "p",
-              values_to = "x"
-            ) |>
-            dplyr::mutate(p = factor(p, levels = num_cols)) |>
-            dplyr::arrange(survey, p, {{ deploymentID }}) |>
-            dplyr::pull(x) |>
-            array(
-              c(I, P, J),
-              dimnames = list(site_lvl, cols, as.character(surveys))
-            )
-        } else {
-          empty_array
-        }
-      }
-
-      X <- to_array(df, num_cols)
-      X_cat <- to_array(df, cat_cols)
-      X_ord <- to_array(df, ord_cols)
-    }
-
-    list(
-      X = X,
-      X_cat = X_cat,
-      X_ord = X_ord - 1, # 0 is reference
-      C = C,
-      O = O,
-      scale_params = scale_params
-    )
-  }
-}
-
 #' Remove observations outside deployment window
 #'
 #' @param deployments A dataframe of deployment information, one row per
@@ -666,25 +477,29 @@ filter_observations_window <- function(
   deploymentID = deploymentID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
-  eventStart = eventStart
+  eventStart = eventStart,
+  .season = .season
 ) {
   n_before <- nrow(observations)
   cli::cli_inform("Starting with {n_before} events...")
-  observations <- observations |>
-    dplyr::left_join(
-      deployments |>
-        dplyr::select(
-          {{ deploymentID }},
-          {{ deploymentStart }},
-          {{ deploymentEnd }}
-        ),
-      by = dplyr::join_by({{ deploymentID }})
+  observations <- dplyr::left_join(
+    observations,
+    deployments |>
+      dplyr::select(
+        {{ deploymentID }},
+        {{ deploymentStart }},
+        {{ deploymentEnd }},
+        {{ .season }}
+      ),
+    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+  ) |>
+    dplyr::filter(
+      dplyr::between(
+        lubridate::as_date({{ eventStart }}),
+        {{ deploymentStart }},
+        {{ deploymentEnd }},
+      ),
     ) |>
-    dplyr::filter(dplyr::between(
-      {{ eventStart }},
-      {{ deploymentStart }},
-      {{ deploymentEnd }}
-    )) |>
     dplyr::select(-c({{ deploymentStart }}, {{ deploymentEnd }}))
   n_removed <- n_before - nrow(observations)
   if (n_removed) {
