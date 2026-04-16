@@ -5,7 +5,7 @@
 ^docs$
 ^pkgdown$
 ^inst/stan/occARU$
-^inst/stan/occARUss$
+^inst/stan/occARU-ss$
 ^scratch$
 ^vignettes/\.quarto$
 ^\.github$

@@ -13,6 +13,7 @@ make_data(
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
+  season = season,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -31,10 +32,11 @@ make_data(
 }
 \arguments{
 \item{deployments}{A dataframe of deployment information, one row per
-site. Must contain columns \code{deploymentID}, \code{deploymentStart}, and
-\code{deploymentEnd} (or equivalents specified via the corresponding
-arguments). Optionally, \code{latitude} and \code{longitude} columns enable
-the spatial Gaussian process.}
+site (and potentially season). Must contain columns \code{deploymentID},
+\code{deploymentStart}, and \code{deploymentEnd} (or equivalents specified via the
+corresponding arguments). Optionally, \code{latitude} and \code{longitude} columns
+enable the spatial Gaussian process. If multiple seasons, must also contain
+column \code{season}.}
 
 \item{observations}{A dataframe of observation records. Must contain
 columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
@@ -63,6 +65,11 @@ Column name for WGS84 latitude in \code{deployments}. If omitted alongside
 
 \item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{numeric}.
 Column name for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
+
+\item{season}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column
+specifying season. The column must be a factor to ensure correct ordering.
+If the column is not present in \code{deployments}, all observations are treated
+as a single season. Default: \code{season}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Column name for observation timestamps in \code{observations}. Default:
@@ -106,7 +113,8 @@ Default: \code{"midday"}.}
 covariates for the occupancy submodel. Must contain a \code{deploymentID} column
 with the same entries as \code{deployments}. Predictor columns must be \code{numeric}
 (continuous), \code{factor} (unordered categorical), or \verb{ordered factor}
-(ordinal).}
+(ordinal). If multiple seasons, each \code{deploymentID} requires a value for
+each \code{season} it was deployed.}
 
 \item{detection_site_predictors}{Optional dataframe of site-level
 covariates for the detection submodel. Same column-type rules as
@@ -175,7 +183,7 @@ The object also carries the following attributes, accessible via
 \describe{
 \item{\code{sites}}{Character vector of site identifiers.}
 \item{\code{surveys}}{Character vector of start dates for each survey
-period.}
+period).}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates
@@ -187,6 +195,7 @@ standardise continuous predictors, or \code{NULL} if
 predictors}
 \item{\code{survey_length}}{}
 \item{\code{thin_minutes}}{}
+\item{\code{reference_date}}{}
 }
 }
 \description{

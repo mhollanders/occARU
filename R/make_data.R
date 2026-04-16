@@ -153,8 +153,8 @@
 #'
 #' @seealso [fit_model()], [thin_observations()], [find_failures()]
 #'   The model is described in detail in `vignette("model", package = "occARU")`.
-#' @noRd
-make_data2 <- function(
+#' @export
+make_data <- function(
   deployments,
   observations,
   failures = NULL,
