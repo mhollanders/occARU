@@ -452,7 +452,7 @@ make_data <- function(
   ) |>
     tidyr::complete(
       {{ deploymentID }} := factor(site_lvl, site_lvl),
-      .survey_idx = 1:J_max,
+      .survey_idx,
       .season = factor(season_lvl, season_lvl),
       {{ scientificName }} := factor(species_lvl, species_lvl),
       fill = list(.y = 0)
@@ -460,7 +460,7 @@ make_data <- function(
     dplyr::arrange(
       {{ scientificName }},
       .season,
-      .survey,
+      .survey_idx,
       {{ deploymentID }}
     ) |>
     dplyr::pull(.y) |>
@@ -541,7 +541,7 @@ make_data <- function(
       occupancy_site_predictors,
       deployments,
       {{ deploymentID }},
-      {{ .season }},
+      .season,
       verbose = FALSE
     )
     check_mixed_predictors(occupancy_site_predictors, {{ deploymentID }})
@@ -585,7 +585,7 @@ make_data <- function(
       detection_site_predictors,
       deployments,
       {{ deploymentID }},
-      {{ .season }},
+      .season,
       verbose = FALSE
     )
     check_mixed_predictors(detection_site_predictors, {{ deploymentID }})
@@ -625,7 +625,7 @@ make_data <- function(
       {{ deploymentID }},
       {{ deploymentStart }},
       {{ deploymentEnd }},
-      {{ .season }},
+      .season,
       {{ date }},
       verbose = FALSE
     )
@@ -638,7 +638,7 @@ make_data <- function(
     occupancy_site_predictors,
     "site",
     {{ deploymentID }},
-    {{ .season }},
+    .season,
     site_lvl = site_lvl,
     season_lvl = season_lvl,
     scale_predictors = scale_predictors
@@ -652,7 +652,7 @@ make_data <- function(
       detection_site_predictors,
       "site",
       {{ deploymentID }},
-      {{ .season }},
+      .season,
       site_lvl = site_lvl,
       season_lvl = season_lvl,
       scale_predictors = scale_predictors
@@ -670,7 +670,7 @@ make_data <- function(
     survey_predictors,
     "survey",
     {{ deploymentID }},
-    {{ .season }},
+    .season,
     {{ date }},
     site_lvl = site_lvl,
     season_lvl = season_lvl,

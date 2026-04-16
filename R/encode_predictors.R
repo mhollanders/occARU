@@ -197,31 +197,27 @@ encode_predictors <- function(
           }
         )
 
-      if (survey_length == 1L) {
-        df <- dplyr::mutate(df, survey = {{ date }})
-      } else {
-        df <- dplyr::left_join(df, reference_dates, by = ".season") |>
-          dplyr::mutate(
-            .survey = aggregate_by_days(
-              {{ date }},
-              reference,
-              survey_length
-            ),
-            .by = ".season"
-          ) |>
-          dplyr::semi_join(surveys, by = c(".season", ".survey")) |>
-          dplyr::summarise(
-            dplyr::across(
-              dplyr::all_of(pred_cols),
-              ~ summary_fns[[dplyr::cur_column()]](.)
-            ),
-            .by = c({{ deploymentID }}, .survey)
-          )
-      }
-
-      # join survey indices
-      df <- dplyr::left_join(df, surveys, by = ".survey")
+      df <- dplyr::left_join(df, reference_dates, by = ".season") |>
+        dplyr::mutate(
+          .survey = aggregate_by_days(
+            {{ date }},
+            reference,
+            survey_length
+          ),
+          .by = ".season"
+        ) |>
+        dplyr::left_join(surveys, by = c(".season", ".survey")) |>
+        dplyr::summarise(
+          dplyr::across(
+            dplyr::all_of(pred_cols),
+            ~ summary_fns[[dplyr::cur_column()]](.)
+          ),
+          .by = c({{ deploymentID }}, .season, .survey, .survey_idx)
+        )
     }
+
+    # join survey indices
+    # df <- dplyr::left_join(df, surveys, by = ".survey")
 
     # scale continuous predictors
     scale_params <- NULL
