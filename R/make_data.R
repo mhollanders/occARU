@@ -185,12 +185,12 @@ make_data <- function(
     {{ deploymentStart }},
     {{ deploymentEnd }}
   )
-  check_dates(
-    deployments,
-    {{ deploymentID }},
-    {{ deploymentStart }},
-    {{ deploymentEnd }}
-  )
+  # check_dates(
+  #   deployments,
+  #   {{ deploymentID }},
+  #   {{ deploymentStart }},
+  #   {{ deploymentEnd }}
+  # )
   if (is.factor(deployments |> dplyr::pull({{ deploymentID }}))) {
     check_empty_levels(deployments, {{ deploymentID }})
   } else {
@@ -233,12 +233,12 @@ make_data <- function(
     )
     failures <- align_factor(failures, {{ deploymentID }}, site_lvl)
     check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
-    check_dates(
-      failures,
-      {{ deploymentID }},
-      {{ failureStart }},
-      {{ failureEnd }}
-    )
+    # check_dates(
+    #   failures,
+    #   {{ deploymentID }},
+    #   {{ failureStart }},
+    #   {{ failureEnd }}
+    # )
 
     failure_dates <- failures |>
       dplyr::select({{ deploymentID }}, {{ failureStart }}, {{ failureEnd }}) |>
@@ -541,54 +541,54 @@ make_data <- function(
     print()
 }
 
-#' Print method for occARU_data objects
-#'
-#' @param x A `occARU_data` object.
-#' @param ... Ignored.
-#' @keywords internal
-#' @export
-print.occARU_data <- function(x, ...) {
-  cli::cli_h1("occARU data")
-  P <- sapply(1:3, \(p) x$P[p] + x$P_cat[p] + x$P_ord[p])
-  cli::cli_dl(c(
-    "Sites (I)" = "{x$I}",
-    "Surveys (J)" = "{x$J}",
-    "Species (S)" = "{x$S}",
-    "Detections" = "{sum(x$y)}",
-    "Site coordinates" = "{ifelse(any(x$XY != 0), 'yes', 'no')}",
-    "Deployment span" = "{attr(x, 'surveys')[1]} to \\
-                        {attr(x, 'surveys')[x$J]}",
-    "Survey length" = "{attr(x, 'survey_length')} day{?s}",
-    "Thinning" = "{ifelse(!is.null(attr(x, 'thin_minutes')),
-                            paste(attr(x, 'thin_minutes'), 'minutes'), 'none')}",
-    "Occupancy predictors" = P[1]
-  ))
-  if (P[1]) {
-    cli::cli_bullets(c(
-      " " = "Continuous: {x$P[1]}",
-      " " = "Categorical: {x$P_cat[1]}",
-      " " = "Ordinal: {x$P_ord[1]}"
-    ))
-  }
-  cli::cli_dl(c(
-    "Detection site predictors" = P[2]
-  ))
-  if (P[2]) {
-    cli::cli_bullets(c(
-      " " = "Continuous: {x$P[2]}",
-      " " = "Categorical: {x$P_cat[2]}",
-      " " = "Ordinal: {x$P_ord[2]}"
-    ))
-  }
-  cli::cli_dl(c(
-    "Survey predictors" = P[3]
-  ))
-  if (P[3]) {
-    cli::cli_bullets(c(
-      " " = "Continuous: {x$P[3]}",
-      " " = "Categorical: {x$P_cat[3]}",
-      " " = "Ordinal: {x$P_ord[3]}"
-    ))
-  }
-  invisible(x)
-}
+#' #' Print method for occARU_data objects
+#' #'
+#' #' @param x A `occARU_data` object.
+#' #' @param ... Ignored.
+#' #' @keywords internal
+#' #' @export
+#' print.occARU_data <- function(x, ...) {
+#'   cli::cli_h1("occARU data")
+#'   P <- sapply(1:3, \(p) x$P[p] + x$P_cat[p] + x$P_ord[p])
+#'   cli::cli_dl(c(
+#'     "Sites (I)" = "{x$I}",
+#'     "Surveys (J)" = "{x$J}",
+#'     "Species (S)" = "{x$S}",
+#'     "Detections" = "{sum(x$y)}",
+#'     "Site coordinates" = "{ifelse(any(x$XY != 0), 'yes', 'no')}",
+#'     "Deployment span" = "{attr(x, 'surveys')[1]} to \\
+#'                         {attr(x, 'surveys')[x$J]}",
+#'     "Survey length" = "{attr(x, 'survey_length')} day{?s}",
+#'     "Thinning" = "{ifelse(!is.null(attr(x, 'thin_minutes')),
+#'                             paste(attr(x, 'thin_minutes'), 'minutes'), 'none')}",
+#'     "Occupancy predictors" = P[1]
+#'   ))
+#'   if (P[1]) {
+#'     cli::cli_bullets(c(
+#'       " " = "Continuous: {x$P[1]}",
+#'       " " = "Categorical: {x$P_cat[1]}",
+#'       " " = "Ordinal: {x$P_ord[1]}"
+#'     ))
+#'   }
+#'   cli::cli_dl(c(
+#'     "Detection site predictors" = P[2]
+#'   ))
+#'   if (P[2]) {
+#'     cli::cli_bullets(c(
+#'       " " = "Continuous: {x$P[2]}",
+#'       " " = "Categorical: {x$P_cat[2]}",
+#'       " " = "Ordinal: {x$P_ord[2]}"
+#'     ))
+#'   }
+#'   cli::cli_dl(c(
+#'     "Survey predictors" = P[3]
+#'   ))
+#'   if (P[3]) {
+#'     cli::cli_bullets(c(
+#'       " " = "Continuous: {x$P[3]}",
+#'       " " = "Categorical: {x$P_cat[3]}",
+#'       " " = "Ordinal: {x$P_ord[3]}"
+#'     ))
+#'   }
+#'   invisible(x)
+#' }
