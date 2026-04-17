@@ -10,10 +10,11 @@ occARU fits Bayesian (multispecies) occupancy models with count observation
 models to autonomous recording unit (ARU) data like those derived from camera 
 traps and passive acoustic monitoring. The approach differs from standard 
 occupancy models in that the focus is on quantifying detection rates, rather 
-than treating detection as a nuisance parameter to correct for. It implements 
-hierarchical species-level random effects with spatial and temporal Gaussian 
-processes, variance decomposition via  global-local shrinkage priors, and is 
-built on [Stan](https://mc-stan.org/) via 
+than treating detection as a nuisance parameter to correct for. The 
+[occARU model](https://mhollanders.github.io/occARU/articles/model.html) 
+implements hierarchical species-level random effects with spatial and temporal 
+Gaussian processes, variance decomposition via  global-local shrinkage priors, 
+and is built on [Stan](https://mc-stan.org/) via 
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
 ## Installation

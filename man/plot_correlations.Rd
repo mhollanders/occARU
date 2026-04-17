@@ -38,5 +38,6 @@ Poisson OLREs.
 }
 \seealso{
 \code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
-\code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_partitions]{plot_partitions()}}
+\code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_partitions]{plot_partitions()}},
+\code{\link[=plot_realised]{plot_realised()}}
 }

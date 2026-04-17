@@ -17,7 +17,8 @@
 #'   after the last detection and ends 2 days before the next detection.
 #'
 #' @return A dataframe with columns `deploymentID`, `failureStart`, and
-#'   `failureEnd`, one row per inferred failure period.
+#'   `failureEnd`, one row per inferred failure period, with `buffer_days`
+#'   stored as attribute.
 #' @export
 find_failures <- function(
   df,
@@ -27,7 +28,7 @@ find_failures <- function(
 ) {
   # checks
   check_cols_exist(
-    observations,
+    df,
     {{ deploymentID }},
     {{ eventStart }}
   )
@@ -38,7 +39,7 @@ find_failures <- function(
   }
 
   # produce failures
-  df |>
+  df <- df |>
     dplyr::arrange({{ deploymentID }}, {{ eventStart }}) |>
     dplyr::mutate(
       gap = difftime(
@@ -52,4 +53,6 @@ find_failures <- function(
     ) |>
     dplyr::filter(gap > 2 * buffer_days) |>
     dplyr::select({{ deploymentID }}, failureStart, failureEnd)
+  attr(df, "buffer_days") <- buffer_days
+  df
 }

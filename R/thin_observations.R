@@ -10,10 +10,9 @@
 #' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Default: `deploymentID`.
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
-#'   Column name for observation timestamps in `observations`. Default:
-#'   `eventStart`.
+#'   Column name for observation timestamps. Default: `eventStart`.
 #' @param scientificName <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for species names in `observations`. Default: `scientificName`.
+#'   name for species names. Default: `scientificName`.
 #' @param count <[`data-masking`][rlang::args_data_masking]> `integerish`.Column
 #'   name for number of individuals per observation record. Default: `count`.
 #' @param thin_minutes Non-negative numeric. Observations within `thin_minutes`
@@ -22,7 +21,7 @@
 #'
 #' @return A dataframe of thinned observation records, sorted by `deploymentID`,
 #'   `scientificName`, and `eventStart`, or the original dataframe if
-#'   `thin_minutes = 0`.
+#'   `thin_minutes = 0`, with `thin_minutes` stored as attribute.
 #' @seealso [make_data()]
 #' @export
 thin_observations <- function(
@@ -59,7 +58,8 @@ thin_observations <- function(
           {{ count }},
           with_ties = FALSE,
           by = c({{ deploymentID }}, {{ scientificName }}, cluster)
-        )
+        ) |>
+        dplyr::select(-cluster)
     } else if (thin_minutes < 0) {
       cli::cli_abort(
         "{.arg thin_minutes} must be a positive number of minutes, \\
@@ -72,6 +72,7 @@ thin_observations <- function(
     ({nrow(observations)} remaining)..."
     )
   }
+  attr(observations, "thin_minutes") <- thin_minutes
   observations
 }
 

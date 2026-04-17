@@ -98,6 +98,7 @@
 #'   matrix) rather than the raw `[I, P, J]` array, so that spatial variation
 #'   across sites does not inflate the scaling. Scaling parameters (means and
 #'   SDs) are stored as an attribute. Default: `TRUE`.
+#' @param verbose Logical. If `TRUE` (default), prints data.
 #'
 #' @return A named list of class `"occARU_data"` containing all inputs
 #'   required by the occARU Stan model, except for model specification
@@ -183,7 +184,8 @@ make_data <- function(
   survey_predictors = NULL,
   date = date,
   summary_functions = NULL,
-  scale_predictors = TRUE
+  scale_predictors = TRUE,
+  verbose = TRUE
 ) {
   # DEPLOYMENTS
   if (anyNA(deployments)) {
@@ -696,7 +698,7 @@ make_data <- function(
   P_ord <- c(nrow(enc1$X_ord), nrow(enc2$X_ord), dim(enc3$X_ord)[idx])
 
   # return
-  structure(
+  data <- structure(
     c(
       list(I = I),
       if (K == 1) {
@@ -744,8 +746,11 @@ make_data <- function(
     survey_length = survey_length,
     thin_minutes = thin_minutes,
     day_start = day_start
-  ) |>
-    print()
+  )
+  if (verbose) {
+    print(data)
+  }
+  invisible(data)
 }
 
 #' Print method for occARU_data objects
@@ -830,5 +835,4 @@ print.occARU_data <- function(x, ...) {
       " " = "Ordinal: {x$P_ord[3]}"
     ))
   }
-  invisible(x)
 }

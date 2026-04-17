@@ -39,7 +39,8 @@
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_sites()],
-#'   [plot_surveys()], [plot_correlations()], [plot_partitions()]
+#'   [plot_surveys()], [plot_correlations()], [plot_partitions()],
+#'   [plot_realised()]
 #' @export
 plot_coefficients <- function(
   fit,
@@ -137,7 +138,7 @@ plot_coefficients <- function(
 
   # get species indices
   if (level == "species") {
-    species_idx <- species_indices(species, species_lvl)
+    species_idx <- indices(species, species_lvl)
   } else {
     if (!is.null(species)) {
       cli::cli_warn(
@@ -453,7 +454,8 @@ plot_coefficients <- function(
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
-#'    [plot_sites()], [plot_surveys()], [plot_partitions()]
+#'   [plot_sites()], [plot_surveys()], [plot_partitions()],
+#'   [plot_realised()]
 #' @export
 plot_correlations <- function(
   fit,
@@ -474,7 +476,7 @@ plot_correlations <- function(
   }
   occARU_data <- attr(fit, "occARU_data")
   species_lvl <- attr(occARU_data, "species")
-  species_idx <- species_indices(species, species_lvl)
+  species_idx <- indices(species, species_lvl)
   submodel <- match.arg(submodel, c("detection", "occupancy"))
 
   # extract correlations
@@ -603,7 +605,8 @@ plot_correlations <- function(
 #'   }
 #'
 #' @seealso [fit_model()], [plot_coefficients()], [plot_sites()],
-#'    [plot_surveys()], [plot_correlations()], [plot_partitions()]
+#'   [plot_surveys()], [plot_correlations()], [plot_partitions()],
+#'   [plot_realised()]
 #' @export
 plot_intercepts <- function(
   fit,
@@ -623,7 +626,7 @@ plot_intercepts <- function(
   # extract intercepts and label
   draws <- if (MS) {
     species_lvl <- attr(occARU_data, "species")
-    species_idx <- species_indices(species, species_lvl)
+    species_idx <- indices(species, species_lvl)
     tidybayes::spread_rvars(fit, alpha[s, d]) |>
       dplyr::filter(s %in% species_idx) |>
       dplyr::mutate(
@@ -709,7 +712,8 @@ plot_intercepts <- function(
 #'   }
 #'
 #' @seealso [fit_model()] [plot_intercepts()], [plot_coefficients()],
-#'    [plot_sites()], [plot_surveys()], [plot_correlations()]
+#'   [plot_sites()], [plot_surveys()], [plot_correlations()],
+#'   [plot_realised()]
 #' @export
 plot_partitions <- function(
   fit,
@@ -928,6 +932,79 @@ plot_partitions <- function(
   p
 }
 
+#' Plot realised occupancy proportions
+#'
+#' Plots species-level proportions of occupied sites,
+#' \eqn{\frac{\sum_{i = 1}^I z_{is}}{I}}.
+#'
+#' @param fit A fitted model object from [fit_model()].
+#' @param species `character`. Vector of species to plot. If `NULL` (default),
+#'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
+#' @param sites `character`. Vector of sites to use. If `NULL` (default), all
+#'   sites are used. Must be one of `attr(occARU_data, "sites")`.
+#' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
+#'
+#' @return A `ggplot` object with occARU-specific attributes attached:
+#'   \describe{
+#'     \item{`plot_data`}{The tibble used to produce the plot.}
+#'   }
+#'
+#' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
+#'   [plot_sites()], [plot_surveys()], [plot_correlations()],
+#'   [plot_partitions()]
+#'
+#' @export
+plot_realised <- function(fit, species = NULL, sites = NULL, ...) {
+  if (!inherits(fit, "CmdStanFit")) {
+    cli::cli_abort(
+      "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
+    )
+  }
+  stan_data <- attr(fit, "stan_data")
+  if (!stan_data$latent) {
+    cli::cli_abort(
+      "{.arg fit} does not have latent occupancy states because \\
+      {.fun fit_model} was run with {.arg latent = FALSE}."
+    )
+  }
+  occARU_data <- attr(fit, "occARU_data")
+  species_lvl <- attr(occARU_data, "species")
+  species_idx <- indices(species, species_lvl)
+  site_lvl <- attr(occARU_data, "sites")
+  site_idx <- indices(sites, site_lvl)
+
+  # extract draws and summarise
+  draws <- if (stan_data$S == 1) {
+    tidybayes::spread_rvars(fit, z[i]) |> dplyr::mutate(s = 1L)
+  } else {
+    tidybayes::spread_rvars(fit, z[i, s]) |>
+      dplyr::filter(s %in% species_idx)
+  }
+  draws <- draws |>
+    dplyr::filter(i %in% site_idx) |>
+    dplyr::mutate(
+      s = factor(species_lvl[s], levels = species_lvl[species_idx])
+    ) |>
+    dplyr::rename(species = s) |>
+    dplyr::summarise(
+      realised = posterior::rvar_sum(z) / length(site_idx),
+      .by = species
+    )
+
+  # plot
+  p <- ggplot2::ggplot(draws) +
+    ggplot2::aes(xdist = realised, y = fct_rev(species)) +
+    ggdist::stat_pointinterval(...) +
+    ggplot2::scale_x_continuous(
+      breaks = seq(0.2, 0.8, 0.2),
+      limits = c(0, 1),
+      expand = c(0, 0)
+    ) +
+    ggplot2::labs(x = "Realised Occupancy", y = "Species")
+  attr(p, "plot_data") <- draws
+  p
+}
+
 
 #' Plot site occupancy and detection rates
 #'
@@ -981,7 +1058,8 @@ plot_partitions <- function(
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
-#'   [plot_surveys()], [plot_correlations()], [plot_partitions()]
+#'   [plot_surveys()], [plot_correlations()], [plot_partitions()],
+#'   [plot_realised()]
 #'
 #' @export
 plot_sites <- function(
@@ -1039,18 +1117,8 @@ plot_sites <- function(
   }
 
   # get species and site indices
-  species_idx <- species_indices(species, species_lvl)
-  if (!is.null(sites)) {
-    unknown <- setdiff(sites, site_lvl)
-    if (length(unknown)) {
-      cli::cli_abort(
-        "The following sites were not found in the model: {.val {unknown}}."
-      )
-    }
-    site_idx <- which(site_lvl %in% sites)
-  } else {
-    site_idx <- 1:length(site_lvl)
-  }
+  species_idx <- indices(species, species_lvl)
+  site_idx <- indices(sites, site_lvl)
 
   # determine projection
   res <- TRUE
@@ -1482,7 +1550,8 @@ plot_sites <- function(
 #'   }
 #'
 #' @seealso [fit_model()], [plot_intercepts()], [plot_coefficients()],
-#'   [plot_sites()], [plot_correlations()], [plot_partitions()]
+#'   [plot_sites()], [plot_correlations()], [plot_partitions()],
+#'   [plot_realised()]
 #' @export
 plot_surveys <- function(
   fit,
@@ -1531,18 +1600,8 @@ plot_surveys <- function(
   }
 
   # get species and survey indices
-  species_idx <- species_indices(species, species_lvl)
-  if (!is.null(surveys)) {
-    unknown <- setdiff(surveys, surveys$.survey)
-    if (length(unknown)) {
-      cli::cli_abort(
-        "The following surveys were not found in the model: {.val {unknown}}."
-      )
-    }
-    survey_idx <- which(survey_lvl %in% surveys)
-  } else {
-    survey_idx <- 1:length(survey_lvl)
-  }
+  species_idx <- indices(species, species_lvl)
+  survey_idx <- indices(surveys, survey_lvl)
 
   # determine projection
   res <- TRUE
@@ -1842,24 +1901,28 @@ predictor_matrix_to_tibble <- function(X) {
     dplyr::mutate(p = as.integer(p), x = if (categorical) as.integer(x) else x)
 }
 
-#' Produce species indices based on supplied character vector of species
+
+#' Produce indices based on supplied character vector of names
 #'
-#' @param species Character vector species names. Default: `NULL`
-#' @param species_lvl Species levels of orginal data
-#' @return A vector of integers corresponding to species to retain
+#' @param names Character vector of names. Default: `NULL`
+#' @param levels Levels of orginal data
+#' @return A vector of integers corresponding to names to retain
 #' @noRd
-species_indices <- function(species = NULL, species_lvl) {
-  if (!is.null(species)) {
-    unknown <- setdiff(species, species_lvl)
+indices <- function(names = NULL, levels) {
+  arg_name <- deparse(substitute(names))
+  if (!is.null(names)) {
+    unknown <- setdiff(names, levels)
     if (length(unknown)) {
       cli::cli_abort(
-        "The following species were not found in the model: {.val {unknown}}."
+        "The following {arg_name} were not found in the model: \\
+        {.val {unknown}}."
       )
     }
-    species_idx <- which(species_lvl %in% species)
+    idx <- which(levels %in% names)
   } else {
-    species_idx <- 1:length(species_lvl)
+    idx <- 1:length(levels)
   }
+  idx
 }
 
 #' occARU ggplot2 theme

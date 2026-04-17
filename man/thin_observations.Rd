@@ -22,11 +22,10 @@ columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code
 name for sites (ARUs). Default: \code{deploymentID}.}
 
 \item{scientificName}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for species names in \code{observations}. Default: \code{scientificName}.}
+name for species names. Default: \code{scientificName}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
-Column name for observation timestamps in \code{observations}. Default:
-\code{eventStart}.}
+Column name for observation timestamps. Default: \code{eventStart}.}
 
 \item{count}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{integerish}.Column
 name for number of individuals per observation record. Default: \code{count}.}
@@ -38,7 +37,7 @@ observation, retaining the record with the highest \code{count}. Default: \code{
 \value{
 A dataframe of thinned observation records, sorted by \code{deploymentID},
 \code{scientificName}, and \code{eventStart}, or the original dataframe if
-\code{thin_minutes = 0}.
+\code{thin_minutes = 0}, with \code{thin_minutes} stored as attribute.
 }
 \description{
 Removes redundant detections by grouping consecutive records within

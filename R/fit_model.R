@@ -273,10 +273,6 @@ fit_model <- function(
   # log model components
   cli::cli_inform(c(
     "Components: ",
-    " " = "Variance decomposition: \\
-          {switch(variance_decomposition,
-                  'dirichlet' = 'Dirichlet',
-                  'logistic-normal' = 'Logistic-normal')}",
     " " = "Spatial effects: {switch(spatial, 'gp' = 'GP', 'mvn' = 'MVN',
                                              'none' = 'None')}, \\
            Temporal effects: {switch(temporal, 'gp' = 'GP', 'mvn' = 'MVN',
@@ -296,11 +292,14 @@ fit_model <- function(
               {if (species_length_scales) 'yes' else 'no'}"
       )
     },
-
     " " = "Overdispersion: {switch(overdispersion,
                                    'none' = 'None (Poisson)',
                                    'olre' = 'OLRE (Poisson)',
                                    'nb' = 'Negative Binomial')}",
+    " " = "Variance decomposition: \\
+          {switch(variance_decomposition,
+                  'dirichlet' = 'Dirichlet',
+                  'logistic-normal' = 'Logistic-normal')}",
     " " = "Latent occupancy: {if (latent) 'yes' else 'no'}",
     " " = "Posterior predictions: \\
            {switch(ppc, 'Q' = 'Q only', 'y' = 'y only',

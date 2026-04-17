@@ -28,7 +28,8 @@ after the last detection and ends 2 days before the next detection.}
 }
 \value{
 A dataframe with columns \code{deploymentID}, \code{failureStart}, and
-\code{failureEnd}, one row per inferred failure period.
+\code{failureEnd}, one row per inferred failure period, with \code{buffer_days}
+stored as attribute.
 }
 \description{
 Identifies potential failure periods by searching for unusually long gaps

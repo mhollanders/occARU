@@ -27,7 +27,8 @@ make_data(
   survey_predictors = NULL,
   date = date,
   summary_functions = NULL,
-  scale_predictors = TRUE
+  scale_predictors = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -145,6 +146,8 @@ parameters derived from site-averaged values per survey period (a \verb{[P, J]}
 matrix) rather than the raw \verb{[I, P, J]} array, so that spatial variation
 across sites does not inflate the scaling. Scaling parameters (means and
 SDs) are stored as an attribute. Default: \code{TRUE}.}
+
+\item{verbose}{Logical. If \code{TRUE} (default), prints data.}
 }
 \value{
 A named list of class \code{"occARU_data"} containing all inputs
@@ -155,7 +158,7 @@ arguments which are added by \code{\link[=fit_model]{fit_model()}}. The list con
 \item{\code{J}}{Number of survey periods.}
 \item{\code{K}}{Number of seasons (if multiseason).}
 \item{\code{S}}{Number of species.}
-\item{\code{Delta}}{\verb{[I, J(, K)]} matrix of recording effort (0-1).}
+\item{\code{Delta}}{\verb{[I, J(, K)]} array of recording effort (0-1).}
 \item{\code{y}}{\verb{[I, J(, K), S]} array of detection counts.}
 \item{\code{XY}}{\verb{[I, 2]} matrix of UTM coordinates in km, or zeros if
 coordinates not supplied.}
@@ -188,8 +191,7 @@ The object also carries the following attributes, accessible via
 \item{\code{sites}}{Character vector of site identifiers.}
 \item{\code{surveys}}{tibble of start dates and indices for each survey
 period per season.}
-\item{\code{seasons}}{Character vector of season identifiers (if
-multiseason).}
+\item{\code{seasons}}{Character vector of season identifiers.}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates
