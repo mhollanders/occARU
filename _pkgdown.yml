@@ -24,6 +24,7 @@ reference:
       - plot_sites
       - plot_surveys
       - plot_partitions
+      - plot_realised
   - title: Helpers
     contents:
       - setup_occARU
