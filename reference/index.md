@@ -23,6 +23,8 @@
   : Plot temporal detection rates
 - [`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)
   : Plot variance partitions
+- [`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)
+  : Plot realised occupancy proportions
 
 ## Helpers
 

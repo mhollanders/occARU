@@ -104,4 +104,5 @@ A `ggplot` object with occARU-specific attributes attached:
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),
 [`plot_correlations()`](https://mhollanders.github.io/occARU/reference/plot_correlations.md),
-[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)
+[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md),
+[`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)

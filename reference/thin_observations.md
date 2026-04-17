@@ -34,14 +34,13 @@ thin_observations(
 - scientificName:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  Column name for species names in `observations`. Default:
-  `scientificName`.
+  Column name for species names. Default: `scientificName`.
 
 - eventStart:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  `POSIXt`. Column name for observation timestamps in `observations`.
-  Default: `eventStart`.
+  `POSIXt`. Column name for observation timestamps. Default:
+  `eventStart`.
 
 - count:
 
@@ -59,7 +58,7 @@ thin_observations(
 
 A dataframe of thinned observation records, sorted by `deploymentID`,
 `scientificName`, and `eventStart`, or the original dataframe if
-`thin_minutes = 0`.
+`thin_minutes = 0`, with `thin_minutes` stored as attribute.
 
 ## See also
 

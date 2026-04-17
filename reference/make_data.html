@@ -76,7 +76,8 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 <span>  survey_predictors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  date <span class="op">=</span> <span class="va">date</span>,</span>
 <span>  summary_functions <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  scale_predictors <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  scale_predictors <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -244,6 +245,10 @@ matrix) rather than the raw <code>[I, P, J]</code> array, so that spatial variat
 across sites does not inflate the scaling. Scaling parameters (means and
 SDs) are stored as an attribute. Default: <code>TRUE</code>.</p></dd>
 
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Logical. If <code>TRUE</code> (default), prints data.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -262,7 +267,7 @@ arguments which are added by <code><a href="fit_model.html">fit_model()</a></cod
 <dd><p>Number of species.</p></dd>
 
 <dt><code>Delta</code></dt>
-<dd><p><code>[I, J(, K)]</code> matrix of recording effort (0-1).</p></dd>
+<dd><p><code>[I, J(, K)]</code> array of recording effort (0-1).</p></dd>
 
 <dt><code>y</code></dt>
 <dd><p><code>[I, J(, K), S]</code> array of detection counts.</p></dd>
@@ -327,8 +332,7 @@ integer array.</p></dd>
 period per season.</p></dd>
 
 <dt><code>seasons</code></dt>
-<dd><p>Character vector of season identifiers (if
-multiseason).</p></dd>
+<dd><p>Character vector of season identifiers.</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>

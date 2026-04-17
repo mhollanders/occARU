@@ -57,4 +57,5 @@ simplex decomposition of the species-level components.
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),
-[`plot_correlations()`](https://mhollanders.github.io/occARU/reference/plot_correlations.md)
+[`plot_correlations()`](https://mhollanders.github.io/occARU/reference/plot_correlations.md),
+[`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)

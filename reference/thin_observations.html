@@ -74,13 +74,12 @@ name for sites (ARUs). Default: <code>deploymentID</code>.</p></dd>
 
 <dt id="arg-scientificname">scientificName<a class="anchor" aria-label="anchor" href="#arg-scientificname"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for species names in <code>observations</code>. Default: <code>scientificName</code>.</p></dd>
+name for species names. Default: <code>scientificName</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; <code>POSIXt</code>.
-Column name for observation timestamps in <code>observations</code>. Default:
-<code>eventStart</code>.</p></dd>
+Column name for observation timestamps. Default: <code>eventStart</code>.</p></dd>
 
 
 <dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
@@ -98,7 +97,7 @@ observation, retaining the record with the highest <code>count</code>. Default: 
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A dataframe of thinned observation records, sorted by <code>deploymentID</code>,
 <code>scientificName</code>, and <code>eventStart</code>, or the original dataframe if
-<code>thin_minutes = 0</code>.</p>
+<code>thin_minutes = 0</code>, with <code>thin_minutes</code> stored as attribute.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

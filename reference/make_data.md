@@ -34,7 +34,8 @@ make_data(
   survey_predictors = NULL,
   date = date,
   summary_functions = NULL,
-  scale_predictors = TRUE
+  scale_predictors = TRUE,
+  verbose = TRUE
 )
 ```
 
@@ -207,6 +208,10 @@ make_data(
   does not inflate the scaling. Scaling parameters (means and SDs) are
   stored as an attribute. Default: `TRUE`.
 
+- verbose:
+
+  Logical. If `TRUE` (default), prints data.
+
 ## Value
 
 A named list of class `"occARU_data"` containing all inputs required by
@@ -233,7 +238,7 @@ The list contains:
 
 - `Delta`:
 
-  `[I, J(, K)]` matrix of recording effort (0-1).
+  `[I, J(, K)]` array of recording effort (0-1).
 
 - `y`:
 
@@ -308,7 +313,7 @@ The object also carries the following attributes, accessible via
 
 - `seasons`:
 
-  Character vector of season identifiers (if multiseason).
+  Character vector of season identifiers.
 
 - `species`:
 

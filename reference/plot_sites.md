@@ -125,4 +125,5 @@ probability (`inv_logit(logit_psi[s, i])`).
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),
 [`plot_correlations()`](https://mhollanders.github.io/occARU/reference/plot_correlations.md),
-[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)
+[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md),
+[`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)

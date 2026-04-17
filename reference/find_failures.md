@@ -43,4 +43,5 @@ find_failures(
 ## Value
 
 A dataframe with columns `deploymentID`, `failureStart`, and
-`failureEnd`, one row per inferred failure period.
+`failureEnd`, one row per inferred failure period, with `buffer_days`
+stored as attribute.

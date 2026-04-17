@@ -1,12 +1,12 @@
-# Plot intercepts
+# Plot realised occupancy proportions
 
-Plot species-specific intercepts for occupancy and detection, by default
-back-transformed to the orginal scale.
+Plots species-level proportions of occupied sites, \\\frac{\sum\_{i =
+1}^I z\_{is}}{I}\\.
 
 ## Usage
 
 ``` r
-plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
+plot_realised(fit, species = NULL, sites = NULL, ...)
 ```
 
 ## Arguments
@@ -21,13 +21,10 @@ plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
   `character`. Vector of species to plot. If `NULL` (default), all
   species are plotted. Must be one of `attr(occARU_data, "species")`.
 
-- back_transform:
+- sites:
 
-  `logical`. If `TRUE` (default), intercepts are back-transformed to the
-  natural scale via `inv_logit()` for occupancy and
-  [`exp()`](https://rdrr.io/r/base/Log.html) for detection rates. If
-  `FALSE`, values are left on the scale of the link functions (logit for
-  occupancy and log for detection).
+  `character`. Vector of sites to use. If `NULL` (default), all sites
+  are used. Must be one of `attr(occARU_data, "sites")`.
 
 - ...:
 
@@ -45,9 +42,9 @@ A `ggplot` object with occARU-specific attributes attached:
 ## See also
 
 [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),
 [`plot_correlations()`](https://mhollanders.github.io/occARU/reference/plot_correlations.md),
-[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md),
-[`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)
+[`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)

@@ -56,7 +56,7 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>occARU fits Bayesian (multispecies) occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. The approach differs from standard occupancy models in that the focus is on quantifying detection rates, rather than treating detection as a nuisance parameter to correct for. It implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
+<p>occARU fits Bayesian (multispecies) occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. The approach differs from standard occupancy models in that the focus is on quantifying detection rates, rather than treating detection as a nuisance parameter to correct for. The <a href="https://mhollanders.github.io/occARU/articles/model.html">occARU model</a> implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -167,10 +167,9 @@
 <h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
 </h2>
 <ul>
+<li><code><a href="articles/model.html">vignette("model")</a></code></li>
 <li>
-<code><a href="articles/model.html">vignette("model")</a></code> — full model description</li>
-<li>
-<code><a href="reference/fit_model.html">?fit_model</a></code>, <code><a href="reference/make_data.html">?make_data</a></code>, <code><a href="reference/set_priors.html">?set_priors</a></code>
+<code><a href="reference/make_data.html">?make_data</a></code>, <code><a href="reference/fit_model.html">?fit_model</a></code>, <code><a href="reference/set_priors.html">?set_priors</a></code>
 </li>
 </ul>
 </div>

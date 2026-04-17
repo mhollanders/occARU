@@ -5,10 +5,11 @@ observation models to autonomous recording unit (ARU) data like those
 derived from camera traps and passive acoustic monitoring. The approach
 differs from standard occupancy models in that the focus is on
 quantifying detection rates, rather than treating detection as a
-nuisance parameter to correct for. It implements hierarchical
-species-level random effects with spatial and temporal Gaussian
-processes, variance decomposition via global-local shrinkage priors, and
-is built on [Stan](https://mc-stan.org/) via
+nuisance parameter to correct for. The [occARU
+model](https://mhollanders.github.io/occARU/articles/model.html)
+implements hierarchical species-level random effects with spatial and
+temporal Gaussian processes, variance decomposition via global-local
+shrinkage priors, and is built on [Stan](https://mc-stan.org/) via
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
 ## Installation
@@ -158,9 +159,8 @@ observation-level random effects produces marginal log likelihoods
 ## Learn more
 
 - [`vignette("model")`](https://mhollanders.github.io/occARU/articles/model.md)
-  — full model description
-- [`?fit_model`](https://mhollanders.github.io/occARU/reference/fit_model.md),
-  [`?make_data`](https://mhollanders.github.io/occARU/reference/make_data.md),
+- [`?make_data`](https://mhollanders.github.io/occARU/reference/make_data.md),
+  [`?fit_model`](https://mhollanders.github.io/occARU/reference/fit_model.md),
   [`?set_priors`](https://mhollanders.github.io/occARU/reference/set_priors.md)
 
 # Package index
@@ -188,6 +188,8 @@ observation-level random effects produces marginal log likelihoods
   : Plot temporal detection rates
 - [`plot_partitions()`](https://mhollanders.github.io/occARU/reference/plot_partitions.md)
   : Plot variance partitions
+- [`plot_realised()`](https://mhollanders.github.io/occARU/reference/plot_realised.md)
+  : Plot realised occupancy proportions
 
 ## Helpers
 
