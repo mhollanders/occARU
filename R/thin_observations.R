@@ -33,40 +33,62 @@ thin_observations <- function(
   count = count,
   thin_minutes = 30
 ) {
-  check_cols_exist(
-    observations,
-    {{ deploymentID }},
-    {{ scientificName }},
-    {{ eventStart }}
-  )
-  check_cols_class(observations, "POSIXt", {{ eventStart }})
-  n_before <- nrow(observations)
-  if (thin_minutes > 0) {
-    observations <- observations |>
-      dplyr::arrange(
-        {{ deploymentID }},
-        {{ scientificName }},
-        {{ eventStart }}
-      ) |>
-      dplyr::mutate(
-        cluster = assign_clusters({{ eventStart }}, thin_minutes),
-        .by = c({{ deploymentID }}, {{ scientificName }})
-      ) |>
-      dplyr::slice_max(
-        {{ count }},
-        with_ties = FALSE,
-        by = c({{ deploymentID }}, {{ scientificName }}, cluster)
-      )
-  } else if (thin_minutes < 0) {
-    cli::cli_abort(
-      "{.arg thin_minutes} must be a positive number of minutes, \\
+  if (thin_minutes < 0) {
+    cli::cli_abort("{.arg thin_minutes} must be a positive scalar.")
+  } else if (thin_minutes > 0) {
+    check_cols_exist(
+      observations,
+      {{ deploymentID }},
+      {{ scientificName }},
+      {{ eventStart }}
+    )
+    check_cols_class(observations, "POSIXt", {{ eventStart }})
+    n_before <- nrow(observations)
+    if (thin_minutes > 0) {
+      observations <- observations |>
+        dplyr::arrange(
+          {{ deploymentID }},
+          {{ scientificName }},
+          {{ eventStart }}
+        ) |>
+        dplyr::mutate(
+          cluster = assign_clusters({{ eventStart }}, thin_minutes),
+          .by = c({{ deploymentID }}, {{ scientificName }})
+        ) |>
+        dplyr::slice_max(
+          {{ count }},
+          with_ties = FALSE,
+          by = c({{ deploymentID }}, {{ scientificName }}, cluster)
+        )
+    } else if (thin_minutes < 0) {
+      cli::cli_abort(
+        "{.arg thin_minutes} must be a positive number of minutes, \\
       or 0 if no thinning is required."
+      )
+    }
+    n_removed <- n_before - nrow(observations)
+    cli::cli_inform(
+      "{n_removed} event{?s} removed by {thin_minutes}-minute thinning window \\
+    ({nrow(observations)} remaining)..."
     )
   }
-  n_removed <- n_before - nrow(observations)
-  cli::cli_inform(
-    "{n_removed} event{?s} removed by {thin_minutes}-minute thinning window \\
-    ({nrow(observations)} remaining)..."
-  )
   observations
+}
+
+#' Assign detections to temporal clusters
+#'
+#' Assigns each detection to a cluster based on a minimum time gap between
+#' consecutive detections. A new cluster begins whenever the time since the
+#' previous detection exceeds `gap` minutes.
+#'
+#' @param times A vector of POSIXt timestamps, assumed to be sorted.
+#' @param gap Numeric. Minimum gap in minutes to start a new cluster.
+#' @return An integer vector of cluster assignments.
+#' @noRd
+assign_clusters <- function(times, gap) {
+  gaps <- c(
+    0,
+    as.double(difftime(times[-1], times[-length(times)], units = "mins"))
+  )
+  cumsum(gaps >= gap) + 1L
 }

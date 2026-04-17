@@ -14,7 +14,8 @@
 #'   column `season`.
 #' @param observations A dataframe of observation records. Must contain
 #'   columns `deploymentID`, `eventStart`, `scientificName`, and `count`
-#'   (or equivalents specified via the corresponding arguments).
+#'   (or equivalents specified via the corresponding arguments). If multiple
+#'   seasons, must also contain column `season`.
 #' @param failures Optional dataframe of ARU failure periods. Must contain
 #'   columns `deploymentID`, `failureStart`, and `failureEnd`, with each row
 #'   corresponding to one failure period at a `deploymentID` from `failureStart`
@@ -104,9 +105,10 @@
 #'   \describe{
 #'     \item{`I`}{Number of sites (ARUs).}
 #'     \item{`J`}{Number of survey periods.}
+#'     \item{`K`}{Number of seasons (if multiseason).}
 #'     \item{`S`}{Number of species.}
-#'     \item{`Delta`}{`[I, J]` matrix of recording effort (0-1).}
-#'     \item{`y`}{`[I, J, S]` array of detection counts.}
+#'     \item{`Delta`}{`[I, J(, K)]` array of recording effort (0-1).}
+#'     \item{`y`}{`[I, J(, K), S]` array of detection counts.}
 #'     \item{`XY`}{`[I, 2]` matrix of UTM coordinates in km, or zeros if
 #'       coordinates not supplied.}
 #'     \item{`P`}{Integer vector of length 3: number of continuous predictors
@@ -115,27 +117,30 @@
 #'       predictors for each component.}
 #'     \item{`P_ord`}{Integer vector of length 3: number of ordinal predictors
 #'       for each component.}
-#'     \item{`X1`}{`[P[1], I]` occupancy continuous design matrix.}
-#'     \item{`X_cat1`}{`[P_cat[1], I]` occupancy categorical integer matrix.}
-#'     \item{`X_ord1`}{`[P_ord[1], I]` occupancy ordinal integer matrix.}
-#'     \item{`X2`}{`[P[2], I]` site-level detection continuous design matrix.}
-#'     \item{`X_cat2`}{`[P_cat[2], I]` site-level detection categorical integer
-#'        matrix.}
-#'     \item{`X_ord2`}{`[P_ord[2], I]` site-level detection ordinal integer
-#'       matrix.}
-#'     \item{`X3`}{`[I, P[3], J]` site-by-survey level detection continuous
+#'     \item{`X1`}{`[P[1](, K), I]` occupancy continuous design array.}
+#'     \item{`X_cat1`}{`[P_cat[1](, K), I]` occupancy categorical integer
 #'       array.}
-#'     \item{`X_cat3`}{`[I, P_cat[3], J]` site-by-survey categorical integer
+#'     \item{`X_ord1`}{`[P_ord[1](, K), I]` occupancy ordinal integer array.}
+#'     \item{`X2`}{`[P[2](, K), I]` site-level detection continuous design
 #'       array.}
-#'     \item{`X_ord3`}{`[I, P_ord[3], J]` site-by-survey survey ordinal integer
+#'     \item{`X_cat2`}{`[P_cat[2](, K), I]` site-level detection categorical
+#'       integer array.}
+#'     \item{`X_ord2`}{`[P_ord[2](, K), I]` site-level detection ordinal integer
 #'       array.}
+#'     \item{`X3`}{`[I(, K), P[3], J]` site-by-survey level detection continuous
+#'       array.}
+#'     \item{`X_cat3`}{`[I(, K), P_cat[3], J]` site-by-survey categorical
+#'       integer array.}
+#'     \item{`X_ord3`}{`[I(, K), P_ord[3], J]` site-by-survey survey ordinal
+#'       integer array.}
 #'   }
 #'   The object also carries the following attributes, accessible via
 #'   [attr()]:
 #'   \describe{
 #'     \item{`sites`}{Character vector of site identifiers.}
-#'     \item{`surveys`}{Character vector of start dates for each survey
-#'       period).}
+#'     \item{`surveys`}{tibble of start dates and indices for each survey
+#'       period per season.}
+#'     \item{`seasons`}{Character vector of season identifiers.}
 #'     \item{`species`}{Character vector species names.}
 #'     \item{`utm_crs`}{Character. PROJ string of the UTM coordinate reference
 #'       system used to transform site coordinates, or `NULL` if no coordinates
@@ -147,7 +152,8 @@
 #'       predictors}
 #'     \item{`survey_length`}{}
 #'     \item{`thin_minutes`}{}
-#'     \item{`reference_date`}{}
+#'     \item{`reference_dates`}{}
+#'     \item{`day_start`}{}
 #'   }
 #' @importFrom rlang :=
 #'
@@ -210,12 +216,11 @@ make_data <- function(
   site_lvl <- deployments |> dplyr::pull({{ deploymentID }}) |> levels()
   I <- length(site_lvl)
   if (I == 1L) {
-    cli::cli_abort("occARU requires more than one site.")
+    cli::cli_abort("occARU requires more than one site (ARU).")
   }
 
   # seasons
-  season_chr <- rlang::as_name(rlang::enquo(season))
-  if (!rlang::has_name(deployments, season_chr)) {
+  if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(season)))) {
     deployments <- dplyr::mutate(deployments, .season = factor(1L))
     check_cols_duplicates(deployments, {{ deploymentID }})
   } else if (!is.factor(dplyr::pull(deployments, {{ season }}))) {
@@ -252,13 +257,11 @@ make_data <- function(
       ),
       .by = c({{ deploymentID }}, .season)
     ) |>
-    tidyr::unnest(.date)
+    tidyr::unnest(.date) |>
+    dplyr::mutate(.Delta = 1L)
 
-  # identify failure dates
-  if (is.null(failures)) {
-    daily_grid <- daily_grid |> dplyr::mutate(.Delta = 1L)
-  } else {
-    # checks
+  # incorporate failure dates
+  if (!is.null(failures)) {
     if (anyNA(failures)) {
       cli::cli_abort("{.arg failures} cannot have missing values.")
     }
@@ -270,6 +273,12 @@ make_data <- function(
     )
     failures <- align_factor(failures, {{ deploymentID }}, site_lvl)
     check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
+    check_dates(
+      failures,
+      {{ deploymentID }},
+      {{ failureStart }},
+      {{ failureEnd }}
+    )
 
     failure_dates <- failures |>
       dplyr::select({{ deploymentID }}, {{ failureStart }}, {{ failureEnd }}) |>
@@ -284,12 +293,12 @@ make_data <- function(
       tidyr::unnest(.date) |>
       dplyr::select({{ deploymentID }}, .date, .failure)
 
-    daily_grid <- daily_grid |>
-      dplyr::left_join(
-        failure_dates,
-        by = dplyr::join_by({{ deploymentID }}, .date)
-      ) |>
-      dplyr::mutate(.Delta = dplyr::if_else(is.na(.failure), 1L, 0L)) |>
+    daily_grid <- dplyr::left_join(
+      daily_grid,
+      failure_dates,
+      by = dplyr::join_by({{ deploymentID }}, .date)
+    ) |>
+      dplyr::mutate(.Delta = replace_when(.Delta, .failure == 1L ~ 0L)) |>
       dplyr::select(-.failure)
   }
 
@@ -330,34 +339,27 @@ make_data <- function(
   }
 
   # produce Delta
-  Delta <- if (K > 1) {
-    deployments_aggregated |>
-      dplyr::left_join(
-        surveys,
-        by = c(".season", ".survey")
-      ) |>
-      dplyr::arrange(.season, .survey, {{ deploymentID }}) |>
-      tidyr::complete(
-        {{ deploymentID }} := factor(site_lvl, site_lvl),
-        .survey_idx = 1:J_max,
-        .season = factor(season_lvl, levels = season_lvl),
-        fill = list(.Delta = 0)
-      ) |>
-      dplyr::pull(.Delta) |>
-      array(c(I, J_max, K), dimnames = list(site_lvl, NULL, season_lvl))
-  } else {
-    deployments_aggregated |>
-      dplyr::select(-.season) |>
-      tidyr::pivot_wider(
-        names_from = {{ deploymentID }},
-        values_from = .Delta,
-        values_fill = 0,
-        names_sort = TRUE
-      ) |>
-      dplyr::arrange(.survey) |>
-      tibble::column_to_rownames(".survey") |>
-      t()
-  }
+  Delta <- deployments_aggregated |>
+    dplyr::left_join(
+      surveys,
+      by = c(".season", ".survey")
+    ) |>
+    tidyr::complete(
+      {{ deploymentID }},
+      .survey_idx,
+      .season,
+      fill = list(.Delta = 0)
+    ) |>
+    dplyr::arrange(.season, .survey_idx, {{ deploymentID }}) |>
+    dplyr::pull(.Delta) |>
+    array(
+      c(I, J_max, K),
+      dimnames = list(
+        site_lvl,
+        if (K == 1) as.character(surveys$.survey) else NULL,
+        season_lvl
+      )
+    )
 
   # OBSERVATIONS
   if (anyNA(observations)) {
@@ -371,9 +373,10 @@ make_data <- function(
     {{ count }}
   )
   observations <- align_factor(observations, {{ deploymentID }}, site_lvl)
-  if (!rlang::has_name(observations, season_chr)) {
+  if (K == 1) {
     observations <- dplyr::mutate(observations, .season = factor(1L))
   } else {
+    check_cols_exist(observations, {{ season }})
     observations <- dplyr::rename(observations, .season = {{ season }})
     observations <- align_factor(observations, .season, season_lvl)
   }
@@ -417,16 +420,14 @@ make_data <- function(
   )
 
   # thin observations
-  if (!is.null(thin_minutes)) {
-    observations <- thin_observations(
-      observations,
-      {{ deploymentID }},
-      {{ scientificName }},
-      {{ eventStart }},
-      {{ count }},
-      thin_minutes
-    )
-  }
+  observations <- thin_observations(
+    observations,
+    {{ deploymentID }},
+    {{ scientificName }},
+    {{ eventStart }},
+    {{ count }},
+    thin_minutes
+  )
 
   # aggregate and fill array
   observations_aggregated <- dplyr::left_join(
@@ -439,7 +440,6 @@ make_data <- function(
       .survey = aggregate_by_days(.date, reference, survey_length),
       .by = ".season"
     ) |>
-    dplyr::semi_join(surveys, by = c(".season", ".survey")) |>
     dplyr::summarise(
       .y = sum({{ count }}),
       .by = c({{ deploymentID }}, .survey, .season, {{ scientificName }})
@@ -454,7 +454,7 @@ make_data <- function(
       {{ deploymentID }} := factor(site_lvl, site_lvl),
       .survey_idx,
       .season = factor(season_lvl, season_lvl),
-      {{ scientificName }} := factor(species_lvl, species_lvl),
+      {{ scientificName }},
       fill = list(.y = 0)
     ) |>
     dplyr::arrange(
@@ -466,7 +466,12 @@ make_data <- function(
     dplyr::pull(.y) |>
     array(
       c(I, J_max, K, S),
-      dimnames = list(site_lvl, NULL, season_lvl, species_lvl)
+      dimnames = list(
+        site_lvl,
+        if (K == 1) as.character(surveys$.survey) else NULL,
+        season_lvl,
+        species_lvl
+      )
     )
 
   # SITE COORDINATES
@@ -520,13 +525,14 @@ make_data <- function(
       site_lvl,
       strict = TRUE
     )
-    if (!rlang::has_name(occupancy_site_predictors, season_chr)) {
+    if (K == 1) {
       occupancy_site_predictors <- dplyr::mutate(
         occupancy_site_predictors,
         .season = factor(1L)
       )
       check_cols_duplicates(occupancy_site_predictors, {{ deploymentID }})
     } else {
+      check_cols_exist(occupancy_site_predictors, {{ season }})
       occupancy_site_predictors <- dplyr::rename(
         occupancy_site_predictors,
         .season = {{ season }}
@@ -564,13 +570,14 @@ make_data <- function(
       site_lvl,
       strict = TRUE
     )
-    if (!rlang::has_name(detection_site_predictors, season_chr)) {
+    if (K == 1) {
       detection_site_predictors <- dplyr::mutate(
         detection_site_predictors,
         .season = factor(1L)
       )
       check_cols_duplicates(detection_site_predictors, {{ deploymentID }})
     } else {
+      check_cols_exist(detection_site_predictors, {{ season }})
       detection_site_predictors <- dplyr::rename(
         detection_site_predictors,
         .season = {{ season }}
@@ -603,12 +610,13 @@ make_data <- function(
       site_lvl,
       strict = TRUE
     )
-    if (!rlang::has_name(survey_predictors, season_chr)) {
+    if (K == 1) {
       survey_predictors <- dplyr::mutate(
         survey_predictors,
         .season = factor(1L)
       )
     } else {
+      check_cols_exist(survey_predictors, {{ season }})
       survey_predictors <- dplyr::rename(
         survey_predictors,
         .season = {{ season }}
@@ -698,7 +706,7 @@ make_data <- function(
       },
       list(
         S = S,
-        Delta = Delta,
+        Delta = Delta[,, 1:K],
         XY = XY,
         y = y[,, 1:K, 1:S],
         P = P,
@@ -734,7 +742,8 @@ make_data <- function(
       X3 = if (P_cat[3] || P_ord[3]) enc_levels(enc3)
     ),
     survey_length = survey_length,
-    thin_minutes = thin_minutes
+    thin_minutes = thin_minutes,
+    day_start = day_start
   ) |>
     print()
 }

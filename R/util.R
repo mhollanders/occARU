@@ -44,24 +44,6 @@ align_factor <- function(df, col, ref_levels, strict = FALSE) {
   df
 }
 
-#' Assign detections to temporal clusters
-#'
-#' Assigns each detection to a cluster based on a minimum time gap between
-#' consecutive detections. A new cluster begins whenever the time since the
-#' previous detection exceeds `gap` minutes.
-#'
-#' @param times A vector of POSIXt timestamps, assumed to be sorted.
-#' @param gap Numeric. Minimum gap in minutes to start a new cluster.
-#' @return An integer vector of cluster assignments.
-#' @noRd
-assign_clusters <- function(times, gap) {
-  gaps <- c(
-    0,
-    as.double(difftime(times[-1], times[-length(times)], units = "mins"))
-  )
-  cumsum(gaps >= gap) + 1L
-}
-
 #' Check that columns inherit a given class
 #'
 #' @param df A dataframe.

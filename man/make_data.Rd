@@ -40,7 +40,8 @@ column \code{season}.}
 
 \item{observations}{A dataframe of observation records. Must contain
 columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
-(or equivalents specified via the corresponding arguments).}
+(or equivalents specified via the corresponding arguments). If multiple
+seasons, must also contain column \code{season}.}
 
 \item{failures}{Optional dataframe of ARU failure periods. Must contain
 columns \code{deploymentID}, \code{failureStart}, and \code{failureEnd}, with each row
@@ -152,9 +153,10 @@ arguments which are added by \code{\link[=fit_model]{fit_model()}}. The list con
 \describe{
 \item{\code{I}}{Number of sites (ARUs).}
 \item{\code{J}}{Number of survey periods.}
+\item{\code{K}}{Number of seasons (if multiseason).}
 \item{\code{S}}{Number of species.}
-\item{\code{Delta}}{\verb{[I, J]} matrix of recording effort (0-1).}
-\item{\code{y}}{\verb{[I, J, S]} array of detection counts.}
+\item{\code{Delta}}{\verb{[I, J(, K)]} matrix of recording effort (0-1).}
+\item{\code{y}}{\verb{[I, J(, K), S]} array of detection counts.}
 \item{\code{XY}}{\verb{[I, 2]} matrix of UTM coordinates in km, or zeros if
 coordinates not supplied.}
 \item{\code{P}}{Integer vector of length 3: number of continuous predictors
@@ -163,27 +165,31 @@ for occupancy, and site and survey detection.}
 predictors for each component.}
 \item{\code{P_ord}}{Integer vector of length 3: number of ordinal predictors
 for each component.}
-\item{\code{X1}}{\verb{[P[1], I]} occupancy continuous design matrix.}
-\item{\code{X_cat1}}{\verb{[P_cat[1], I]} occupancy categorical integer matrix.}
-\item{\code{X_ord1}}{\verb{[P_ord[1], I]} occupancy ordinal integer matrix.}
-\item{\code{X2}}{\verb{[P[2], I]} site-level detection continuous design matrix.}
-\item{\code{X_cat2}}{\verb{[P_cat[2], I]} site-level detection categorical integer
-matrix.}
-\item{\code{X_ord2}}{\verb{[P_ord[2], I]} site-level detection ordinal integer
-matrix.}
-\item{\code{X3}}{\verb{[I, P[3], J]} site-by-survey level detection continuous
+\item{\code{X1}}{\verb{[P[1](, K), I]} occupancy continuous design array.}
+\item{\code{X_cat1}}{\verb{[P_cat[1](, K), I]} occupancy categorical integer
 array.}
-\item{\code{X_cat3}}{\verb{[I, P_cat[3], J]} site-by-survey categorical integer
+\item{\code{X_ord1}}{\verb{[P_ord[1](, K), I]} occupancy ordinal integer array.}
+\item{\code{X2}}{\verb{[P[2](, K), I]} site-level detection continuous design
 array.}
-\item{\code{X_ord3}}{\verb{[I, P_ord[3], J]} site-by-survey survey ordinal integer
+\item{\code{X_cat2}}{\verb{[P_cat[2](, K), I]} site-level detection categorical
+integer array.}
+\item{\code{X_ord2}}{\verb{[P_ord[2](, K), I]} site-level detection ordinal integer
 array.}
+\item{\code{X3}}{\verb{[I(, K), P[3], J]} site-by-survey level detection continuous
+array.}
+\item{\code{X_cat3}}{\verb{[I(, K), P_cat[3], J]} site-by-survey categorical
+integer array.}
+\item{\code{X_ord3}}{\verb{[I(, K), P_ord[3], J]} site-by-survey survey ordinal
+integer array.}
 }
 The object also carries the following attributes, accessible via
 \code{\link[=attr]{attr()}}:
 \describe{
 \item{\code{sites}}{Character vector of site identifiers.}
-\item{\code{surveys}}{Character vector of start dates for each survey
-period).}
+\item{\code{surveys}}{tibble of start dates and indices for each survey
+period per season.}
+\item{\code{seasons}}{Character vector of season identifiers (if
+multiseason).}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates
@@ -195,7 +201,8 @@ standardise continuous predictors, or \code{NULL} if
 predictors}
 \item{\code{survey_length}}{}
 \item{\code{thin_minutes}}{}
-\item{\code{reference_date}}{}
+\item{\code{reference_dates}}{}
+\item{\code{day_start}}{}
 }
 }
 \description{

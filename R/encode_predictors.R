@@ -197,6 +197,7 @@ encode_predictors <- function(
           }
         )
 
+      # aggregate and summarise
       df <- dplyr::left_join(df, reference_dates, by = ".season") |>
         dplyr::mutate(
           .survey = aggregate_by_days(
@@ -206,18 +207,18 @@ encode_predictors <- function(
           ),
           .by = ".season"
         ) |>
-        dplyr::left_join(surveys, by = c(".season", ".survey")) |>
+        # dplyr::right_join(surveys, by = c(".season", ".survey")) |>
         dplyr::summarise(
           dplyr::across(
             dplyr::all_of(pred_cols),
             ~ summary_fns[[dplyr::cur_column()]](.)
           ),
-          .by = c({{ deploymentID }}, .season, .survey, .survey_idx)
+          .by = c({{ deploymentID }}, .survey)
         )
-    }
 
-    # join survey indices
-    # df <- dplyr::left_join(df, surveys, by = ".survey")
+      # join survey indices
+      df <- dplyr::left_join(df, surveys, by = ".survey")
+    }
 
     # scale continuous predictors
     scale_params <- NULL
@@ -273,8 +274,8 @@ encode_predictors <- function(
               dplyr::all_of(cols)
             ) |>
             tidyr::complete(
-              {{ deploymentID }} := factor(site_lvl, site_lvl),
-              {{ .season }} := factor(season_lvl, season_lvl),
+              {{ deploymentID }},
+              {{ .season }},
               fill = as.list(purrr::set_names(
                 ifelse(cols %in% num_cols, 0L, 1L),
                 cols
@@ -312,9 +313,9 @@ encode_predictors <- function(
               dplyr::all_of(cols)
             ) |>
             tidyr::complete(
-              {{ deploymentID }} := factor(site_lvl, site_lvl),
-              {{ .season }} := factor(season_lvl, season_lvl),
-              .survey_idx = 1:max(df$.survey_idx),
+              {{ deploymentID }},
+              {{ .season }},
+              .survey_idx,
               fill = as.list(purrr::set_names(
                 ifelse(cols %in% num_cols, 0L, 1L),
                 cols
