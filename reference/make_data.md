@@ -53,7 +53,8 @@ make_data(
 
   A dataframe of observation records. Must contain columns
   `deploymentID`, `eventStart`, `scientificName`, and `count` (or
-  equivalents specified via the corresponding arguments).
+  equivalents specified via the corresponding arguments). If multiple
+  seasons, must also contain column `season`.
 
 - failures:
 
@@ -222,17 +223,21 @@ The list contains:
 
   Number of survey periods.
 
+- `K`:
+
+  Number of seasons (if multiseason).
+
 - `S`:
 
   Number of species.
 
 - `Delta`:
 
-  `[I, J]` matrix of recording effort (0-1).
+  `[I, J(, K)]` matrix of recording effort (0-1).
 
 - `y`:
 
-  `[I, J, S]` array of detection counts.
+  `[I, J(, K), S]` array of detection counts.
 
 - `XY`:
 
@@ -256,39 +261,39 @@ The list contains:
 
 - `X1`:
 
-  `[P[1], I]` occupancy continuous design matrix.
+  `[P[1](, K), I]` occupancy continuous design array.
 
 - `X_cat1`:
 
-  `[P_cat[1], I]` occupancy categorical integer matrix.
+  `[P_cat[1](, K), I]` occupancy categorical integer array.
 
 - `X_ord1`:
 
-  `[P_ord[1], I]` occupancy ordinal integer matrix.
+  `[P_ord[1](, K), I]` occupancy ordinal integer array.
 
 - `X2`:
 
-  `[P[2], I]` site-level detection continuous design matrix.
+  `[P[2](, K), I]` site-level detection continuous design array.
 
 - `X_cat2`:
 
-  `[P_cat[2], I]` site-level detection categorical integer matrix.
+  `[P_cat[2](, K), I]` site-level detection categorical integer array.
 
 - `X_ord2`:
 
-  `[P_ord[2], I]` site-level detection ordinal integer matrix.
+  `[P_ord[2](, K), I]` site-level detection ordinal integer array.
 
 - `X3`:
 
-  `[I, P[3], J]` site-by-survey level detection continuous array.
+  `[I(, K), P[3], J]` site-by-survey level detection continuous array.
 
 - `X_cat3`:
 
-  `[I, P_cat[3], J]` site-by-survey categorical integer array.
+  `[I(, K), P_cat[3], J]` site-by-survey categorical integer array.
 
 - `X_ord3`:
 
-  `[I, P_ord[3], J]` site-by-survey survey ordinal integer array.
+  `[I(, K), P_ord[3], J]` site-by-survey survey ordinal integer array.
 
 The object also carries the following attributes, accessible via
 [`attr()`](https://rdrr.io/r/base/attr.html):
@@ -299,7 +304,11 @@ The object also carries the following attributes, accessible via
 
 - `surveys`:
 
-  Character vector of start dates for each survey period).
+  tibble of start dates and indices for each survey period per season.
+
+- `seasons`:
+
+  Character vector of season identifiers (if multiseason).
 
 - `species`:
 
@@ -323,7 +332,9 @@ The object also carries the following attributes, accessible via
 
 - `thin_minutes`:
 
-- `reference_date`:
+- `reference_dates`:
+
+- `day_start`:
 
 ## See also
 

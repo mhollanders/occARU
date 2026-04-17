@@ -96,7 +96,8 @@ column <code>season</code>.</p></dd>
 <dt id="arg-observations">observations<a class="anchor" aria-label="anchor" href="#arg-observations"></a></dt>
 <dd><p>A dataframe of observation records. Must contain
 columns <code>deploymentID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
-(or equivalents specified via the corresponding arguments).</p></dd>
+(or equivalents specified via the corresponding arguments). If multiple
+seasons, must also contain column <code>season</code>.</p></dd>
 
 
 <dt id="arg-failures">failures<a class="anchor" aria-label="anchor" href="#arg-failures"></a></dt>
@@ -254,14 +255,17 @@ arguments which are added by <code><a href="fit_model.html">fit_model()</a></cod
 <dt><code>J</code></dt>
 <dd><p>Number of survey periods.</p></dd>
 
+<dt><code>K</code></dt>
+<dd><p>Number of seasons (if multiseason).</p></dd>
+
 <dt><code>S</code></dt>
 <dd><p>Number of species.</p></dd>
 
 <dt><code>Delta</code></dt>
-<dd><p><code>[I, J]</code> matrix of recording effort (0-1).</p></dd>
+<dd><p><code>[I, J(, K)]</code> matrix of recording effort (0-1).</p></dd>
 
 <dt><code>y</code></dt>
-<dd><p><code>[I, J, S]</code> array of detection counts.</p></dd>
+<dd><p><code>[I, J(, K), S]</code> array of detection counts.</p></dd>
 
 <dt><code>XY</code></dt>
 <dd><p><code>[I, 2]</code> matrix of UTM coordinates in km, or zeros if
@@ -280,36 +284,38 @@ predictors for each component.</p></dd>
 for each component.</p></dd>
 
 <dt><code>X1</code></dt>
-<dd><p><code>[P[1], I]</code> occupancy continuous design matrix.</p></dd>
+<dd><p><code>[P[1](, K), I]</code> occupancy continuous design array.</p></dd>
 
 <dt><code>X_cat1</code></dt>
-<dd><p><code>[P_cat[1], I]</code> occupancy categorical integer matrix.</p></dd>
+<dd><p><code>[P_cat[1](, K), I]</code> occupancy categorical integer
+array.</p></dd>
 
 <dt><code>X_ord1</code></dt>
-<dd><p><code>[P_ord[1], I]</code> occupancy ordinal integer matrix.</p></dd>
+<dd><p><code>[P_ord[1](, K), I]</code> occupancy ordinal integer array.</p></dd>
 
 <dt><code>X2</code></dt>
-<dd><p><code>[P[2], I]</code> site-level detection continuous design matrix.</p></dd>
+<dd><p><code>[P[2](, K), I]</code> site-level detection continuous design
+array.</p></dd>
 
 <dt><code>X_cat2</code></dt>
-<dd><p><code>[P_cat[2], I]</code> site-level detection categorical integer
-matrix.</p></dd>
+<dd><p><code>[P_cat[2](, K), I]</code> site-level detection categorical
+integer array.</p></dd>
 
 <dt><code>X_ord2</code></dt>
-<dd><p><code>[P_ord[2], I]</code> site-level detection ordinal integer
-matrix.</p></dd>
+<dd><p><code>[P_ord[2](, K), I]</code> site-level detection ordinal integer
+array.</p></dd>
 
 <dt><code>X3</code></dt>
-<dd><p><code>[I, P[3], J]</code> site-by-survey level detection continuous
+<dd><p><code>[I(, K), P[3], J]</code> site-by-survey level detection continuous
 array.</p></dd>
 
 <dt><code>X_cat3</code></dt>
-<dd><p><code>[I, P_cat[3], J]</code> site-by-survey categorical integer
-array.</p></dd>
+<dd><p><code>[I(, K), P_cat[3], J]</code> site-by-survey categorical
+integer array.</p></dd>
 
 <dt><code>X_ord3</code></dt>
-<dd><p><code>[I, P_ord[3], J]</code> site-by-survey survey ordinal integer
-array.</p></dd>
+<dd><p><code>[I(, K), P_ord[3], J]</code> site-by-survey survey ordinal
+integer array.</p></dd>
 
 
 </dl><p>The object also carries the following attributes, accessible via
@@ -317,8 +323,12 @@ array.</p></dd>
 <dd><p>Character vector of site identifiers.</p></dd>
 
 <dt><code>surveys</code></dt>
-<dd><p>Character vector of start dates for each survey
-period).</p></dd>
+<dd><p>tibble of start dates and indices for each survey
+period per season.</p></dd>
+
+<dt><code>seasons</code></dt>
+<dd><p>Character vector of season identifiers (if
+multiseason).</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>
@@ -343,7 +353,10 @@ predictors</p></dd>
 <dt><code>thin_minutes</code></dt>
 <dd></dd>
 
-<dt><code>reference_date</code></dt>
+<dt><code>reference_dates</code></dt>
+<dd></dd>
+
+<dt><code>day_start</code></dt>
 <dd></dd>
 
 
