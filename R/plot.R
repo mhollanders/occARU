@@ -1504,7 +1504,7 @@ plot_surveys <- function(
   }
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
-  survey_lvl <- attr(occARU_data, "surveys")
+  survey_lvl <- attr(occARU_data, "surveys")$.survey
   species_lvl <- attr(occARU_data, "species")
   MS <- length(species_lvl) > 1
   survey_length <- attr(occARU_data, "survey_length")
@@ -1533,7 +1533,7 @@ plot_surveys <- function(
   # get species and survey indices
   species_idx <- species_indices(species, species_lvl)
   if (!is.null(surveys)) {
-    unknown <- setdiff(surveys, survey_lvl)
+    unknown <- setdiff(surveys, surveys$.survey)
     if (length(unknown)) {
       cli::cli_abort(
         "The following surveys were not found in the model: {.val {unknown}}."

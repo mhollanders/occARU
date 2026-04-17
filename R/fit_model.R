@@ -305,7 +305,9 @@ fit_model <- function(
     " " = "Posterior predictions: \\
            {switch(ppc, 'Q' = 'Q only', 'y' = 'y only',
                         'both' = 'y and Q', 'none' = 'none')}",
-    " " = "LOO Monte Carlo draws: {loo_draws}"
+    if (spatial != "none" || overdispersion == "olre") {
+      c(" " = "LOO Monte Carlo draws: {loo_draws}")
+    }
   ))
 
   # initial values and sample
