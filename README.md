@@ -151,5 +151,5 @@ marginal log likelihoods (`log_lik2`) with improved PSIS-LOO-CV performance.
 
 ## Learn more
 
-- `vignette("model")` --- full model description
-- `?fit_model`, `?make_data`, `?set_priors`
+- `vignette("model")`
+- `?make_data`, `?fit_model`, `?set_priors`
