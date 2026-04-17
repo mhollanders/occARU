@@ -188,9 +188,6 @@ make_data <- function(
   verbose = TRUE
 ) {
   # DEPLOYMENTS
-  if (anyNA(deployments)) {
-    cli::cli_abort("{.arg deployments} cannot have missing values.")
-  }
   check_cols_exist(
     deployments,
     {{ deploymentID }},
@@ -242,6 +239,7 @@ make_data <- function(
   }
   season_lvl <- deployments |> dplyr::pull(.season) |> levels()
   K <- length(season_lvl)
+  check_missing(deployments)
 
   # expand deployments to individual dates
   daily_grid <- deployments |>
@@ -264,9 +262,7 @@ make_data <- function(
 
   # incorporate failure dates
   if (!is.null(failures)) {
-    if (anyNA(failures)) {
-      cli::cli_abort("{.arg failures} cannot have missing values.")
-    }
+    check_missing(failures)
     check_cols_exist(
       failures,
       {{ deploymentID }},
@@ -364,9 +360,6 @@ make_data <- function(
     )
 
   # OBSERVATIONS
-  if (anyNA(observations)) {
-    cli::cli_abort("{.arg observations} cannot have missing values.")
-  }
   check_cols_exist(
     observations,
     {{ deploymentID }},
@@ -394,11 +387,19 @@ make_data <- function(
   }
   species_lvl <- dplyr::pull(observations, {{ scientificName }}) |> levels()
   S <- length(species_lvl)
-  observations <- dplyr::arrange(
+  observations <- dplyr::select(
     observations,
     {{ deploymentID }},
-    {{ eventStart }}
-  )
+    {{ eventStart }},
+    {{ scientificName }},
+    {{ count }},
+    .season
+  ) |>
+    dplyr::arrange(
+      {{ deploymentID }},
+      {{ eventStart }}
+    )
+  check_missing(observations)
 
   # modify eventStart for midday
   day_start <- match.arg(day_start, c("midday", "midnight"))
@@ -515,11 +516,7 @@ make_data <- function(
 
   # occupancy site predictors
   if (!is.null(occupancy_site_predictors)) {
-    if (anyNA(occupancy_site_predictors)) {
-      cli::cli_abort(
-        "{.arg occupancy_site_predictors} cannot have missing values."
-      )
-    }
+    check_missing(occupancy_site_predictors)
     check_cols_exist(occupancy_site_predictors, {{ deploymentID }})
     occupancy_site_predictors <- align_factor(
       occupancy_site_predictors,
@@ -560,11 +557,7 @@ make_data <- function(
     !is.null(detection_site_predictors) &&
       !isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))
   ) {
-    if (anyNA(detection_site_predictors)) {
-      cli::cli_abort(
-        "{.arg detection_site_predictors} cannot have missing values."
-      )
-    }
+    check_missing(detection_site_predictors)
     check_cols_exist(detection_site_predictors, {{ deploymentID }})
     detection_site_predictors <- align_factor(
       detection_site_predictors,
@@ -602,9 +595,7 @@ make_data <- function(
 
   # survey predictors
   if (!is.null(survey_predictors)) {
-    if (anyNA(survey_predictors)) {
-      cli::cli_abort("{.arg survey_predictors} cannot have missing values.")
-    }
+    check_missing(survey_predictors)
     check_cols_exist(survey_predictors, {{ deploymentID }}, {{ date }})
     survey_predictors <- align_factor(
       survey_predictors,

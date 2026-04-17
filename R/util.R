@@ -194,6 +194,19 @@ check_empty_levels <- function(df, ..., strict = TRUE) {
   })
 }
 
+#' Check there are no missing values in a dataframe
+#'
+#' @param df A dataframe.
+#' @noRd
+check_missing <- function(df) {
+  df_name <- deparse(substitute(df))
+  if (anyNA(df)) {
+    cli::cli_abort(
+      "Missing values are not allowed in {df_name}."
+    )
+  }
+}
+
 #' Check that all predictor columns are numeric, factor, or ordered factor
 #'
 #' @param df A dataframe of predictors (ID column already removed).
@@ -392,6 +405,7 @@ check_dates <- function(
 #'   }
 #' @noRd
 coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
+  deployments <- dplyr::arrange(deployments, {{ deploymentID }})
   lats <- dplyr::pull(deployments, {{ latitude }})
   lons <- dplyr::pull(deployments, {{ longitude }})
 
