@@ -25,8 +25,8 @@ indicates occupancy:
 
 \begin{aligned} z\_{is} &\sim \mathrm{Bernoulli} \left( \psi\_{is}
 \right) \\ \psi\_{is} &= \operatorname{logit}^{-1} \left(
-{\alpha\_\psi}\_{\[s\]} + {\boldsymbol{\beta\_\psi}}\_{\[s\]}
-{\boldsymbol{X_1}}\_{\[i\]} \right), \end{aligned} \tag{1}
+{\alpha\_\psi}\_{\[s\]} + {\boldsymbol{X_1}}\_{\[i\]}
+{\boldsymbol{\beta\_\psi}}\_{\[s\]} \right), \end{aligned} \tag{1}
 
 where \boldsymbol{\alpha\_\psi} are species-level intercepts,
 \boldsymbol{\beta\_\psi} are species-level coefficients and
@@ -64,13 +64,12 @@ detections are modeled as Poisson by default:
 
 \begin{aligned} y\_{ijs} \mid z\_{is} = 1 &\sim \mathrm{Poisson} \left(
 \mu\_{ijs} \right) \\ \mu\_{ijs} &= \exp \Bigl( {\alpha\_\mu}\_{\[s\]} +
-{\boldsymbol{\beta\_\mu}}\_{\[s\]} {\boldsymbol{X_2}}\_{\[i\]} +
-\boldsymbol{\gamma}\_{\[s\]} {\boldsymbol{X_3}}\_{\[ij\]} \\ & \quad
-\quad \quad \\ + \iota\_{is}\left(\boldsymbol{I} -
-{\boldsymbol{P\_{X_2}}}\_{\[i\]} \right) +
-\kappa\_{js}\left(\boldsymbol{I} - {\boldsymbol{P\_{X_3}}}\_{\[j\]}
-\right) \\ & \quad \quad \quad \\ + \log \Delta\_{ij}\Bigr).
-\end{aligned} \tag{2}
+{\boldsymbol{X_2}}\_{\[i\]} {\boldsymbol{\beta\_\mu}}\_{\[s\]} +
+{\boldsymbol{X_3}}\_{\[ij\]} \boldsymbol{\gamma}\_{\[s\]} \\ & \quad
+\quad \quad \\ + \left(\boldsymbol{I} - {\boldsymbol{P\_{X_2}}}\_{\[i\]}
+\right) \iota\_{is} + \left(\boldsymbol{I} -
+{\boldsymbol{P\_{X_3}}}\_{\[j\]} \right) \kappa\_{js} \\ & \quad \quad
+\quad \\ + \log \Delta\_{ij}\Bigr). \end{aligned} \tag{2}
 
 Here, \Delta\_{ij} are the proportion of each survey that the site was
 actively sampling, taking on values between 0 and 1, used as offsets for
@@ -166,11 +165,11 @@ trying to explain ([Hodges and Reich 2010](#ref-hodges2010)). One remedy
 is to construct the random effects to be orthogonal to the column space
 of the design matrix. Taking the spatial random effects as an example,
 instead of sampling \boldsymbol{\iota}, occARU samples
-\boldsymbol{\iota} \left(\boldsymbol{I} - \boldsymbol{P\_{X_2}} \right),
-where \boldsymbol{P\_{X_2}} := \boldsymbol{X_2^\prime}
-\left(\boldsymbol{X_2} \boldsymbol{X_2^\prime} \right)^{-1}
-\boldsymbol{X_2} and \boldsymbol{I} - \boldsymbol{P\_{X_2}} is the
-orthogonal complement of the column space of the site-level design
+\left(\boldsymbol{I} - \boldsymbol{P\_{X_2}} \right) \boldsymbol{\iota},
+where \boldsymbol{P\_{X_2}} := \boldsymbol{X_2}
+\left(\boldsymbol{X_2^\prime} \boldsymbol{X_2} \right)^{-1}
+\boldsymbol{X_2^\prime} and \boldsymbol{I} - \boldsymbol{P\_{X_2}} is
+the orthogonal complement of the column space of the site-level design
 matrix \boldsymbol{X_2}. Using so-called restricted random effects
 essentially constrain random effects to the residual of the design
 matrix and thus prioritise inference on the fixed effects.
@@ -186,13 +185,13 @@ sites, the confounding will be limited and orthogonal projection is
 unnecessary.
 
 “Unconditional” fixed effect coefficients can still be recovered as,
-e.g., \boldsymbol{\beta\_{\mu}} + \boldsymbol{\iota}
-\left(\boldsymbol{X_2} \boldsymbol{X_2^\prime} \right)^{-1}
-\boldsymbol{X_2} ([Hanks et al. 2015](#ref-hanks2015)). This facilitates
-comparison of coefficients with and without the orthogonal projection of
-the random effects, without refitting the model. occARU fit objects
-contain both the restricted (e.g., `mu_beta`) and unrestricted (e.g.,
-`mu_beta2`) coefficients, and both can be plotted with
+e.g., \boldsymbol{\beta\_{\mu}} + \left(\boldsymbol{X_2^\prime}
+\boldsymbol{X_2} \right)^{-1} \boldsymbol{X_2^\prime} \boldsymbol{\iota}
+([Hanks et al. 2015](#ref-hanks2015)). This facilitates comparison of
+coefficients with and without the orthogonal projection of the random
+effects, without refitting the model. occARU fit objects contain both
+the restricted (e.g., `mu_beta`) and unrestricted (e.g., `mu_beta2`)
+coefficients, and both can be plotted with
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md)
 using the `restricted` argument. Currently, “unrestricted” coefficients
 are only available for continuous and ordinal predictors, but
@@ -257,7 +256,7 @@ Veriance decomposition is also used for species-specific scales in site
 and survey effects (and potentially OLREs). The scales vector
 \boldsymbol{\phi\_\mu} contains one partition for the species-level
 deviations from the mean function for each, which are then simplex
-decomposed to produce the species-specific scales. Parameter named in
+decomposed to produce the species-specific scales. Parameter names in
 the fit objects are `iota_t`, `kappa_t`, and `epsilon_t`, respectively.
 
 ## Identifiability and sum-to-zero constraints
