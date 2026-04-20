@@ -210,21 +210,21 @@ fit_model <- function(
   }
 
   # orthogonal projection check
-  if (project_kappa) {
-    if (temporal == "none") {
-      cli::cli_abort(
-        "Orthogonal projection only applicable if survey random effects are \\
-        included. Set {.arg project_kappa = FALSE} or turn on survey random \\
-        effects."
-      )
-    }
-    if (!sum(c(data$P[3], data$P_cat[3], data$P_ord[3]))) {
-      cli::cli_abort(
-        "Orthogonal projection only applicable if survey predictors are \\
-        included. Set {.arg project_kappa = FALSE} or include predictors."
-      )
-    }
-  }
+  # if (project_kappa) {
+  #   if (temporal == "none") {
+  #     cli::cli_abort(
+  #       "Orthogonal projection only applicable if survey random effects are \\
+  #       included. Set {.arg project_kappa = FALSE} or turn on survey random \\
+  #       effects."
+  #     )
+  #   }
+  #   if (!sum(c(data$P[3], data$P_cat[3], data$P_ord[3]))) {
+  #     cli::cli_abort(
+  #       "Orthogonal projection only applicable if survey predictors are \\
+  #       included. Set {.arg project_kappa = FALSE} or include predictors."
+  #     )
+  #   }
+  # }
 
   # build Stan data list
   stan_data <- c(

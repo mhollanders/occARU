@@ -1,32 +1,32 @@
 functions {
-  #include occARU.stanfunctions
-  #include util.stanfunctions
+  #include occARU2.stanfunctions
+  #include util2.stanfunctions
 }
 
 data {
   // dimensions, recording effort, site UTMs (km), and det. history
   int<lower=2> I, J;
-  matrix<lower=0>[I, J] Delta;
+  matrix<lower=0, upper=1>[I, J] Delta;
   array[I] vector[2] XY;
   array[I, J] int<lower=0> y;
 
   // continuous preds for site occ. and site and survey det.
   array[3] int<lower=0> P;
-  matrix[P[1], I] X1;
-  matrix[P[2], I] X2;
-  array[I] matrix[P[3], J] X3;
+  matrix[I, P[1]] X1;
+  matrix[I, P[2]] X2;
+  array[I] matrix[J, P[3]] X3;
 
   // categorical preds for site occ. and site and survey det.
   array[3] int<lower=0> P_cat;
-  array[P_cat[1], I] int<lower=1> X_cat1;
-  array[P_cat[2], I] int<lower=1> X_cat2;
-  array[I, P_cat[3], J] int<lower=1> X_cat3;
+  array[I, P_cat[1]] int<lower=1> X_cat1;
+  array[I, P_cat[2]] int<lower=1> X_cat2;
+  array[I, J, P_cat[3]] int<lower=1> X_cat3;
 
   // ordinal preds for site occ. and site and survey det.
   array[3] int<lower=0> P_ord;
-  array[P_ord[1], I] int<lower=0> X_ord1;
-  array[P_ord[2], I] int<lower=0> X_ord2;
-  array[I, P_ord[3], J] int<lower=0> X_ord3;
+  array[I, P_ord[1]] int<lower=0> X_ord1;
+  array[I, P_ord[2]] int<lower=0> X_ord2;
+  array[I, J, P_ord[3]] int<lower=0> X_ord3;
 
   // scalars and indicators
   real<lower=0> period;  // period for periodic kernel
@@ -65,20 +65,17 @@ transformed data {
     P_sum[d] = P[d] + P_cat[d] + P_ord[d];
   }
 
-  // deployment start and end and survey offsets (0-1)
-  array[I, 2] int f_l = first_last(Delta);
+  // survey indices, total surveys, and offsets
+  tuple(array[I, J] int, array[I] int) indices = survey_indices(Delta);
+  array[I, J] int j_idx = indices.1;
+  array[I] int J_i = indices.2;
+  int J_sum = sum(J_i);
   matrix[J, I] log_Delta = log(Delta');
 
-  // aggregated counts and total surveys
-  array[I] int Q = zeros_int_array(I);
-  int N = 0;
+  // aggregated counts
+  array[I] int Q;
   for (i in 1:I) {
-    for (j in f_l[i, 1]:f_l[i, 2]) {
-      if (!is_inf(log_Delta[j, i])) {
-        N += 1;
-        Q[i] += y[i, j];
-      }
-    }
+    Q[i] = sum(y[i, j_idx[i, :J_i[i]]]);
   }
 
   // site and survey sequences
@@ -92,14 +89,14 @@ transformed data {
   // categorical levels
   array[3, max(P_cat)] int C = rep_array(0, 3, max(P_cat));
   for (p in 1:P_cat[1]) {
-    C[1, p] = max(X_cat1[p]);
+    C[1, p] = max(X_cat1[:, p]);
   }
   for (p in 1:P_cat[2]) {
-    C[2, p] = max(X_cat2[p]);
+    C[2, p] = max(X_cat2[:, p]);
   }
   for (p in 1:P_cat[3]) {
     for (i in 1:I) {
-      C[3, p] = max(C[3, p], max(X_cat3[i, p]));
+      C[3, p] = max(C[3, p], max(X_cat3[i, :, p]));
     }
   }
   array[3] int C_max = zeros_int_array(3), C_sum = zeros_int_array(3);
@@ -113,14 +110,14 @@ transformed data {
   // ordinal levels
   array[3, max(P_ord)] int O = rep_array(0, 3, max(P_ord));
   for (p in 1:P_ord[1]) {
-    O[1, p] = max(X_ord1[p]);
+    O[1, p] = max(X_ord1[:, p]);
   }
   for (p in 1:P_ord[2]) {
-    O[2, p] = max(X_ord2[p]);
+    O[2, p] = max(X_ord2[:, p]);
   }
   for (p in 1:P_ord[3]) {
     for (i in 1:I) {
-      O[3, p] = max(O[3, p], max(X_ord3[i, p]));
+      O[3, p] = max(O[3, p], max(X_ord3[i, :, p]));
     }
   }
   array[3] int O_max = zeros_int_array(3), O_sum = zeros_int_array(3);
@@ -136,35 +133,35 @@ transformed data {
   for (d in 2:3) {
     X_plus_cols[d - 1] = P[d] + C_sum[d] - P_cat[d] + P_ord[d];
   }
-  matrix[X_plus_cols[1], I] X2_aug;
-  matrix[I, X_plus_cols[1]] X2_plus;
+  matrix[I, X_plus_cols[1]] X2_aug;
+  matrix[X_plus_cols[1], I] X2_plus;
   if (P_sum[2]) {
-    X2_aug[:P[2]] = X2;
+    X2_aug[:, :P[2]] = X2;
     if (P_cat[2]) {
       int idx = P[2];
       for (p in 1:P_cat[2]) {
         int C_p = C[2, p], C_pm1 = C_p - 1;
         for (i in 1:I) {
-          X2_aug[idx + 1:idx + C_pm1, i] =
-            one_hot_vector(C_p, X_cat2[p, i])[:C_pm1];
+          X2_aug[i, idx + 1:idx + C_pm1] =
+            one_hot_row_vector(C_p, X_cat2[i, p])[:C_pm1];
         }
         idx += C_pm1;
       }
     }
     if (P_ord[2]) {
       int idx = X_plus_cols[1] - P_ord[2] + 1;
-      X2_aug[idx:] = to_matrix(X_ord2);
+      X2_aug[:, idx:] = to_matrix(X_ord2);
     }
     X2_plus = pseudo_inverse(X2_aug);
   }
 
   // site-by-survey design matrix pseudo-inverses for orthogonal projection
-  matrix[X_plus_cols[2], J] X3_mean = rep_matrix(0, X_plus_cols[2], J);
-  matrix[J, X_plus_cols[2]] X3_plus;
+  matrix[J, X_plus_cols[2]] X3_mean = rep_matrix(0, J, X_plus_cols[2]);
+  matrix[X_plus_cols[2], J] X3_plus;
   if (P_sum[3] && project_kappa) {
     if (P[3]) {
       for (i in 1:I) {
-        X3_mean[:P[3]] += X3[i];
+        X3_mean[:, :P[3]] += X3[i];
       }
     }
     if (P_cat[3]) {
@@ -173,8 +170,8 @@ transformed data {
         int C_p = C[3, p], C_pm1 = C_p - 1;
         for (i in 1:I) {
           for (j in 1:J) {
-            X3_mean[idx + 1:idx + C_pm1, j] +=
-              one_hot_vector(C_p, X_cat3[i, p, j])[:C_pm1];
+            X3_mean[j, idx + 1:idx + C_pm1] +=
+              one_hot_row_vector(C_p, X_cat3[i, j, p])[:C_pm1];
           }
         }
         idx += C_pm1;
@@ -183,7 +180,7 @@ transformed data {
     if (P_ord[3]) {
       int idx = X_plus_cols[2] - P_ord[3] + 1;
       for (i in 1:I) {
-        X3_mean[idx:] += to_matrix(X_ord3[i]);
+        X3_mean[:, idx:] += to_matrix(X_ord3[i]);
       }
     }
     X3_mean /= I;
@@ -205,9 +202,9 @@ parameters {
   array[mu_V > 1] sum_to_zero_vector[mu_V > 1 ? mu_V : 1] mu_phi_z;
 
   // coefficients for continuous predictors
-  row_vector[P[1]] psi_beta_z;
-  row_vector[P[2]] mu_beta_z;
-  row_vector[P[3]] gamma_z;
+  vector[P[1]] psi_beta_z;
+  vector[P[2]] mu_beta_z;
+  vector[P[3]] gamma_z;
 
   // unconstrained coefficients for categorical predictors
   vector[C_sum[1] - P_cat[1]] psi_beta_cat_u;
@@ -215,11 +212,11 @@ parameters {
   vector[C_sum[3] - P_cat[3]] gamma_cat_u;
 
   // coefficients for ordinal predictors
-  row_vector[P_ord[1]] psi_beta_ord_z;
+  vector[P_ord[1]] psi_beta_ord_z;
   vector[O_sum[1] - P_ord[1]] psi_beta_ord_c_u;
-  row_vector[P_ord[2]] mu_beta_ord_z;
+  vector[P_ord[2]] mu_beta_ord_z;
   vector[O_sum[2] - P_ord[2]] mu_beta_ord_c_u;
-  row_vector[P_ord[3]] gamma_ord_z;
+  vector[P_ord[3]] gamma_ord_z;
   vector[O_sum[3] - P_ord[3]] gamma_ord_c_u;
 
   // site and survey effects and GP length-scales
@@ -230,17 +227,17 @@ parameters {
   array[periodic] simplex[2] K_phi;
 
   // OLRE residuals or negbin overdispersion
-  array[OLRE] sum_to_zero_vector[N] epsilon_z;
+  array[OLRE] sum_to_zero_vector[J_sum] epsilon_z;
   vector<lower=0>[NB] phi;
 }
 
 transformed parameters {
   // occupancy log odds variance partitions
-  row_vector[psi_V] psi_phi, psi_tau;
+  vector[psi_V] psi_phi, psi_tau;
   if (psi_V > 1) {
     psi_phi = dirichlet ?
-              sum_to_zero_simplex_jacobian(psi_phi_z[1])'
-              : softmax(psi_theta[1] * psi_phi_z[1])';
+              sum_to_zero_simplex_jacobian(psi_phi_z[1])
+              : softmax(psi_theta[1] * psi_phi_z[1]);
     psi_tau = sqrt(psi_W[1] * psi_phi);
   } else if (psi_V == 1) {
     psi_phi[1] = 1;
@@ -248,11 +245,11 @@ transformed parameters {
   }
 
   // log detection variance partitions
-  row_vector[mu_V] mu_phi, mu_tau;
+  vector[mu_V] mu_phi, mu_tau;
   if (mu_V > 1) {
     mu_phi = dirichlet ?
-             sum_to_zero_simplex_jacobian(mu_phi_z[1])'
-             : softmax(mu_theta[1] * mu_phi_z[1])';
+             sum_to_zero_simplex_jacobian(mu_phi_z[1])
+             : softmax(mu_theta[1] * mu_phi_z[1]);
     mu_tau = sqrt(mu_W[1] * mu_phi);
   } else if (psi_V == 1) {
     mu_phi[1] = 1;
@@ -263,26 +260,26 @@ transformed parameters {
   vector[2] alpha = [ logit(psi_bar), log(mu_bar) ]';
 
   // continuous predictor coefficients
-  row_vector[P[1]] psi_beta;
-  row_vector[P[2]] mu_beta;
-  row_vector[P[3]] gamma;
+  vector[P[1]] psi_beta;
+  vector[P[2]] mu_beta;
+  vector[P[3]] gamma;
 
   // categorical predictor coefficients
-  matrix[P_cat[1], C_max[1]] psi_beta_cat_z, psi_beta_cat;
-  matrix[P_cat[2], C_max[2]] mu_beta_cat_z, mu_beta_cat;
-  matrix[P_cat[3], C_max[3]] gamma_cat_z, gamma_cat;
+  matrix[C_max[1], P_cat[1]] psi_beta_cat_z, psi_beta_cat;
+  matrix[C_max[2], P_cat[2]] mu_beta_cat_z, mu_beta_cat;
+  matrix[C_max[3], P_cat[3]] gamma_cat_z, gamma_cat;
 
   // ordinal predictor coefficients
-  row_vector[P_ord[1]] psi_beta_ord;
-  matrix[P_ord[1], O_max[1]] psi_beta_ord_cs;
-  row_vector[P_ord[2]] mu_beta_ord;
-  matrix[P_ord[2], O_max[2]] mu_beta_ord_cs;
-  row_vector[P_ord[3]] gamma_ord;
-  matrix[P_ord[3], O_max[3]] gamma_ord_cs;
+  vector[P_ord[1]] psi_beta_ord;
+  matrix[O_max[1], P_ord[1]] psi_beta_ord_cs;
+  vector[P_ord[2]] mu_beta_ord;
+  matrix[O_max[2], P_ord[2]] mu_beta_ord_cs;
+  vector[P_ord[3]] gamma_ord;
+  matrix[O_max[3], P_ord[3]] gamma_ord_cs;
 
   // conditional and unconditional site and survey effects
-  row_vector[SP * I] iota;
-  row_vector[SP * P_sum[2] ? I : 0] iota2;
+  vector[SP * I] iota;
+  vector[SP * P_sum[2] ? I : 0] iota2;
   vector[TE * J] kappa;
   vector[TE * P_sum[3] * project_kappa ? J : 0] kappa2;
   {
@@ -297,7 +294,7 @@ transformed parameters {
     // occupancy categorical coefficients
     if (P_cat[1]) {
       int P_c = P_cat[1], C_m = C_max[1];
-      tuple(matrix[P_c, C_m], matrix[P_c, C_m]) coef =
+      tuple(matrix[C_m, P_c], matrix[C_m, P_c]) coef =
         coef_cat_jacobian(segment(psi_tau, psi_idx, P_c), psi_beta_cat_u,
                           C[1, :P_c]);
       psi_beta_cat = coef.1;
@@ -308,7 +305,7 @@ transformed parameters {
     // occupancy ordinal coefficients
     if (P_ord[1]) {
       int P_o = P_ord[1];
-      tuple(row_vector[P_o], matrix[P_o, O_max[1]]) coef =
+      tuple(vector[P_o], matrix[O_max[1], P_o]) coef =
         coef_ord_jacobian(segment(psi_tau, psi_idx, P_o), psi_beta_ord_z,
                           psi_beta_ord_c_u, O[1, :P_o]);
       psi_beta_ord = coef.1;
@@ -325,7 +322,7 @@ transformed parameters {
     // detection categorical coefficients (site-level)
     if (P_cat[2]) {
       int P_c = P_cat[2], C_m = C_max[2];
-      tuple(matrix[P_c, C_m], matrix[P_c, C_m]) coef =
+      tuple(matrix[C_m, P_c], matrix[C_m, P_c]) coef =
         coef_cat_jacobian(segment(mu_tau, mu_idx, P_c), mu_beta_cat_u,
                           C[2, :P_c]);
       mu_beta_cat = coef.1;
@@ -336,7 +333,7 @@ transformed parameters {
     // detection ordinal coefficients (site-level)
     if (P_ord[2]) {
       int P_o = P_ord[2];
-      tuple(row_vector[P_o], matrix[P_o, O_max[1]]) coef =
+      tuple(vector[P_o], matrix[O_max[1], P_o]) coef =
         coef_ord_jacobian(segment(mu_tau, mu_idx, P_o), mu_beta_ord_z,
                           mu_beta_ord_c_u, O[2, :P_o]);
       mu_beta_ord = coef.1;
@@ -353,7 +350,7 @@ transformed parameters {
     // detection categorical coefficients (site-by-survey level)
     if (P_cat[3]) {
       int P_c = P_cat[3], C_m = C_max[3];
-      tuple(matrix[P_c, C_m], matrix[P_c, C_m]) coef =
+      tuple(matrix[C_m, P_c], matrix[C_m, P_c]) coef =
         coef_cat_jacobian(segment(mu_tau, mu_idx, P_c), gamma_cat_u,
                           C[3, :P_c]);
       gamma_cat = coef.1;
@@ -364,7 +361,7 @@ transformed parameters {
     // detection ordinal coefficients (site-by-survey level)
     if (P_ord[3]) {
       int P_o = P_ord[3];
-      tuple(row_vector[P_o], matrix[P_o, O_max[1]]) coef =
+      tuple(vector[P_o], matrix[O_max[1], P_o]) coef =
         coef_ord_jacobian(segment(mu_tau, mu_idx, P_o), gamma_ord_z,
                           gamma_ord_c_u, O[3, :P_o]);
       gamma_ord = coef.1;
@@ -374,11 +371,11 @@ transformed parameters {
 
     // site effects
     if (SP) {
-      iota = mu_tau[mu_idx] * iota_z[1]';
+      iota = mu_tau[mu_idx] * iota_z[1];
       if (I_GP) {
         matrix[I, I] iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                     iota_U = cholesky_decompose(add_diag(iota_K, 1e-9))';
-        iota *= iota_U;
+                     iota_L = cholesky_decompose(add_diag(iota_K, 1e-9))';
+        iota = iota_L * iota;
       }
 
       // increment orthogonal projection
@@ -410,15 +407,15 @@ transformed parameters {
       // increment orthogonal projection
       if (P_sum[3] && project_kappa) {
         kappa2 = kappa;
-        kappa = orthogonalise(kappa', X3_mean, X3_plus)';
+        kappa = orthogonalise(kappa, X3_mean, X3_plus);
       }
     }
   }
 
   // occupancy
-  row_vector[I] logit_psi = alpha[1] + psi_beta * X1;
+  vector[I] logit_psi = alpha[1] + X1 * psi_beta;
   for (p in 1:P_cat[1]) {
-    logit_psi += psi_beta_cat[p, X_cat1[p]];
+    logit_psi += psi_beta_cat[X_cat1[:, p], p];
   }
   if (P_ord[1]) {
     logit_psi += increment_ordinal(X_ord1, coef_ord_realised(O[1],
@@ -478,13 +475,13 @@ model {
               : std_normal_lupdf(mu_phi_z[1]);
   }
   for (p in 1:P_cat[1]) {
-    target += std_normal_lupdf(psi_beta_cat_z[p, :C[1, p]]);
+    target += std_normal_lupdf(psi_beta_cat_z[:C[1, p], p]);
   }
   for (p in 1:P_cat[2]) {
-    target += std_normal_lupdf(mu_beta_cat_z[p, :C[2, p]]);
+    target += std_normal_lupdf(mu_beta_cat_z[:C[2, p], p]);
   }
   for (p in 1:P_cat[3]) {
-    target += std_normal_lupdf(gamma_cat_z[p, :C[3, p]]);
+    target += std_normal_lupdf(gamma_cat_z[:C[3, p], p]);
   }
   if (SP) {
     target += std_normal_lupdf(iota_z[1]);
@@ -497,18 +494,18 @@ model {
   matrix[OLRE * J, I] epsilon;
   if (OLRE) {
     target += std_normal_lupdf(epsilon_z[1]);
-    epsilon = fill_epsilon(f_l, log_Delta, mu_tau[mu_V] * epsilon_z[1]);
+    epsilon = fill_epsilon(j_idx, J_i, mu_tau[mu_V] * epsilon_z[1]);
   }
 
   // likelihood
   target += grainsize ?
-            reduce_sum(partial_occARU_lupmf, sites, grainsize, y, Q, f_l,
+            reduce_sum(partial_occARU_lupmf, sites, grainsize, y, Q, j_idx, J_i,
                        log_Delta, X2, X_cat2, X_ord2, X3, X_cat3, X_ord3,
                        logit_psi, alpha[2], mu_beta, mu_beta_cat,
                        coef_ord_realised(O[2], mu_beta_ord, mu_beta_ord_cs),
                        gamma, gamma_cat, coef_ord_realised(O[3], gamma_ord,
                        gamma_ord_cs), iota, kappa, epsilon, phi)
-            : occARU_lupmf(y | Q, f_l, log_Delta, X2, X_cat2, X_ord2, X3,
+            : occARU_lupmf(y | Q, j_idx, J_i, log_Delta, X2, X_cat2, X_ord2, X3,
                            X_cat3, X_ord3, logit_psi, alpha[2], mu_beta,
                            mu_beta_cat, coef_ord_realised(O[2], mu_beta_ord,
                            mu_beta_ord_cs), gamma, gamma_cat,
@@ -518,28 +515,28 @@ model {
 
 generated quantities {
   // unconditional site coefficients
-  row_vector[SP * P[2]] mu_beta2;
-  row_vector[SP * P_ord[2]] mu_beta_ord2;
+  vector[SP * P[2]] mu_beta2;
+  vector[SP * P_ord[2]] mu_beta_ord2;
   if (SP) {
     if (P[2]) {
-      mu_beta2 = mu_bar - iota2 * X2_plus[:, :P[2]];
+      mu_beta2 = mu_bar - X2_plus[:P[2]] * iota2;
     }
     if (P_ord[2]) {
       mu_beta_ord2 = mu_beta_ord
-                     - iota2 * X2_plus[:, X_plus_cols[1] - P_ord[2] + 1:];
+                     - X2_plus[X_plus_cols[1] - P_ord[2] + 1:] * iota2;
     }
   }
 
   // unconditional survey coefficients
-  row_vector[TE * P[3] * project_kappa] gamma2;
-  row_vector[TE * P_ord[3] * project_kappa] gamma_ord2;
+  vector[TE * P[3] * project_kappa] gamma2;
+  vector[TE * P_ord[3] * project_kappa] gamma_ord2;
   if (TE * project_kappa) {
     if (P[3]) {
-      gamma2 = gamma - kappa2' * X3_plus[:, :P[3]];
+      gamma2 = gamma - X3_plus[:P[3]] * kappa2;
     }
     if (P_ord[3]) {
-      gamma_ord2 = gamma_ord -
-                   kappa2' * X3_plus[:, X_plus_cols[2] - P_ord[3] + 1:];
+      gamma_ord2 = gamma_ord
+                   - X3_plus[:, X_plus_cols[2] - P_ord[3] + 1:] * kappa2;
     }
   }
 
@@ -554,10 +551,10 @@ generated quantities {
     // reconstruct log likelihood
     matrix[OLRE * J, I] epsilon;
     if (OLRE) {
-      epsilon = fill_epsilon(f_l, log_Delta, mu_tau[mu_V] * epsilon_z[1]);
+      epsilon = fill_epsilon(j_idx, J_i, mu_tau[mu_V] * epsilon_z[1]);
     }
     tuple(vector[I], matrix[2, I], matrix[J, I]) lp =
-      occARU(y, Q, f_l, log_Delta, X2, X_cat2, X_ord2, X3, X_cat3, X_ord3,
+      occARU(y, Q, j_idx, J_i, log_Delta, X2, X_cat2, X_ord2, X3, X_cat3, X_ord3,
              logit_psi, alpha[2], mu_beta, mu_beta_cat,
              coef_ord_realised(O[2], mu_beta_ord, mu_beta_ord_cs), gamma,
              gamma_cat, coef_ord_realised(O[3], gamma_ord, gamma_ord_cs), iota,
@@ -576,10 +573,10 @@ generated quantities {
     // posterior predictions
     if (PPC_y || PPC_Q) {
       if (OLRE) {
-        epsilon = pp_epsilon_rng(f_l, log_Delta, N, mu_tau[mu_V]);
+        epsilon = pp_epsilon_rng(j_idx, J_i, mu_tau[mu_V]);
       }
       tuple(array[I, J] int, array[I] int) pp =
-        pp_occARU_rng(f_l, log_Delta, logit_psi, lp.3, epsilon, phi);
+        pp_occARU_rng(j_idx, J_i, X3, logit_psi, lp.3, gamma, epsilon, phi);
       if (PPC_y) {
         yrep = pp.1;
       }
@@ -593,30 +590,30 @@ generated quantities {
       matrix[I, D] log_lik_k;
 
       // prepare site effect covariances
-      matrix[SP * I, I] iota_U;
+      matrix[SP * I, I] iota_L;
       if (I_GP) {
-        iota_U =
+        iota_L =
           cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                                      1e-9))';
+                                      1e-9));
       }
 
       // posterior predict site effects and OLREs and compute log likelihood
       vector[Im1] zeros = zeros_vector(Im1);
       vector[SP * Im1] iota_u;
-      row_vector[SP * I] iota_rep;
+      vector[SP * I] iota_rep;
       int mu_idx = sum(P_sum[2:3]) + 1;
       for (d in 1:D) {
         if (SP) {
           iota_u = to_vector(normal_rng(zeros, mu_tau[mu_idx]));
-          iota_rep = sum_to_zero_constrain(iota_u)';
+          iota_rep = sum_to_zero_constrain(iota_u);
           if (I_GP) {
-            iota_rep *= iota_U;
+            iota_rep = iota_L * iota_rep;
           }
         }
         if (OLRE) {
-          epsilon = pp_epsilon_rng(f_l, log_Delta, N, mu_tau[mu_V]);
+          epsilon = pp_epsilon_rng(j_idx, J_i, mu_tau[mu_V]);
         }
-        lp = occARU(y, Q, f_l, log_Delta, X2, X_cat2, X_ord2, X3, X_cat3,
+        lp = occARU(y, Q, j_idx, J_i, log_Delta, X2, X_cat2, X_ord2, X3, X_cat3,
                     X_ord3, logit_psi, alpha[2], mu_beta, mu_beta_cat,
                     coef_ord_realised(O[2], mu_beta_ord, mu_beta_ord_cs),
                     gamma, gamma_cat, coef_ord_realised(O[3], gamma_ord,

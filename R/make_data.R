@@ -118,21 +118,21 @@
 #'       predictors for each component.}
 #'     \item{`P_ord`}{Integer vector of length 3: number of ordinal predictors
 #'       for each component.}
-#'     \item{`X1`}{`[P[1](, K), I]` occupancy continuous design array.}
-#'     \item{`X_cat1`}{`[P_cat[1](, K), I]` occupancy categorical integer
+#'     \item{`X1`}{`[I(, K), P[1]]` occupancy continuous design array.}
+#'     \item{`X_cat1`}{`[I(, K), P_cat[1]]` occupancy categorical integer
 #'       array.}
-#'     \item{`X_ord1`}{`[P_ord[1](, K), I]` occupancy ordinal integer array.}
-#'     \item{`X2`}{`[P[2](, K), I]` site-level detection continuous design
+#'     \item{`X_ord1`}{`[I(, K), P_ord[1]]` occupancy ordinal integer array.}
+#'     \item{`X2`}{`[I(, K), P[2]]` site-level detection continuous design
 #'       array.}
-#'     \item{`X_cat2`}{`[P_cat[2](, K), I]` site-level detection categorical
+#'     \item{`X_cat2`}{`[I(, K), P_cat[2]]` site-level detection categorical
 #'       integer array.}
-#'     \item{`X_ord2`}{`[P_ord[2](, K), I]` site-level detection ordinal integer
+#'     \item{`X_ord2`}{`[I(, K), P_ord[2]]` site-level detection ordinal integer
 #'       array.}
-#'     \item{`X3`}{`[I(, K), P[3], J]` site-by-survey level detection continuous
+#'     \item{`X3`}{`[I(, K), J, P[3]]` site-by-survey level detection continuous
 #'       array.}
-#'     \item{`X_cat3`}{`[I(, K), P_cat[3], J]` site-by-survey categorical
+#'     \item{`X_cat3`}{`[I(, K), J, P_cat[3]]` site-by-survey categorical
 #'       integer array.}
-#'     \item{`X_ord3`}{`[I(, K), P_ord[3], J]` site-by-survey survey ordinal
+#'     \item{`X_ord3`}{`[I(, K), J, P_ord[3]]` site-by-survey survey ordinal
 #'       integer array.}
 #'   }
 #'   The object also carries the following attributes, accessible via
@@ -684,9 +684,17 @@ make_data <- function(
 
   # predictor dimensions
   idx <- ifelse(K == 1, 2, 3)
-  P <- c(nrow(enc1$X), nrow(enc2$X), dim(enc3$X)[idx])
-  P_cat <- c(nrow(enc1$X_cat), nrow(enc2$X_cat), dim(enc3$X_cat)[idx])
-  P_ord <- c(nrow(enc1$X_ord), nrow(enc2$X_ord), dim(enc3$X_ord)[idx])
+  P <- c(dim(enc1$X)[idx], dim(enc2$X)[idx], dim(enc3$X)[idx + 1])
+  P_cat <- c(
+    dim(enc1$X_cat)[idx],
+    dim(enc2$X_cat)[idx],
+    dim(enc3$X_cat)[idx + 1]
+  )
+  P_ord <- c(
+    dim(enc1$X_ord)[idx],
+    dim(enc2$X_ord)[idx],
+    dim(enc3$X_ord)[idx + 1]
+  )
 
   # return
   data <- structure(

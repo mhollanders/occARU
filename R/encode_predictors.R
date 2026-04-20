@@ -73,19 +73,19 @@ encode_predictors <- function(
   empty_array <- if (mode == "site") {
     array(
       0L,
-      if (K == 1) c(0, I) else c(0, K, I),
+      if (K == 1) c(I, 0) else c(I, K, 0),
       dimnames = if (K == 1) {
-        list(NULL, site_lvl)
+        list(site_lvl, NULL)
       } else {
-        list(NULL, season_lvl, site_lvl)
+        list(site_lvl, season_lvl, NULL)
       }
     )
   } else {
     array(
       0L,
-      if (K == 1) c(I, 0, J_max) else c(I, K, 0, J_max),
+      if (K == 1) c(I, J_max, 0) else c(I, K, J_max, 0),
       dimnames = if (K == 1) {
-        list(site_lvl, NULL, as.character(surveys$.survey))
+        list(site_lvl, as.character(surveys$.survey), NULL)
       } else {
         list(site_lvl, season_lvl, NULL, NULL)
       }
@@ -287,14 +287,14 @@ encode_predictors <- function(
               values_to = "x"
             ) |>
             dplyr::mutate(p = factor(p, levels = num_cols)) |>
-            dplyr::arrange({{ deploymentID }}, {{ .season }}, p) |>
+            dplyr::arrange(p, {{ .season }}, {{ deploymentID }}) |>
             dplyr::pull(x) |>
             array(
-              if (K == 1) c(P, I) else c(P, K, I),
+              if (K == 1) c(I, P) else c(I, K, P),
               dimnames = if (K == 1) {
-                list(cols, site_lvl)
+                list(site_lvl, cols)
               } else {
-                list(cols, season_lvl, site_lvl)
+                list(site_lvl, season_lvl, cols)
               }
             )
         } else {
@@ -327,14 +327,14 @@ encode_predictors <- function(
               values_to = "x"
             ) |>
             dplyr::mutate(p = factor(p, levels = num_cols)) |>
-            dplyr::arrange(.survey_idx, p, {{ .season }}, {{ deploymentID }}) |>
+            dplyr::arrange(p, .survey_idx, {{ .season }}, {{ deploymentID }}) |>
             dplyr::pull(x) |>
             array(
-              if (K == 1) c(I, P, J_max) else c(I, K, P, J_max),
+              if (K == 1) c(I, J_max, P) else c(I, K, J_max, P),
               dimnames = if (K == 1) {
-                list(site_lvl, cols, as.character(surveys$.survey))
+                list(site_lvl, as.character(surveys$.survey), cols)
               } else {
-                list(site_lvl, season_lvl, cols, NULL)
+                list(site_lvl, season_lvl, NULL, cols)
               }
             )
         } else {

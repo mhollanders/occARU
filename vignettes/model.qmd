@@ -17,7 +17,7 @@ $$
 \begin{aligned}
   z_{is} &\sim \mathrm{Bernoulli} \left( \psi_{is} \right) \\
   \psi_{is} &= \operatorname{logit}^{-1} \left( {\alpha_\psi}_{[s]} +
-    {\boldsymbol{\beta_\psi}}_{[s]} {\boldsymbol{X_1}}_{[i]} \right),
+    {\boldsymbol{X_1}}_{[i]} {\boldsymbol{\beta_\psi}}_{[s]} \right),
 \end{aligned}
 $$ {#eq-z}
 
@@ -35,10 +35,10 @@ $$
 \begin{aligned}
   y_{ijs} \mid z_{is} = 1 &\sim \mathrm{Poisson} \left( \mu_{ijs} \right) \\
   \mu_{ijs} &= \exp \Bigl( {\alpha_\mu}_{[s]} +
-    {\boldsymbol{\beta_\mu}}_{[s]} {\boldsymbol{X_2}}_{[i]} +
-    \boldsymbol{\gamma}_{[s]} {\boldsymbol{X_3}}_{[ij]} \\
-    & \quad \quad \quad \  + \iota_{is}\left(\boldsymbol{I} - {\boldsymbol{P_{X_2}}}_{[i]} \right) +
-    \kappa_{js}\left(\boldsymbol{I} - {\boldsymbol{P_{X_3}}}_{[j]} \right) \\
+    {\boldsymbol{X_2}}_{[i]} {\boldsymbol{\beta_\mu}}_{[s]} +
+    {\boldsymbol{X_3}}_{[ij]} \boldsymbol{\gamma}_{[s]} \\
+    & \quad \quad \quad \  + \left(\boldsymbol{I} - {\boldsymbol{P_{X_2}}}_{[i]} \right) \iota_{is} +
+    \left(\boldsymbol{I} - {\boldsymbol{P_{X_3}}}_{[j]} \right) \kappa_{js} \\
     & \quad \quad \quad \ + \log \Delta_{ij}\Bigr).
 \end{aligned}
 $$ {#eq-y}
@@ -92,11 +92,11 @@ Site and survey random effects can be fully disabled or fitted without GPs, coll
 
 ### Orthogonal projection of random effects
 
-When predictors are included alongside spatial or temporal random effects, the fixed and random effects can be confounded because the random effects absorb part of the variance that the fixed effects are trying to explain [@hodges2010]. One remedy is to construct the random effects to be orthogonal to the column space of the design matrix. Taking the spatial random effects as an example, instead of sampling $\boldsymbol{\iota}$, occARU samples $\boldsymbol{\iota} \left(\boldsymbol{I} - \boldsymbol{P_{X_2}} \right)$, where $\boldsymbol{P_{X_2}} := \boldsymbol{X_2^\prime} \left(\boldsymbol{X_2} \boldsymbol{X_2^\prime} \right)^{-1} \boldsymbol{X_2}$ and $\boldsymbol{I} - \boldsymbol{P_{X_2}}$ is the orthogonal complement of the column space of the site-level design matrix $\boldsymbol{X_2}$. Using so-called restricted random effects essentially constrain random effects to the residual of the design matrix and thus prioritise inference on the fixed effects.
+When predictors are included alongside spatial or temporal random effects, the fixed and random effects can be confounded because the random effects absorb part of the variance that the fixed effects are trying to explain [@hodges2010]. One remedy is to construct the random effects to be orthogonal to the column space of the design matrix. Taking the spatial random effects as an example, instead of sampling $\boldsymbol{\iota}$, occARU samples $\left(\boldsymbol{I} - \boldsymbol{P_{X_2}} \right) \boldsymbol{\iota}$, where $\boldsymbol{P_{X_2}} := \boldsymbol{X_2} \left(\boldsymbol{X_2^\prime} \boldsymbol{X_2} \right)^{-1} \boldsymbol{X_2^\prime}$ and $\boldsymbol{I} - \boldsymbol{P_{X_2}}$ is the orthogonal complement of the column space of the site-level design matrix $\boldsymbol{X_2}$. Using so-called restricted random effects essentially constrain random effects to the residual of the design matrix and thus prioritise inference on the fixed effects.
 
 occARU uses orthogonal projection for site effects and optionally survey effects, by setting the argument `project_kappa = TRUE` (default) in `fit_model()`, which is also more efficient for HMC. Because $\boldsymbol{X_3}$ varies by both site and survey, the site-averaged matrix is used to produce the orthogonal projection. This assumes that survey predictors will be correlated across sites; if these predictors vary considerably between sites, the confounding will be limited and orthogonal projection is unnecessary.
 
-"Unconditional" fixed effect coefficients can still be recovered as, e.g., $\boldsymbol{\beta_{\mu}} + \boldsymbol{\iota} \left(\boldsymbol{X_2} \boldsymbol{X_2^\prime} \right)^{-1} \boldsymbol{X_2}$ [@hanks2015]. This facilitates comparison of coefficients with and without the orthogonal projection of the random effects, without refitting the model. occARU fit objects contain both the restricted (e.g., `mu_beta`) and unrestricted (e.g., `mu_beta2`) coefficients, and both can be plotted with `plot_coefficients()` using the `restricted` argument. Currently, "unrestricted" coefficients are only available for continuous and ordinal predictors, but categorical predictors are included in the projection.
+"Unconditional" fixed effect coefficients can still be recovered as, e.g., $\boldsymbol{\beta_{\mu}} + \left(\boldsymbol{X_2^\prime} \boldsymbol{X_2} \right)^{-1} \boldsymbol{X_2^\prime} \boldsymbol{\iota}$ [@hanks2015]. This facilitates comparison of coefficients with and without the orthogonal projection of the random effects, without refitting the model. occARU fit objects contain both the restricted (e.g., `mu_beta`) and unrestricted (e.g., `mu_beta2`) coefficients, and both can be plotted with `plot_coefficients()` using the `restricted` argument. Currently, "unrestricted" coefficients are only available for continuous and ordinal predictors, but categorical predictors are included in the projection.
 
 ### Overdispersion and residual species interactions
 
@@ -111,7 +111,7 @@ The model uses global-local shrinkage priors for variance components of both occ
 
 Variance decomposition can be done with either Dirichlet or zero-sum logistic-normal distributions for $\boldsymbol{\phi}$, set via the `variance_decomposition = c("dirichlet", "logistic-normal")` argument in `fit_model()`. In either case, the hyperparameters $\theta_\psi$ and $\theta_\mu$ control the concentration or sparsity of the simplex: in Dirichlet models, $\theta$ is the inverse concentration, and in logistic-normal models, it is the scale. For both underlying distributions, larger values of $\theta$ correspond to a more sparse simplex (i.e., where a small number of components account for most of the variance), with smaller values corresponding to more concentrated simplexes (i.e., where different model components more evenly account for the variance).
 
-Veriance decomposition is also used for species-specific scales in site and survey effects (and potentially OLREs). The scales vector $\boldsymbol{\phi_\mu}$ contains one partition for the species-level deviations from the mean function for each, which are then simplex decomposed to produce the species-specific scales. Parameter named in the fit objects are `iota_t`, `kappa_t`, and `epsilon_t`, respectively.
+Veriance decomposition is also used for species-specific scales in site and survey effects (and potentially OLREs). The scales vector $\boldsymbol{\phi_\mu}$ contains one partition for the species-level deviations from the mean function for each, which are then simplex decomposed to produce the species-specific scales. Parameter names in the fit objects are `iota_t`, `kappa_t`, and `epsilon_t`, respectively.
 
 ## Identifiability and sum-to-zero constraints
 

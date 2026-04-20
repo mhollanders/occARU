@@ -23,7 +23,7 @@
 #'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
 #'   the column space of the site or survey design matrix. If `FALSE`, recovers
 #'   coefficients without orthogonal projection, \eqn{\boldsymbol{\beta} -
-#'   \boldsymbol{\iota} \boldsymbol{X_2}^+}, where  \eqn{\boldsymbol{X_2}^+} is
+#'   \boldsymbol{X_2}^+ \boldsymbol{\iota}}, where  \eqn{\boldsymbol{X_2}^+} is
 #'   the pseudo-inverse of the design matrix. Only used for site predictors if
 #'   `submodel` is `"detection"`, or if survey random effects were also
 #'   projected with `project_kappa = TRUE` in `fit_model()`.
@@ -160,10 +160,10 @@ plot_coefficients <- function(
           "X2"
         }
       ]]
-      X_lbl <- if (survey) colnames(X) else rownames(X)
+      X_lbl <- if (survey) dimnames(X)[[3]] else colnames(X)
       if (MS && level == "species") {
         param <- rlang::sym(paste0(prefix, coef, suffix))
-        draws <- tidybayes::spread_rvars(fit, (!!param)[s, p]) |>
+        draws <- tidybayes::spread_rvars(fit, (!!param)[p, s]) |>
           dplyr::filter(s %in% species_idx) |>
           dplyr::mutate(
             s = factor(species_lvl[s], levels = species_lvl[species_idx]),
@@ -241,7 +241,7 @@ plot_coefficients <- function(
 
         if (MS && level == "species") {
           param <- rlang::sym(paste0(prefix, coef, "_cat"))
-          draws <- tidybayes::spread_rvars(fit, (!!param)[p, s, c]) |>
+          draws <- tidybayes::spread_rvars(fit, (!!param)[p, c, s]) |>
             dplyr::filter(s %in% species_idx) |>
             dplyr::right_join(lvls_df, by = dplyr::join_by(p, c)) |>
             dplyr::mutate(
@@ -249,8 +249,11 @@ plot_coefficients <- function(
                 species_lvl[s],
                 levels = species_lvl[species_idx]
               ),
-              predictor = factor(predictor, levels = names(lvls$cat)),
-              category = factor(category, levels = unlist(lvls$cat)),
+              predictor = factor(predictor, levels = names(lvls$cat))
+            ) |>
+            dplyr::mutate(
+              category = factor(category, levels = lvls$ord[[predictor[1]]]),
+              .by = predictor
             ) |>
             dplyr::select(-c(p, s, c)) |>
             dplyr::relocate(
@@ -280,8 +283,11 @@ plot_coefficients <- function(
             dplyr::filter(!is.na(median(!!param))) |>
             dplyr::left_join(lvls_df, by = dplyr::join_by(p, c)) |>
             dplyr::mutate(
-              predictor = factor(predictor, levels = names(lvls$cat)),
-              category = factor(category, levels = unlist(lvls$cat))
+              predictor = factor(predictor, levels = names(lvls$cat))
+            ) |>
+            dplyr::mutate(
+              category = factor(category, levels = lvls$ord[[predictor[1]]]),
+              .by = predictor
             ) |>
             dplyr::select(-c(p, c)) |>
             dplyr::relocate(predictor, category, .before = !!param)
@@ -315,11 +321,11 @@ plot_coefficients <- function(
           param <- rlang::sym(paste0(prefix, coef, "_ord", suffix))
           draws <- tidybayes::spread_rvars(
             fit,
-            (!!param)[s, p],
-            (!!cs)[p, o]
+            (!!param)[p, s],
+            (!!cs)[o, p]
           ) |>
             dplyr::filter(s %in% species_idx) |>
-            dplyr::right_join(lvls_df, by = dplyr::join_by(p, o)) |>
+            dplyr::right_join(lvls_df, by = dplyr::join_by(o, p)) |>
             dplyr::mutate(
               species = factor(
                 species_lvl[s],
@@ -390,9 +396,9 @@ plot_coefficients <- function(
             if (MS) "_bar",
             suffix
           ))
-          draws <- tidybayes::spread_rvars(fit, (!!param)[p], (!!cs)[p, o]) |>
+          draws <- tidybayes::spread_rvars(fit, (!!param)[p], (!!cs)[o, p]) |>
             dplyr::filter(!is.na(median(!!param))) |>
-            dplyr::right_join(lvls_df, by = dplyr::join_by(p, o)) |>
+            dplyr::right_join(lvls_df, by = dplyr::join_by(o, p)) |>
             dplyr::mutate(
               predictor = factor(predictor, levels = names(lvls$ord))
             ) |>
@@ -400,7 +406,7 @@ plot_coefficients <- function(
               category = factor(category, levels = lvls$ord[[predictor[1]]]),
               .by = predictor
             ) |>
-            dplyr::select(-c(p, o)) |>
+            dplyr::select(-c(o, p)) |>
             dplyr::relocate(predictor, category, .before = !!param)
 
           if (ordinal_categories) {
@@ -627,7 +633,7 @@ plot_intercepts <- function(
   draws <- if (MS) {
     species_lvl <- attr(occARU_data, "species")
     species_idx <- indices(species, species_lvl)
-    tidybayes::spread_rvars(fit, alpha[s, d]) |>
+    tidybayes::spread_rvars(fit, alpha[d, s]) |>
       dplyr::filter(s %in% species_idx) |>
       dplyr::mutate(
         s = factor(species_lvl[s], levels = species_lvl[species_idx])
@@ -644,7 +650,6 @@ plot_intercepts <- function(
 
   # transform
   if (back_transform) {
-    inv_logit <- function(x) 1 / (1 + exp(-x))
     draws <- dplyr::mutate(
       draws,
       alpha = dplyr::if_else(d == 1, inv_logit(alpha), exp(alpha)),
@@ -751,9 +756,9 @@ plot_partitions <- function(
         V_lbl <- "Intercept"
         if (P_sum[1]) {
           X_lbl <- c(
-            rownames(stan_data$X1),
-            rownames(stan_data$X1_cat),
-            rownames(stan_data$X1_ord)
+            colnames(stan_data$X1),
+            colnames(stan_data$X1_cat),
+            colnames(stan_data$X1_ord)
           )
           V_lbl <- c(
             V_lbl,
@@ -779,9 +784,9 @@ plot_partitions <- function(
         V_lbl <- "Intercept"
         if (P_sum[2]) {
           X_lbl <- list(
-            rownames(stan_data$X2),
-            rownames(stan_data$X_cat2),
-            rownames(stan_data$X_ord2)
+            colnames(stan_data$X2),
+            colnames(stan_data$X_cat2),
+            colnames(stan_data$X_ord2)
           ) |>
             sapply(\(x) {
               if (!is.null(x)) {
@@ -793,9 +798,9 @@ plot_partitions <- function(
         }
         if (P_sum[3]) {
           X_lbl <- list(
-            colnames(stan_data$X3),
-            colnames(stan_data$X_cat3),
-            colnames(stan_data$X_ord3)
+            dimnames(stan_data$X3)[[3]],
+            dimnames(stan_data$X_cat3)[[3]],
+            dimnames(stan_data$X_ord3)[[3]]
           ) |>
             sapply(\(x) {
               if (!is.null(x)) {
@@ -846,9 +851,9 @@ plot_partitions <- function(
       V_lbl <- NULL
       if (P_sum[1]) {
         X_lbl <- c(
-          rownames(stan_data$X1),
-          rownames(stan_data$X1_cat),
-          rownames(stan_data$X1_ord)
+          colnames(stan_data$X1),
+          colnames(stan_data$X1_cat),
+          colnames(stan_data$X1_ord)
         )
         V_lbl <- c(V_lbl, X_lbl)
       }
@@ -870,17 +875,17 @@ plot_partitions <- function(
       V_lbl <- NULL
       if (P_sum[2]) {
         X_lbl <- c(
-          rownames(stan_data$X2),
-          rownames(stan_data$X_cat2),
-          rownames(stan_data$X_ord2)
+          colnames(stan_data$X2),
+          colnames(stan_data$X_cat2),
+          colnames(stan_data$X_ord2)
         )
         V_lbl <- c(V_lbl, paste("site:", X_lbl))
       }
       if (P_sum[3]) {
         X_lbl <- c(
-          colnames(stan_data$X3),
-          colnames(stan_data$X_cat3),
-          colnames(stan_data$X_ord3)
+          dimnames(stan_data$X3)[[3]],
+          dimnames(stan_data$X_cat3)[[3]],
+          dimnames(stan_data$X_ord3)[[3]]
         )
         V_lbl <- c(V_lbl, paste("survey:", X_lbl))
       }
@@ -902,8 +907,8 @@ plot_partitions <- function(
         dplyr::rename(partition = v, phi = mu_phi, W = mu_W)
     } else if (mu_V == 1) {
       cli::cli_warn(
-        "The model was fit with only one component for detection, \\
-          so the variance partition is 1 and not plotted."
+        "The model was fit with only one component for detection, so the \\
+        variance partition is 1 and not plotted."
       )
     }
   }
@@ -921,7 +926,11 @@ plot_partitions <- function(
       xdist = if (scales) tau else phi,
       y = forcats::fct_rev(partition)
     ) +
-    ggplot2::facet_wrap(~submodel, nrow = 1, scales = "free_y") +
+    ggplot2::facet_wrap(
+      ~submodel,
+      nrow = 1,
+      scales = if (scales) "free" else "free_y"
+    ) +
     ggdist::stat_pointinterval(...) +
     ggplot2::scale_x_continuous(expand = c(0, 0)) +
     ggplot2::labs(
@@ -1016,7 +1025,7 @@ plot_realised <- function(fit, species = NULL, sites = NULL, ...) {
 #' on a map; otherwise site effects are plotted as point-intervals. When
 #' `latent = TRUE` was set in [fit_model()], sites with median posterior
 #' occupancy of 0 are shown as red crosses. When `latent = FALSE`, detection
-#' rates are weighted by occupancy probability (`inv_logit(logit_psi[s, i])`).
+#' rates are weighted by occupancy probability (`inv_logit(logit_psi[i, s])`).
 #'
 #' @param fit A fitted model object from [fit_model()].
 #' @param species `character`. Vector of species to plot. If `NULL` (default),
@@ -1039,7 +1048,7 @@ plot_realised <- function(fit, species = NULL, sites = NULL, ...) {
 #'   effects.
 #' @param restricted `logical`. If `TRUE` (default), when `include_predictors` is
 #'   `FALSE`, plots random site effects with orthogonal projection, i.e.,
-#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+#'   \eqn{(\boldsymbol{I} - \boldsymbol{P_{X_2}}) \boldsymbol{\iota}}, where
 #'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
 #'   the column space of the site design matrix. If `FALSE`, plots random
 #'   effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
@@ -1140,7 +1149,7 @@ plot_sites <- function(
   }
 
   # initialise log_mu
-  draws <- tidyr::expand_grid(s = species_idx, i = site_idx) |>
+  draws <- tidyr::expand_grid(i = site_idx, s = species_idx) |>
     dplyr::mutate(log_mu = 0)
 
   # increment predictor effects
@@ -1150,7 +1159,7 @@ plot_sites <- function(
         betaX <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            mu_beta[s, p],
+            mu_beta[p, s],
             ndraws = ndraws,
             seed = seed
           ) |>
@@ -1162,10 +1171,10 @@ plot_sites <- function(
         ) |>
           dplyr::summarise(
             betaX = posterior::rvar_sum(mu_beta * x),
-            .by = c(s, i)
+            .by = c(i, s)
           )
 
-        draws <- dplyr::left_join(draws, betaX, by = dplyr::join_by(s, i)) |>
+        draws <- dplyr::left_join(draws, betaX, by = dplyr::join_by(i, s)) |>
           dplyr::mutate(log_mu = log_mu + betaX) |>
           dplyr::relocate(betaX, .before = log_mu)
       } else {
@@ -1196,25 +1205,25 @@ plot_sites <- function(
         betaX_cat <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            mu_beta_cat[p, s, x],
+            mu_beta_cat[p, x, s],
             ndraws = ndraws,
             seed = seed
           ) |>
             dplyr::filter(s %in% species_idx, !is.nan(median(mu_beta_cat))),
           predictor_matrix_to_tibble(stan_data$X_cat2) |>
             dplyr::filter(i %in% site_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
             betaX_cat = posterior::rvar_sum(mu_beta_cat),
-            .by = c(s, i)
+            .by = c(i, s)
           )
 
         draws <- dplyr::left_join(
           draws,
           betaX_cat,
-          by = dplyr::join_by(s, i)
+          by = dplyr::join_by(i, s)
         ) |>
           dplyr::mutate(log_mu = log_mu + betaX_cat) |>
           dplyr::relocate(betaX_cat, .before = log_mu)
@@ -1222,14 +1231,14 @@ plot_sites <- function(
         betaX_cat <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            mu_beta_cat[p, x],
+            mu_beta_cat[x, p],
             ndraws = ndraws,
             seed = seed
           ) |>
             dplyr::filter(!is.na(median(mu_beta_cat))),
           predictor_matrix_to_tibble(stan_data$X_cat2) |>
             dplyr::filter(i %in% site_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
@@ -1247,26 +1256,26 @@ plot_sites <- function(
         betaX_ord <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            mu_beta_ord[s, p],
-            mu_beta_ord_cs[p, x],
+            mu_beta_ord[p, s],
+            mu_beta_ord_cs[x, p],
             ndraws = ndraws,
             seed = seed
           ) |>
             dplyr::filter(s %in% species_idx, !is.na(median(mu_beta_ord_cs))),
           predictor_matrix_to_tibble(stan_data$X_ord2) |>
             dplyr::filter(i %in% site_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
             betaX_ord = posterior::rvar_sum(mu_beta_ord * mu_beta_ord_cs),
-            .by = c(s, i)
+            .by = c(i, s)
           )
 
         draws <- dplyr::left_join(
           draws,
           betaX_ord,
-          by = dplyr::join_by(s, i)
+          by = dplyr::join_by(i, s)
         ) |>
           dplyr::mutate(log_mu = log_mu + betaX_ord) |>
           dplyr::relocate(betaX_ord, .before = log_mu)
@@ -1275,14 +1284,14 @@ plot_sites <- function(
           tidybayes::spread_rvars(
             fit,
             mu_beta_ord[p],
-            mu_beta_ord_cs[p, x],
+            mu_beta_ord_cs[x, p],
             ndraws = ndraws,
             seed = seed
           ) |>
             dplyr::filter(!is.na(median(mu_beta_ord_cs))),
           predictor_matrix_to_tibble(stan_data$X_ord2) |>
             dplyr::filter(i %in% site_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
@@ -1311,11 +1320,11 @@ plot_sites <- function(
         draws,
         tidybayes::spread_rvars(
           fit,
-          (!!param)[s, i],
+          (!!param)[i, s],
           ndraws = ndraws,
           seed = seed
         ),
-        by = dplyr::join_by(s, i)
+        by = dplyr::join_by(i, s)
       )
     } else {
       draws <- dplyr::left_join(
@@ -1342,7 +1351,7 @@ plot_sites <- function(
         draws,
         tidybayes::spread_rvars(
           fit,
-          alpha[s, d],
+          alpha[d, s],
           ndraws = ndraws,
           seed = seed
         ) |>
@@ -1393,13 +1402,12 @@ plot_sites <- function(
       ) |>
       dplyr::relocate(z, occupied, .after = i)
   } else {
-    inv_logit <- function(x) 1 / (1 + exp(-x))
     if (MS) {
       draws <- dplyr::left_join(
         draws,
         tidybayes::spread_rvars(
           fit,
-          logit_psi[s, i],
+          logit_psi[i, s],
           ndraws = ndraws,
           seed = seed
         ) |>
@@ -1529,7 +1537,7 @@ plot_sites <- function(
 #' @param restricted `logical`. If `TRUE` (default), when `include_predictors` is
 #'   `FALSE` and the model was fit with `project_kappa = TRUE`, plots random
 #'   survey effects with orthogonal projection, i.e.,
-#'   \eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
+#'   \eqn{(\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}}, where
 #'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
 #'   the column space of the site-averaged survey design matrix. If `FALSE`,
 #'   plots random effects without orthogonal projection, i.e.,
@@ -1638,7 +1646,7 @@ plot_surveys <- function(
         gammaX <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            gamma[s, p],
+            gamma[p, s],
             ndraws = ndraws,
             seed = seed
           ) |>
@@ -1651,10 +1659,10 @@ plot_surveys <- function(
         ) |>
           dplyr::summarise(
             gammaX = posterior::rvar_sum(gamma * x),
-            .by = c(s, j)
+            .by = c(j, s)
           )
 
-        draws <- dplyr::left_join(draws, gammaX, by = dplyr::join_by(s, j)) |>
+        draws <- dplyr::left_join(draws, gammaX, by = dplyr::join_by(j, s)) |>
           dplyr::mutate(log_mu = log_mu + gammaX) |>
           dplyr::relocate(gammaX, .before = log_mu)
       } else {
@@ -1684,33 +1692,33 @@ plot_surveys <- function(
     if (P_cat) {
       if (MS) {
         gammaX_cat <- dplyr::left_join(
-          tidybayes::spread_rvars(fit, gamma_cat[p, s, x]) |>
+          tidybayes::spread_rvars(fit, gamma_cat[p, x, s]) |>
             dplyr::filter(s %in% species_idx),
           predictor_matrix_to_tibble(apply(stan_data$X_cat3, 2:3, int_mode)) |>
             dplyr::rename(j = i) |>
             dplyr::filter(j %in% survey_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
             gammaX_cat = posterior::rvar_sum(gamma_cat),
-            .by = c(s, j)
+            .by = c(j, s)
           )
 
         draws <- dplyr::left_join(
           draws,
           gammaX_cat,
-          by = dplyr::join_by(s, j)
+          by = dplyr::join_by(j, s)
         ) |>
           dplyr::mutate(log_mu = log_mu + gammaX_cat) |>
           dplyr::relocate(gammaX_cat, .before = log_mu)
       } else {
         gammaX_cat <- dplyr::left_join(
-          tidybayes::spread_rvars(fit, gamma_cat[p, x]),
+          tidybayes::spread_rvars(fit, gamma_cat[x, p]),
           predictor_matrix_to_tibble(apply(stan_data$X_cat3, 2:3, int_mode)) |>
             dplyr::rename(j = i) |>
             dplyr::filter(j %in% survey_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
@@ -1728,8 +1736,8 @@ plot_surveys <- function(
         gammaX_ord <- dplyr::left_join(
           tidybayes::spread_rvars(
             fit,
-            gamma_ord[s, p],
-            gamma_ord_cs[p, x],
+            gamma_ord[p, s],
+            gamma_ord_cs[x, p],
             ndraws = ndraws,
             seed = seed
           ) |>
@@ -1737,18 +1745,18 @@ plot_surveys <- function(
           predictor_matrix_to_tibble(apply(stan_data$X_ord3, 2:3, int_mode)) |>
             dplyr::rename(j = i) |>
             dplyr::filter(j %in% survey_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
             gammaX_ord = posterior::rvar_sum(gamma_ord * gamma_ord_cs),
-            .by = c(s, j)
+            .by = c(j, s)
           )
 
         draws <- dplyr::left_join(
           draws,
           gammaX_ord,
-          by = dplyr::join_by(s, j)
+          by = dplyr::join_by(j, s)
         ) |>
           dplyr::mutate(
             log_mu = dplyr::if_else(
@@ -1763,14 +1771,14 @@ plot_surveys <- function(
           tidybayes::spread_rvars(
             fit,
             gamma_ord[p],
-            gamma_ord_cs[p, x],
+            gamma_ord_cs[x, p],
             ndraws = ndraws,
             seed = seed
           ),
           predictor_matrix_to_tibble(apply(stan_data$X_ord3, 2:3, int_mode)) |>
             dplyr::rename(j = i) |>
             dplyr::filter(j %in% survey_idx),
-          by = dplyr::join_by(p, x),
+          by = dplyr::join_by(x, p),
           relationship = "many-to-many"
         ) |>
           dplyr::summarise(
@@ -1798,11 +1806,11 @@ plot_surveys <- function(
         draws,
         tidybayes::spread_rvars(
           fit,
-          (!!param)[s, j],
+          (!!param)[j, s],
           ndraws = ndraws,
           seed = seed
         ),
-        by = dplyr::join_by(s, j)
+        by = dplyr::join_by(j, s)
       ) |>
         dplyr::mutate(log_mu = log_mu + !!param) |>
         dplyr::relocate(!!param, .before = log_mu)
@@ -1829,7 +1837,7 @@ plot_surveys <- function(
         draws,
         tidybayes::spread_rvars(
           fit,
-          alpha[s, d],
+          alpha[d, s],
           ndraws = ndraws,
           seed = seed
         ) |>
@@ -1893,8 +1901,8 @@ plot_surveys <- function(
 #' @noRd
 predictor_matrix_to_tibble <- function(X) {
   categorical <- all(X == round(X))
-  P <- nrow(X)
-  tidyr::as_tibble(t(X)) |>
+  P <- ncol(X)
+  tidyr::as_tibble(X) |>
     purrr::set_names(1:P) |>
     dplyr::mutate(i = dplyr::row_number()) |>
     tidyr::pivot_longer(-i, names_to = "p", values_to = "x") |>
@@ -1989,6 +1997,12 @@ theme_occARU <- function(base_size = 11, base_family = "") {
     )
 }
 
+#' Inverse logit function
+#'
+#' @param x Logit
+#' @return Probability
+#' @noRd
+inv_logit <- function(x) 1 / (1 + exp(-x))
 
 #' Plot red dashed verticle 0-line
 #'

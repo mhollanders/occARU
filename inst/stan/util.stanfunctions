@@ -2,22 +2,22 @@
  * Produce mean and species-specific coefficients for continuous predictors
  *
  * @param tau    Scales for mean and species-specific realisations [2 * P]
- * @param O_L    Cholesky factor of interspecific correlation matrix [S, S]
+ * @param O_L    Cholesky factor of interspecific correlation matrix [S]
  * @param bar_z  Mean coefficient z-scores [P]
  * @param z      Species-specific z-scores (zero-sum per predictor) [P, S]
  *
  * @return beta_bar  Mean coefficients [P]
  * @return beta      Species-specific coefficients (incl. mean) [S, P]
  */
-tuple(row_vector, matrix)
-  coef_cont(row_vector tau, matrix O_L, row_vector bar_z, array[] vector z) {
+tuple(vector, matrix)
+  coef_cont(vector tau, matrix O_L, vector bar_z, array[] vector z) {
   int P = size(bar_z), S = rows(O_L);
-  row_vector[P] beta_bar = head(tau, P) .* bar_z;
-  matrix[S, P] z_mat, beta = rep_matrix(beta_bar, S);
+  vector[P] beta_bar = head(tau, P) .* bar_z;
+  matrix[P, S] z_mat, beta = rep_matrix(beta_bar, S);
   for (p in 1:P) {
-    z_mat[:, p] = z[p];
+    z_mat[p] = z[p]';
   }
-  beta += O_L * diag_post_multiply(z_mat, tail(tau, P));
+  beta += diag_pre_multiply(tail(tau, P), z_mat) * O_L';
   return (beta_bar, beta);
 }
 
@@ -27,44 +27,44 @@ tuple(row_vector, matrix)
  * single-species scenario.
  *
  * @param tau      Scales for mean and species-specific realisations [2 * P]
- * @param O_L      Cholesky factor of interspecific correlation matrix [S, S]
+ * @param O_L      Cholesky factor of interspecific correlation matrix [S]
  * @param bar_z_u  Free mean coefficient z-scores to zero-sum [P * (C - 1)]
- * @param z        Species-specific z-scores to zero-sum [S, P * (C - 1)]
+ * @param z        Species-specific z-scores to zero-sum [P * (C - 1), S - 1]
  * @param C        Number of category levels per predictor [P]
  *
- * @return beta_bar    Mean coefficients [P, C]
+ * @return beta_bar    Mean coefficients [C, P]
  * @return beta_bar_z  Mean coefficient z-scores [P, C]
- * @return beta        Species-specific coefficients (incl. mean) [P, S, C]
- * @return beta_z      Species-specific z-scores [P, S, C]
+ * @return beta        Species-specific coefficients (incl. mean) [P, C, S]
+ * @return beta_z      Species-specific z-scores [P, C, S]
  */
 tuple(matrix, matrix, array[] matrix, array[] matrix)
-  coef_cat_jacobian(row_vector tau, matrix O_L, vector bar_z_u, matrix z_u,
+  coef_cat_jacobian(vector tau, matrix O_L, vector bar_z_u, matrix z_u,
                     data array[] int C) {
   int P = size(C), S = rows(O_L), Sm1 = S - 1, C_max = max(C[:P]);
-  matrix[P, C_max] beta_bar_z, beta_bar;
-  array[P] matrix[S, C_max] beta_z, beta;
+  matrix[C_max, P] beta_bar_z, beta_bar;
+  array[P] matrix[C_max, S] beta_z, beta;
   int idx = 1;
   for (p in 1:P) {
     int C_p = C[p], Cm1 = C_p - 1;
-    beta_bar_z[p, :C_p] = sum_to_zero_jacobian(segment(bar_z_u, idx, Cm1))';
-    beta_bar[p, :C_p] = tau[p] * beta_bar_z[p, :C_p];
-    beta_z[p, :, :C_p] = sum_to_zero_jacobian(block(z_u, 1, idx, Sm1, Cm1));
-    beta[p, :, :C_p] = rep_matrix(beta_bar[p, :C_p], S)
-                       + tau[P + p] * O_L * beta_z[p, :, :C_p];
+    beta_bar_z[:C_p, p] = sum_to_zero_jacobian(segment(bar_z_u, idx, Cm1));
+    beta_bar[:C_p, p] = tau[p] * beta_bar_z[:C_p, p];
+    beta_z[p, :C_p] = sum_to_zero_jacobian(block(z_u, idx, 1, Cm1, Sm1));
+    beta[p, :C_p] = rep_matrix(beta_bar[:C_p, p], S)
+                    + tau[P + p] * beta_z[p, :C_p] * O_L';
     idx += Cm1;
   }
   return (beta_bar, beta_bar_z, beta, beta_z);
 }
 
 tuple(matrix, matrix)
-  coef_cat_jacobian(row_vector tau, vector z_u, data array[] int C) {
+  coef_cat_jacobian(vector tau, vector z_u, data array[] int C) {
   int P = size(C), C_max = max(C);
-  matrix[P, C_max] beta_z, beta;
+  matrix[C_max, P] beta_z, beta;
   int idx = 1;
   for (p in 1:P) {
     int C_p = C[p], Cm1 = C_p - 1;
-    beta_z[p, :C_p] = sum_to_zero_jacobian(segment(z_u, idx, Cm1))';
-    beta[p, :C_p] = tau[p] * beta_z[p, :C_p];
+    beta_z[:C_p, p] = sum_to_zero_jacobian(segment(z_u, idx, Cm1));
+    beta[:C_p, p] = tau[p] * beta_z[:C_p, p];
     idx += Cm1;
   }
   return (beta, beta_z);
@@ -77,46 +77,43 @@ tuple(matrix, matrix)
  * single-species scenario.
  *
  * @param tau    Scales for mean and species-specific realisations [2 * P]
- * @param O_L    Cholesky factor of interspecific correlation matrix [S, S]
+ * @param O_L    Cholesky factor of interspecific correlation matrix [S]
  * @param bar_z  Mean coefficient z-scores [P]
  * @param z      Species-specific z-scores (zero-sum per predictor) [P, S]
  * @param c_u    Free simplex partitions to simplex constrain [P * (O - 1)]
  * @param O      Number of category levels per predictor [P]
  *
  * @return beta_bar  Mean coefficients [P]
- * @return beta      Species-specific coefficients (incl. mean) [S, P]
- * @return simp_cs   Cumulative sum of simplex partitions [P, O]
+ * @return beta      Species-specific coefficients (incl. mean) [P, S]
+ * @return simp_cs   Cumulative sum of simplex partitions [O, P]
  */
-tuple(row_vector, matrix, matrix)
-  coef_ord_jacobian(row_vector tau, matrix O_L, row_vector bar_z,
-                    array[] vector z, vector c_u, data array[] int O) {
+tuple(vector, matrix, matrix)
+  coef_ord_jacobian(vector tau, matrix O_L, vector bar_z, array[] vector z,
+                    vector c_u, data array[] int O) {
   int P = size(bar_z), S = rows(O_L);
-  row_vector[P] beta_bar = head(tau, P) .* bar_z;
-  matrix[S, P] z_mat, beta = rep_matrix(beta_bar, S);
-  matrix[P, max(O[:P])] simp, simp_cs;
+  vector[P] beta_bar = head(tau, P) .* bar_z;
+  matrix[P, S] z_mat, beta = rep_matrix(beta_bar, S);
+  matrix[max(O), P] simp_cs;
   int idx = 1;
   for (p in 1:P) {
     int O_p = O[p], Om1 = O_p - 1;
-    z_mat[:, p] = z[p];
-    vector[O_p] sim = simplex_jacobian(segment(c_u, idx, Om1));
-    simp_cs[p, :O_p] = cumulative_sum(sim)';
+    z_mat[p] = z[p]';
+    simp_cs[:O_p, p] = cumulative_sum(simplex_jacobian(segment(c_u, idx, Om1)));
     idx += Om1;
   }
-  beta += O_L * diag_post_multiply(z_mat, tail(tau, P));
+  beta += diag_pre_multiply(tail(tau, P), z_mat) * O_L';
   return (beta_bar, beta, simp_cs);
 }
 
-tuple(row_vector, matrix)
-  coef_ord_jacobian(row_vector tau, row_vector z, vector c_u,
-                    data array[] int O) {
+tuple(vector, matrix)
+  coef_ord_jacobian(vector tau, vector z, vector c_u, data array[] int O) {
   int P = size(z);
-  row_vector[P] beta = tau .* z;
-  matrix[P, max(O[:P])] simp, simp_cs;
+  vector[P] beta = tau .* z;
+  matrix[max(O), P] simp_cs;
   int idx = 1;
   for (p in 1:P) {
     int O_p = O[p], Om1 = O_p - 1;
-    vector[O_p] sim = simplex_jacobian(segment(c_u, idx, Om1));
-    simp_cs[p, :O_p] = cumulative_sum(sim)';
+    simp_cs[:O_p, p] = cumulative_sum(simplex_jacobian(segment(c_u, idx, Om1)));
     idx += Om1;
   }
   return (beta, simp_cs);
@@ -127,30 +124,29 @@ tuple(row_vector, matrix)
  * and predictor-specific cumulative sums of simplexes. Overloaded for
  * single-species scenario.
  *
- * @param O               Category levels per predictor [P]
- * @param beta            Coefficients when X = O [(S, )P]
- * @param simplex_cumsum  Cumulative sum of simplex [P, O_max]
+ * @param O        Category levels per predictor [P]
+ * @param beta     Coefficients when X = max(O) [P(, S)]
+ * @param simp_cs  Cumulative sum of simplex [O_max, P]
  *
- * @return                Realised coefficients per category [P, (S, )O_max]
+ * @return         Realised coefficients per category [P, O_max(, S)]
  */
 array[] matrix coef_ord_realised(data array[] int O, matrix beta,
-                                 matrix simplex_cumsum) {
-  int P = cols(beta), S = rows(beta), O_max = cols(simplex_cumsum);
-  array[P] matrix[S, O_max] realised;
+                                 matrix simp_cs) {
+  int P = rows(beta), S = cols(beta), O_max = rows(simp_cs);
+  array[P] matrix[O_max, S] realised;
   for (p in 1:P) {
     int O_p = O[p];
-    realised[p, :, :O_p] = beta[:, p] * simplex_cumsum[p, :O_p];
+    realised[p, :O_p] = simp_cs[:O_p, p] * beta[p];
   }
   return realised;
 }
 
-matrix coef_ord_realised(data array[] int O, row_vector beta,
-                         matrix simplex_cumsum) {
-  int P = cols(beta), O_max = cols(simplex_cumsum);
-  matrix[P, O_max] realised;
+matrix coef_ord_realised(data array[] int O, vector beta, matrix simp_cs) {
+  int P = size(beta), O_max = rows(simp_cs);
+  matrix[O_max, P] realised;
   for (p in 1:P) {
     int O_p = O[p];
-    realised[p, :O_p] = beta[p] * simplex_cumsum[p, :O_p];
+    realised[:O_p, p] = beta[p] * simp_cs[:O_p, p];
   }
   return realised;
 }
@@ -207,72 +203,41 @@ tuple(array[,] int, array[,,] int) first_last(data array[] matrix Delta) {
 }
 
 /**
- * Get first and last survey per site
- *
- * @param Delta  Activity times per survey [I, J]
- *
- * @return  First and last survey per site [I, 2]
- */
-array[,] int first_last(data matrix Delta) {
-  int I = rows(Delta), J = cols(Delta);
-  array[I, 2] int f_l = rep_array(0, I, 2);
-  for (i in 1:I) {
-    for (j in 1:J) {
-      if (Delta[i, j] > 0) {
-        f_l[i] = rep_array(j, 2);
-        break;
-      }
-    }
-    int JJ = J - f_l[i, 1];
-    if (JJ) {
-      array[JJ] int idx = linspaced_int_array(JJ, f_l[i, 1] + 1, J);
-      for (j in reverse(idx)) {
-        if (Delta[i, j] > 0) {
-          f_l[i, 2] = j;
-          break;
-        }
-      }
-    }
-  }
-  return f_l;
-}
-
-/**
  * Add ordinal coefficients to linear predictor using realised ordinal
  * coefficients produced from coef_ord_realised(). Overloaded for
  * single-species and dynamic models.
  *
- * @param X     Integer design array [P, I]
- * @param beta  Realised ordinal coefficients [P, (S, )O_max]
+ * @param X     Integer design array [I, P]
+ * @param beta  Realised ordinal coefficients [P, O_max, S] or [O_max, P]
  *
- * @return      Site-level realisations [S, I]
+ * @return      Site-level realisations [I, S]
  */
 matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
-  int P = size(X), I = size(X[1]), S = rows(beta[1]);
+  int I = size(X), P = size(X[1]), S = cols(beta[1]);
   array[I] int X_p;
-  matrix[S, cols(beta[1])] beta_p;
-  matrix[S, I] mu = rep_matrix(0, S, I);
+  matrix[rows(beta[1]), S] beta_p;
+  matrix[I, S] mu = rep_matrix(0, I, S);
   for (p in 1:P) {
-    X_p = X[p];
+    X_p = X[:, p];
     beta_p = beta[p];
     for (i in 1:I) {
       int X_i = X_p[i];
       if (X_i) {
-        mu[:, i] += beta_p[:, X_i];
+        mu[i] += beta_p[X_i];
       }
     }
   }
   return mu;
 }
 
-row_vector increment_ordinal(data array[,] int X, matrix beta) {
-  int P = size(X), I = size(X[1]);
+vector increment_ordinal(data array[,] int X, matrix beta) {
+  int I = size(X), P = size(X[1]);
   array[I] int X_p;
-  row_vector[cols(beta)] beta_p;
-  row_vector[I] mu = zeros_row_vector(I);
+  vector[rows(beta)] beta_p;
+  vector[I] mu = zeros_vector(I);
   for (p in 1:P) {
-    X_p = X[p];
-    beta_p = beta[p];
+    X_p = X[:, p];
+    beta_p = beta[:, p];
     for (i in 1:I) {
       int X_i = X_p[i];
       if (X_i) {
@@ -286,40 +251,34 @@ row_vector increment_ordinal(data array[,] int X, matrix beta) {
 /**
  * Fill a matrix with a vector or an array of matrices with a matrix
  *
- * @param f_l           First and last survey [I, 2]
- * @param log_Delta     Offsets [J, I]
- * @param epsilon_long  "Long" format of OLREs [(S, )N]
+ * @param j_idx         Survey indices [I, J]
+ * @param J_i           Number of surveys [I]
+ * @param epsilon_long  "Long" format of OLREs [J_sum(, S)]
  *
- * @return              Matrix or array of matrices of OLREs [J, I] or [I, S, J]
+ * @return              Matrix or array of matrices of OLREs [J, I] or [I, J, S]
  */
-matrix fill_epsilon(data array[,] int f_l, data matrix log_Delta,
+matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
                     vector epsilon_long) {
-  int I = cols(log_Delta), J = rows(log_Delta);
+  int I = size(j_idx), J = size(j_idx[1]);
   matrix[J, I] epsilon;
-  int n = 0;
+  int idx = 0;
   for (i in 1:I) {
-    for (j in f_l[i, 1]:f_l[i, 2]) {
-      if (!is_inf(log_Delta[j, i])) {
-        n += 1;
-        epsilon[j, i] = epsilon_long[n];
-      }
-    }
+    int J_ii = J_i[i];
+    epsilon[j_idx[i, :J_ii], i] = epsilon_long[idx + 1:idx + J_ii];
+    idx += 1;
   }
   return epsilon;
 }
 
-array[] matrix fill_epsilon(data array[,] int f_l, data matrix log_Delta,
+array[] matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
                             matrix epsilon_long) {
-  int I = cols(log_Delta), J = rows(log_Delta), S = rows(epsilon_long);
-  array[I] matrix[S, J] epsilon;
-  int n = 0;
+  int I = size(j_idx), J = size(j_idx[1]), S = cols(epsilon_long);
+  array[I] matrix[J, S] epsilon;
+  int idx = 0;
   for (i in 1:I) {
-    for (j in f_l[i, 1]:f_l[i, 2]) {
-      if (!is_inf(log_Delta[j, i])) {
-        n += 1;
-        epsilon[i, :, j] = epsilon_long[:, n];
-      }
-    }
+    int J_ii = J_i[i];
+    epsilon[i, j_idx[i, :J_ii]] = epsilon_long[idx + 1:idx + J_ii];
+    idx += J_ii;
   }
   return epsilon;
 }
@@ -333,9 +292,6 @@ array[] matrix fill_epsilon(data array[,] int f_l, data matrix log_Delta,
  * @return   log(matrix_exp(Q) * tau), where Q is a 2x2 generator matrix
  */
 matrix log_matrix_exp(array[] real log_q, real tau) {
-  if (size(log_q) != 2) {
-    reject("log_matrix_exp() only works for a 2x2 generator matrix and requires two transition rates.");
-  }
   real log_S = log_sum_exp(log_q),
        Stau = exp(log_S) * tau,
        log_1mexp_Stau = log1m_exp(-Stau);
@@ -389,88 +345,87 @@ real log_prod_exp(row_vector A, vector B) {
 }
 
 /**
- * Orthogonalise a row_vector or matrix with respect to a design matrix, i.e.
+ * Orthogonalise a vector or matrix with respect to a design matrix, i.e.
  * remove the component of theta in the column space of X.
  *
- * @param theta   Matrix to orthogonalise [(I, )J]
- * @param X       Design matrix [P, J]
- * @param X_plus  Pseudo-inverse of design matrix [J, P]
+ * @param theta   Matrix to orthogonalise [I(, J)]
+ * @param X       Design matrix [I, P]
+ * @param X_plus  Pseudo-inverse of design matrix [P, I]
  *
- * @return        theta * (I - X_plus * X) [(I, )J]
+ * @return        theta * (I - X * X_plus) * theta [I(, J)]
  */
-row_vector orthogonalise(row_vector theta, data matrix X, data matrix X_plus) {
-  return theta - theta * X_plus * X;
+vector orthogonalise(vector theta, data matrix X, data matrix X_plus) {
+  return theta - X * X_plus * theta;
 }
 matrix orthogonalise(matrix theta, data matrix X, data matrix X_plus) {
-  return theta - theta * X_plus * X;
+  return theta - X * X_plus * theta;
 }
 
 /**
- * Posterior predict Poisson OLREs. Overloaded for multi- and single-
- * species versions.
+ * Posterior predict Poisson OLREs. Overloaded for multi- and single-species.
  *
- * @param f_l        First and last survey [I, 2]
- * @param log_Delta  Offsets [J, I]
- * @param bar        Mean OLREs [N]
- * @param S_L        Covariance matrix [S, S]
+ * @param j_idx  Survey indices [I, J]
+ * @param J_i    Number of surveys [I]
+ * @param bar    Mean OLREs [N]
+ * @param S_U    Covariance matrix (upper triangular) [S]
  *
- * @return
+ * @return       Posterior predictive OLREs in array or matrix
  */
-array[] matrix pp_epsilon_rng(data array[,] int f_l, data matrix log_Delta,
-                              row_vector bar, matrix S_L) {
-  int I = cols(log_Delta), J = rows(log_Delta), S = rows(S_L), Sm1 = S - 1,
-      N = size(bar), Nm1 = N - 1, SNm1 = Sm1 * Nm1;
-  array[SNm1] int zeros = zeros_int_array(SNm1), ones = ones_int_array(SNm1);
-  matrix[Sm1, Nm1] u = to_matrix(normal_rng(zeros, ones), Sm1, Nm1);
-  matrix[S, N] z = sum_to_zero_constrain(u);
-  return fill_epsilon(f_l, log_Delta, rep_matrix(bar, S) + S_L * z);
+array[] matrix pp_epsilon_rng(data array[,] int j_idx, data array[] int J_i,
+                              vector bar, matrix S_U) {
+  int I = size(j_idx), J = size(j_idx[1]), S = rows(S_U), Sm1 = S - 1,
+      N = size(bar), Nm1 = N - 1, NSm1 = Nm1 * Sm1;
+  array[NSm1] int zeros = zeros_int_array(NSm1);
+  matrix[Nm1, Sm1] u = to_matrix(normal_rng(zeros, 1), Nm1, Sm1);
+  return fill_epsilon(j_idx, J_i,
+                      rep_matrix(bar, S) + sum_to_zero_constrain(u) * S_U);
 }
 
-matrix pp_epsilon_rng(data array[,] int f_l, data matrix log_Delta, data int N,
-                      real tau) {
-  int I = cols(log_Delta), J = rows(log_Delta), Nm1 = N - 1;
+matrix pp_epsilon_rng(data array[,] int j_idx, data array[] int J_i, real tau) {
+  int I = size(j_idx), J = size(j_idx[1]), Nm1 = sum(J_i) - 1;
   vector[Nm1] u = to_vector(normal_rng(zeros_vector(Nm1), tau));
-  return fill_epsilon(f_l, log_Delta, sum_to_zero_constrain(u));
+  return fill_epsilon(j_idx, J_i, sum_to_zero_constrain(u));
 }
 
 /**
  * Posterior predictions for occARU model. Overloaded for multi- and single-
  * species versions.
  *
- * @param f_l        First and last survey [I, 2]
- * @param log_Delta  Offsets [J, I]
- * @param logit_psi  Occupancy logits [(S, )I]
- * @param log_mu     Log detection rates without OLREs [I, S, J] or [J, I]
- * @param epsilon    Poisson OLREs [I, S, J] or [J, I]
+ * @param j_idx      Survey indices [I, J]
+ * @param J_i        Number of surveys [I]
+ * @param logit_psi  Occupancy logits [I(, S)]
+ * @param log_mu     Log detection rates without OLREs [I, J, S] or [J, I]
+ * @param log_mu     Survey coefficients [P(, S)]
+ * @param epsilon    Poisson OLREs [I, J, S] or [J, I]
  * @param phi        Negative binomial overdispersion [S]
  *
  * @return yrep   Survey-level posterior predictions [I, J(, S)]
  * @return Qrep   Site-level aggregated counts [I(, S)]
  */
 tuple(array[,,] int, array[,] int)
-  pp_occARU_rng(data array[,] int f_l, data matrix log_Delta, matrix logit_psi,
-                array[] matrix log_mu, array[] matrix epsilon, vector phi) {
-  int I = cols(log_Delta), J = rows(log_Delta), S = rows(logit_psi),
-      OLRE = size(epsilon), NB = size(phi);
+  pp_occARU_rng(data array[,] int j_idx, data array[] int J_i,
+                data array[] matrix X3, matrix logit_psi, array[] matrix log_mu,
+                matrix gamma, array[] matrix epsilon, vector phi) {
+  int I = size(j_idx), J = size(j_idx[1]), S = cols(logit_psi),
+      P3 = size(gamma), OLRE = size(epsilon), NB = size(phi);
   array[I, J, S] int y = rep_array(0, I, J, S);
   array[I, S] int Q = rep_array(0, I, S);
   for (i in 1:I) {
-    int f = f_l[i, 1], l = f_l[i, 2], J_i = l - f + 1;
-    matrix[S, J_i] log_mu_i = log_mu[i, :, f:l];
+    int J_ii = J_i[i];
+    array[J_ii] int idx = j_idx[i, :J_ii];
+    matrix[J_ii, S] log_mu_i = log_mu[i, idx];
+    if (P3) {
+      log_mu_i += X3[i, idx] * gamma;
+    }
     if (OLRE) {
-      log_mu_i += epsilon[i, :, f:l];
+      log_mu_i += epsilon[i, idx];
     }
     for (s in 1:S) {
-      if (bernoulli_logit_rng(logit_psi[s, i])) {
-        for (j in f:l) {
-          int jj = j - f + 1;
-          if (!is_inf(log_Delta[j, i])) {
-            y[i, j, s] = NB ?
-                         neg_binomial_2_log_rng(log_mu_i[s, jj], phi[s])
-                         : poisson_log_rng(log_mu_i[s, jj]);
-          }
-        }
-        Q[i, s] = sum(y[i, f:l, s]);
+      if (bernoulli_logit_rng(logit_psi[i, s])) {
+        y[i, idx, s] = NB ?
+                       neg_binomial_2_log_rng(log_mu_i[:, s], phi[s])
+                       : poisson_log_rng(log_mu_i[:, s]);
+        Q[i, s] = sum(y[i, idx, s]);
       }
     }
   }
@@ -478,51 +433,51 @@ tuple(array[,,] int, array[,] int)
 }
 
 tuple(array[,] int, array[] int)
-  pp_occARU_rng(data array[,] int f_l, data matrix log_Delta,
-                row_vector logit_psi, matrix log_mu, matrix epsilon,
-                vector phi) {
-  int I = cols(log_Delta), J = rows(log_Delta), OLRE = size(epsilon),
-      NB = size(phi);
+  pp_occARU_rng(data array[,] int j_idx, data array[] int J_i,
+                data array[] matrix X3, vector logit_psi, matrix log_mu,
+                vector gamma, matrix epsilon, vector phi) {
+  int I = size(j_idx), J = size(j_idx[1]), P3 = size(gamma),
+      OLRE = size(epsilon), NB = size(phi);
   array[I, J] int y = rep_array(0, I, J);
   array[I] int Q = zeros_int_array(I);
   for (i in 1:I) {
     if (bernoulli_logit_rng(logit_psi[i])) {
-      int f = f_l[i, 1], l = f_l[i, 2], J_i = l - f + 1;
-      vector[J_i] log_mu_i = log_mu[f:l, i];
+      int J_ii = J_i[i];
+      array[J_ii] int idx = j_idx[i, :J_ii];
+      vector[J_ii] log_mu_i = log_mu[idx, i];
+      if (P3) {
+        log_mu_i += X3[i, idx] * gamma;
+      }
       if (OLRE) {
-        log_mu_i += epsilon[f:l, i];
+        log_mu_i += epsilon[idx, i];
       }
-      for (j in f:l) {
-        int jj = j - f + 1;
-        if (!is_inf(log_Delta[j, i])) {
-          y[i, j] = NB ?
-                    neg_binomial_2_log_rng(log_mu_i[jj], phi[1])
-                    : poisson_log_rng(log_mu_i[jj]);
-        }
-      }
-      Q[i] = sum(y[i, f:l]);
+      y[i, idx] = NB ?
+                  neg_binomial_2_log_rng(log_mu_i, phi[1])
+                  : poisson_log_rng(log_mu_i);
+      Q[i] = sum(y[i, idx]);
     }
   }
   return (y, Q);
 }
 
 /**
- * Moore–Penrose or pseudo-inverse, with predictors in rows and sites in columns
+ * Moore–Penrose or pseudo-inverse, with observations in rows and predictors
+ * in columns
  *
- * @param X  Design matrix X [P, I]
+ * @param X  Design matrix X [I, P]
  *
- * @return   X' * (X * Xt)^-1
+ * @return   (X' * X)^-1 * X'
  */
 matrix pseudo_inverse(data matrix X) {
-  int P = rows(X), I = cols(X);
-  matrix[I, P] Xt = X';
-  return Xt * inverse_spd(X * Xt);
+  int I = rows(X), P = cols(X);
+  matrix[P, I] Xt = X';
+  return inverse_spd(Xt * X) * Xt;
 }
 
 /**
  * Simplex constrain a zero-sum vector and increment Jacobian adjustment.
  * Differs from simplex_jacobian() in that it does not first
- * sum_to_zero_constrain a free vector and returns the log simplex.
+ * sum_to_zero_constrain a free vector.
  *
  * @param u  Sum-to-zero vector
  *
@@ -533,4 +488,29 @@ vector sum_to_zero_simplex_jacobian(vector u) {
   real r = log_sum_exp(u);
   jacobian += sum(u) - J * r;
   return exp(u - r);
+}
+
+/**
+ * Get indices of active surveys (where Delta > 0) and number of surveys.
+ *
+ * @param Delta  Survey effort [I, J]
+ *
+ * @return j_idx  Indices of active surveys [I, J]
+ * @return J_i    Number of surveys [I]
+ */
+tuple(array[,] int, array[] int) survey_indices(data matrix Delta) {
+  int I = rows(Delta), J = cols(Delta);
+  array[I, J] int indices = rep_array(0, I, J);
+  array[I] int J_i = zeros_int_array(I);
+  for (i in 1:I) {
+    int n = 1;
+    for (j in 1:J) {
+      if (Delta[i, j] > 0) {
+        indices[i, n] = j;
+        J_i[i] += 1;
+        n += 1;
+      }
+    }
+  }
+  return (indices, J_i);
 }
