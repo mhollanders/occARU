@@ -1,6 +1,6 @@
 functions {
-  #include occARU2.stanfunctions
-  #include util2.stanfunctions
+  #include occARU.stanfunctions
+  #include util.stanfunctions
 }
 
 data {
