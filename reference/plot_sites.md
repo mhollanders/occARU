@@ -72,7 +72,7 @@ plot_sites(
 
   `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`,
   plots random site effects with orthogonal projection, i.e.,
-  \\\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P\_{X_2}})\\, where
+  \\(\boldsymbol{I} - \boldsymbol{P\_{X_2}}) \boldsymbol{\iota}\\, where
   \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
   complement of the column space of the site design matrix. If `FALSE`,
   plots random effects without orthogonal projection, i.e.,
@@ -116,7 +116,7 @@ When `latent = TRUE` was set in
 [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
 sites with median posterior occupancy of 0 are shown as red crosses.
 When `latent = FALSE`, detection rates are weighted by occupancy
-probability (`inv_logit(logit_psi[s, i])`).
+probability (`inv_logit(logit_psi[i, s])`).
 
 ## See also
 

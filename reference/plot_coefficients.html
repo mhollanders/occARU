@@ -104,7 +104,7 @@ orthogonal projection of the detection random site or survey effects, e.g.,
 \(\boldsymbol{I} - \boldsymbol{P_{X_2}}\) is the orthogonal complement of
 the column space of the site or survey design matrix. If <code>FALSE</code>, recovers
 coefficients without orthogonal projection, \(\boldsymbol{\beta} -
-  \boldsymbol{\iota} \boldsymbol{X_2}^+\), where  \(\boldsymbol{X_2}^+\) is
+  \boldsymbol{X_2}^+ \boldsymbol{\iota}\), where  \(\boldsymbol{X_2}^+\) is
 the pseudo-inverse of the design matrix. Only used for site predictors if
 <code>submodel</code> is <code>"detection"</code>, or if survey random effects were also
 projected with <code>project_kappa = TRUE</code> in <code><a href="fit_model.html">fit_model()</a></code>.</p></dd>

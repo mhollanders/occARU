@@ -70,7 +70,7 @@ plot_coefficients(
   \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
   complement of the column space of the site or survey design matrix. If
   `FALSE`, recovers coefficients without orthogonal projection,
-  \\\boldsymbol{\beta} - \boldsymbol{\iota} \boldsymbol{X_2}^+\\, where
+  \\\boldsymbol{\beta} - \boldsymbol{X_2}^+ \boldsymbol{\iota}\\, where
   \\\boldsymbol{X_2}^+\\ is the pseudo-inverse of the design matrix.
   Only used for site predictors if `submodel` is `"detection"`, or if
   survey random effects were also projected with `project_kappa = TRUE`

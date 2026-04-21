@@ -57,12 +57,13 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 <span>  <span class="va">deployments</span>,</span>
 <span>  <span class="va">observations</span>,</span>
 <span>  failures <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  deploymentID <span class="op">=</span> <span class="va">deploymentID</span>,</span>
+<span>  locationID <span class="op">=</span> <span class="va">locationID</span>,</span>
 <span>  deploymentStart <span class="op">=</span> <span class="va">deploymentStart</span>,</span>
 <span>  deploymentEnd <span class="op">=</span> <span class="va">deploymentEnd</span>,</span>
 <span>  latitude <span class="op">=</span> <span class="va">latitude</span>,</span>
 <span>  longitude <span class="op">=</span> <span class="va">longitude</span>,</span>
 <span>  season <span class="op">=</span> <span class="va">season</span>,</span>
+<span>  region <span class="op">=</span> <span class="va">region</span>,</span>
 <span>  eventStart <span class="op">=</span> <span class="va">eventStart</span>,</span>
 <span>  scientificName <span class="op">=</span> <span class="va">scientificName</span>,</span>
 <span>  count <span class="op">=</span> <span class="va">count</span>,</span>
@@ -87,7 +88,7 @@ to UTM (km), with the zone auto-detected from the mean longitude.</p>
 
 <dl><dt id="arg-deployments">deployments<a class="anchor" aria-label="anchor" href="#arg-deployments"></a></dt>
 <dd><p>A dataframe of deployment information, one row per
-site (and potentially season). Must contain columns <code>deploymentID</code>,
+site (and potentially season). Must contain columns <code>locationID</code>,
 <code>deploymentStart</code>, and <code>deploymentEnd</code> (or equivalents specified via the
 corresponding arguments). Optionally, <code>latitude</code> and <code>longitude</code> columns
 enable the spatial Gaussian process. If multiple seasons, must also contain
@@ -96,22 +97,22 @@ column <code>season</code>.</p></dd>
 
 <dt id="arg-observations">observations<a class="anchor" aria-label="anchor" href="#arg-observations"></a></dt>
 <dd><p>A dataframe of observation records. Must contain
-columns <code>deploymentID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
+columns <code>locationID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
 (or equivalents specified via the corresponding arguments). If multiple
 seasons, must also contain column <code>season</code>.</p></dd>
 
 
 <dt id="arg-failures">failures<a class="anchor" aria-label="anchor" href="#arg-failures"></a></dt>
 <dd><p>Optional dataframe of ARU failure periods. Must contain
-columns <code>deploymentID</code>, <code>failureStart</code>, and <code>failureEnd</code>, with each row
-corresponding to one failure period at a <code>deploymentID</code> from <code>failureStart</code>
+columns <code>locationID</code>, <code>failureStart</code>, and <code>failureEnd</code>, with each row
+corresponding to one failure period at a <code>locationID</code> from <code>failureStart</code>
 to <code>failureEnd</code> (inclusive). See <code><a href="find_failures.html">find_failures()</a></code>.</p></dd>
 
 
-<dt id="arg-deploymentid">deploymentID<a class="anchor" aria-label="anchor" href="#arg-deploymentid"></a></dt>
+<dt id="arg-locationid">locationID<a class="anchor" aria-label="anchor" href="#arg-locationid"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
 name for sites (ARUs). Retains levels if supplied as factor.  Default:
-<code>deploymentID</code>.</p></dd>
+<code>locationID</code>.</p></dd>
 
 
 <dt id="arg-deploymentstart">deploymentStart<a class="anchor" aria-label="anchor" href="#arg-deploymentstart"></a></dt>
@@ -142,6 +143,14 @@ Column name for WGS84 longitude in <code>deployments</code>. Default: <code>long
 specifying season. The column must be a factor to ensure correct ordering.
 If the column is not present in <code>deployments</code>, all observations are treated
 as a single season. Default: <code>season</code>.</p></dd>
+
+
+<dt id="arg-region">region<a class="anchor" aria-label="anchor" href="#arg-region"></a></dt>
+<dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Optional column in
+<code>deployments</code> specifying region, defined as a cluster of ARUs. Leads to
+faster model fits when spatial site effects are included in <code><a href="fit_model.html">fit_model()</a></code>.
+If the column is not present in <code>deployments</code>, all observations are treated
+as a single region. Default: <code>region</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
@@ -200,10 +209,10 @@ Default: <code>"midday"</code>.</p></dd>
 
 <dt id="arg-occupancy-site-predictors">occupancy_site_predictors<a class="anchor" aria-label="anchor" href="#arg-occupancy-site-predictors"></a></dt>
 <dd><p>Optional dataframe of site-level
-covariates for the occupancy submodel. Must contain a <code>deploymentID</code> column
+covariates for the occupancy submodel. Must contain a <code>locationID</code> column
 with the same entries as <code>deployments</code>. Predictor columns must be <code>numeric</code>
 (continuous), <code>factor</code> (unordered categorical), or <code>ordered factor</code>
-(ordinal). If multiple seasons, each <code>deploymentID</code> requires a value for
+(ordinal). If multiple seasons, each <code>locationID</code> requires a value for
 each <code>season</code> it was deployed.</p></dd>
 
 
@@ -216,10 +225,10 @@ covariates for the detection submodel. Same column-type rules as
 
 <dt id="arg-survey-predictors">survey_predictors<a class="anchor" aria-label="anchor" href="#arg-survey-predictors"></a></dt>
 <dd><p>Optional dataframe of site-by-survey level
-covariates, with one row per site and date. Must contain <code>deploymentID</code>
+covariates, with one row per site and date. Must contain <code>locationID</code>
 and <code>date</code> columns. Predictor columns follow the same type rules as the
 site-level predictor dataframes. Must cover the full deployment period for
-each <code>deploymentID</code>.</p></dd>
+each <code>locationID</code>.</p></dd>
 
 
 <dt id="arg-date">date<a class="anchor" aria-label="anchor" href="#arg-date"></a></dt>
@@ -289,37 +298,37 @@ predictors for each component.</p></dd>
 for each component.</p></dd>
 
 <dt><code>X1</code></dt>
-<dd><p><code>[P[1](, K), I]</code> occupancy continuous design array.</p></dd>
+<dd><p><code>[I(, K), P[1]]</code> occupancy continuous design array.</p></dd>
 
 <dt><code>X_cat1</code></dt>
-<dd><p><code>[P_cat[1](, K), I]</code> occupancy categorical integer
+<dd><p><code>[I(, K), P_cat[1]]</code> occupancy categorical integer
 array.</p></dd>
 
 <dt><code>X_ord1</code></dt>
-<dd><p><code>[P_ord[1](, K), I]</code> occupancy ordinal integer array.</p></dd>
+<dd><p><code>[I(, K), P_ord[1]]</code> occupancy ordinal integer array.</p></dd>
 
 <dt><code>X2</code></dt>
-<dd><p><code>[P[2](, K), I]</code> site-level detection continuous design
+<dd><p><code>[I(, K), P[2]]</code> site-level detection continuous design
 array.</p></dd>
 
 <dt><code>X_cat2</code></dt>
-<dd><p><code>[P_cat[2](, K), I]</code> site-level detection categorical
+<dd><p><code>[I(, K), P_cat[2]]</code> site-level detection categorical
 integer array.</p></dd>
 
 <dt><code>X_ord2</code></dt>
-<dd><p><code>[P_ord[2](, K), I]</code> site-level detection ordinal integer
+<dd><p><code>[I(, K), P_ord[2]]</code> site-level detection ordinal integer
 array.</p></dd>
 
 <dt><code>X3</code></dt>
-<dd><p><code>[I(, K), P[3], J]</code> site-by-survey level detection continuous
+<dd><p><code>[I(, K), J, P[3]]</code> site-by-survey level detection continuous
 array.</p></dd>
 
 <dt><code>X_cat3</code></dt>
-<dd><p><code>[I(, K), P_cat[3], J]</code> site-by-survey categorical
+<dd><p><code>[I(, K), J, P_cat[3]]</code> site-by-survey categorical
 integer array.</p></dd>
 
 <dt><code>X_ord3</code></dt>
-<dd><p><code>[I(, K), P_ord[3], J]</code> site-by-survey survey ordinal
+<dd><p><code>[I(, K), J, P_ord[3]]</code> site-by-survey survey ordinal
 integer array.</p></dd>
 
 
@@ -333,6 +342,9 @@ period per season.</p></dd>
 
 <dt><code>seasons</code></dt>
 <dd><p>Character vector of season identifiers.</p></dd>
+
+<dt><code>regions</code></dt>
+<dd><p>Character vector of region identifiers.</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>

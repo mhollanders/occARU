@@ -62,14 +62,14 @@ plot_surveys(
 
   `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`
   and the model was fit with `project_kappa = TRUE`, plots random survey
-  effects with orthogonal projection, i.e.,
-  \\\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P\_{X_3}})\\, where
-  \\\boldsymbol{I} - \boldsymbol{P\_{X_3}}\\ is the orthogonal
-  complement of the column space of the site-averaged survey design
-  matrix. If `FALSE`, plots random effects without orthogonal
-  projection, i.e., \\\boldsymbol{\kappa}\\ only. Has no effect when
-  `include_predictors` is `TRUE` as the linear predictor is unaffected
-  by orthogonal projection.
+  effects with orthogonal projection, i.e., \\(\boldsymbol{I} -
+  \boldsymbol{P\_{X_3}}) \boldsymbol{\kappa}\\, where \\\boldsymbol{I} -
+  \boldsymbol{P\_{X_3}}\\ is the orthogonal complement of the column
+  space of the site-averaged survey design matrix. If `FALSE`, plots
+  random effects without orthogonal projection, i.e.,
+  \\\boldsymbol{\kappa}\\ only. Has no effect when `include_predictors`
+  is `TRUE` as the linear predictor is unaffected by orthogonal
+  projection.
 
 - ndraws:
 

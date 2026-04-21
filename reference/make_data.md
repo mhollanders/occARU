@@ -15,12 +15,13 @@ make_data(
   deployments,
   observations,
   failures = NULL,
-  deploymentID = deploymentID,
+  locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
   season = season,
+  region = region,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -44,7 +45,7 @@ make_data(
 - deployments:
 
   A dataframe of deployment information, one row per site (and
-  potentially season). Must contain columns `deploymentID`,
+  potentially season). Must contain columns `locationID`,
   `deploymentStart`, and `deploymentEnd` (or equivalents specified via
   the corresponding arguments). Optionally, `latitude` and `longitude`
   columns enable the spatial Gaussian process. If multiple seasons, must
@@ -52,24 +53,24 @@ make_data(
 
 - observations:
 
-  A dataframe of observation records. Must contain columns
-  `deploymentID`, `eventStart`, `scientificName`, and `count` (or
-  equivalents specified via the corresponding arguments). If multiple
-  seasons, must also contain column `season`.
+  A dataframe of observation records. Must contain columns `locationID`,
+  `eventStart`, `scientificName`, and `count` (or equivalents specified
+  via the corresponding arguments). If multiple seasons, must also
+  contain column `season`.
 
 - failures:
 
   Optional dataframe of ARU failure periods. Must contain columns
-  `deploymentID`, `failureStart`, and `failureEnd`, with each row
-  corresponding to one failure period at a `deploymentID` from
+  `locationID`, `failureStart`, and `failureEnd`, with each row
+  corresponding to one failure period at a `locationID` from
   `failureStart` to `failureEnd` (inclusive). See
   [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md).
 
-- deploymentID:
+- locationID:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
   Column name for sites (ARUs). Retains levels if supplied as factor.
-  Default: `deploymentID`.
+  Default: `locationID`.
 
 - deploymentStart:
 
@@ -103,6 +104,16 @@ make_data(
   ensure correct ordering. If the column is not present in
   `deployments`, all observations are treated as a single season.
   Default: `season`.
+
+- region:
+
+  \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
+  Optional column in `deployments` specifying region, defined as a
+  cluster of ARUs. Leads to faster model fits when spatial site effects
+  are included in
+  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  If the column is not present in `deployments`, all observations are
+  treated as a single region. Default: `region`.
 
 - eventStart:
 
@@ -163,11 +174,11 @@ make_data(
 - occupancy_site_predictors:
 
   Optional dataframe of site-level covariates for the occupancy
-  submodel. Must contain a `deploymentID` column with the same entries
-  as `deployments`. Predictor columns must be `numeric` (continuous),
+  submodel. Must contain a `locationID` column with the same entries as
+  `deployments`. Predictor columns must be `numeric` (continuous),
   `factor` (unordered categorical), or `ordered factor` (ordinal). If
-  multiple seasons, each `deploymentID` requires a value for each
-  `season` it was deployed.
+  multiple seasons, each `locationID` requires a value for each `season`
+  it was deployed.
 
 - detection_site_predictors:
 
@@ -179,10 +190,10 @@ make_data(
 - survey_predictors:
 
   Optional dataframe of site-by-survey level covariates, with one row
-  per site and date. Must contain `deploymentID` and `date` columns.
+  per site and date. Must contain `locationID` and `date` columns.
   Predictor columns follow the same type rules as the site-level
   predictor dataframes. Must cover the full deployment period for each
-  `deploymentID`.
+  `locationID`.
 
 - date:
 
@@ -266,39 +277,39 @@ The list contains:
 
 - `X1`:
 
-  `[P[1](, K), I]` occupancy continuous design array.
+  `[I(, K), P[1]]` occupancy continuous design array.
 
 - `X_cat1`:
 
-  `[P_cat[1](, K), I]` occupancy categorical integer array.
+  `[I(, K), P_cat[1]]` occupancy categorical integer array.
 
 - `X_ord1`:
 
-  `[P_ord[1](, K), I]` occupancy ordinal integer array.
+  `[I(, K), P_ord[1]]` occupancy ordinal integer array.
 
 - `X2`:
 
-  `[P[2](, K), I]` site-level detection continuous design array.
+  `[I(, K), P[2]]` site-level detection continuous design array.
 
 - `X_cat2`:
 
-  `[P_cat[2](, K), I]` site-level detection categorical integer array.
+  `[I(, K), P_cat[2]]` site-level detection categorical integer array.
 
 - `X_ord2`:
 
-  `[P_ord[2](, K), I]` site-level detection ordinal integer array.
+  `[I(, K), P_ord[2]]` site-level detection ordinal integer array.
 
 - `X3`:
 
-  `[I(, K), P[3], J]` site-by-survey level detection continuous array.
+  `[I(, K), J, P[3]]` site-by-survey level detection continuous array.
 
 - `X_cat3`:
 
-  `[I(, K), P_cat[3], J]` site-by-survey categorical integer array.
+  `[I(, K), J, P_cat[3]]` site-by-survey categorical integer array.
 
 - `X_ord3`:
 
-  `[I(, K), P_ord[3], J]` site-by-survey survey ordinal integer array.
+  `[I(, K), J, P_ord[3]]` site-by-survey survey ordinal integer array.
 
 The object also carries the following attributes, accessible via
 [`attr()`](https://rdrr.io/r/base/attr.html):
@@ -314,6 +325,10 @@ The object also carries the following attributes, accessible via
 - `seasons`:
 
   Character vector of season identifiers.
+
+- `regions`:
+
+  Character vector of region identifiers.
 
 - `species`:
 

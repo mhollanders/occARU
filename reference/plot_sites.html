@@ -106,7 +106,7 @@ effects.</p></dd>
 <dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
 <dd><p><code>logical</code>. If <code>TRUE</code> (default), when <code>include_predictors</code> is
 <code>FALSE</code>, plots random site effects with orthogonal projection, i.e.,
-\(\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})\), where
+\((\boldsymbol{I} - \boldsymbol{P_{X_2}}) \boldsymbol{\iota}\), where
 \(\boldsymbol{I} - \boldsymbol{P_{X_2}}\) is the orthogonal complement of
 the column space of the site design matrix. If <code>FALSE</code>, plots random
 effects without orthogonal projection, i.e., \(\boldsymbol{\iota}\) only.
@@ -143,7 +143,7 @@ effects are displayed as points sized by the magnitude of the detection rate
 on a map; otherwise site effects are plotted as point-intervals. When
 <code>latent = TRUE</code> was set in <code><a href="fit_model.html">fit_model()</a></code>, sites with median posterior
 occupancy of 0 are shown as red crosses. When <code>latent = FALSE</code>, detection
-rates are weighted by occupancy probability (<code>inv_logit(logit_psi[s, i])</code>).</p>
+rates are weighted by occupancy probability (<code>inv_logit(logit_psi[i, s])</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
