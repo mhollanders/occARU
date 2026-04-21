@@ -47,7 +47,7 @@ effects.}
 
 \item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
 \code{FALSE}, plots random site effects with orthogonal projection, i.e.,
-\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
+\eqn{(\boldsymbol{I} - \boldsymbol{P_{X_2}}) \boldsymbol{\iota}}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
 the column space of the site design matrix. If \code{FALSE}, plots random
 effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
@@ -79,7 +79,7 @@ effects are displayed as points sized by the magnitude of the detection rate
 on a map; otherwise site effects are plotted as point-intervals. When
 \code{latent = TRUE} was set in \code{\link[=fit_model]{fit_model()}}, sites with median posterior
 occupancy of 0 are shown as red crosses. When \code{latent = FALSE}, detection
-rates are weighted by occupancy probability (\code{inv_logit(logit_psi[s, i])}).
+rates are weighted by occupancy probability (\code{inv_logit(logit_psi[i, s])}).
 }
 \seealso{
 \code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},

@@ -514,3 +514,28 @@ tuple(array[,] int, array[] int) survey_indices(data matrix Delta) {
   }
   return (indices, J_i);
 }
+
+/**
+ * Get indices of regions and number of sites per region.
+ *
+ * @param region  Region indicator [I]
+ *
+ * @return r_idx  Indices of regions [R, I]
+ * @return I_r    Number of sites [R]
+ */
+tuple(array[,] int, array[] int) cluster_indices(data array[] int region) {
+  int I = size(region), R = max(region);
+  array[R, I] int indices = rep_array(0, R, I);
+  array[R] int I_r = zeros_int_array(R);
+  for (r in 1:R) {
+    int n = 1;
+    for (i in 1:I) {
+      if (region[i] == r) {
+        indices[r, n] = i;
+        I_r[r] += 1;
+        n += 1;
+      }
+    }
+  }
+  return(indices, I_r);
+}

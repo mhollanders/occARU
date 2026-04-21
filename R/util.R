@@ -110,10 +110,10 @@ check_cols_exist <- function(df, ...) {
 #' in the previous season.
 #'
 #' @param deployments A dataframe of deployment information, one row per
-#'   site and season. Must contain columns `deploymentID`, `deploymentStart`,
+#'   site and season. Must contain columns `locationID`, `deploymentStart`,
 #'   `deploymentEnd`, and `.season`.
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for sites (ARUs). Default: `deploymentID`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Default: `locationID`.
 #' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for deployment start dates. Must be a `Date`. Default:
 #'   `deploymentStart`.
@@ -124,38 +124,38 @@ check_cols_exist <- function(df, ...) {
 #' @noRd
 check_deployment_times <- function(
   deployments,
-  deploymentID = deploymentID,
+  locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
   .season = .season
 ) {
-  deployments <- dplyr::arrange(deployments, {{ deploymentID }}, {{ .season }})
+  deployments <- dplyr::arrange(deployments, {{ locationID }}, {{ .season }})
 
   last_first <- deployments |>
     dplyr::summarise(
       last = max({{ deploymentEnd }}),
       first = min({{ deploymentStart }}),
-      .by = c({{ deploymentID }}, {{ .season }})
+      .by = c({{ locationID }}, {{ .season }})
     ) |>
     dplyr::mutate(
       prev_last = dplyr::lag(last),
-      .by = {{ deploymentID }}
+      .by = {{ locationID }}
     )
 
   wrong_deps <- dplyr::left_join(
     deployments,
     last_first,
-    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+    by = dplyr::join_by({{ locationID }}, {{ .season }})
   ) |>
     dplyr::filter(
       {{ deploymentStart }} < prev_last,
-      .by = {{ deploymentID }}
+      .by = {{ locationID }}
     ) |>
-    dplyr::pull({{ deploymentID }})
+    dplyr::pull({{ locationID }})
 
   if (length(wrong_deps)) {
     cli::cli_abort(
-      "The following {.arg deploymentID}{?s} in {.arg deployments} contain \\
+      "The following {.arg locationID}{?s} in {.arg deployments} contain \\
       {.arg deploymentStart} that occur before the last {.arg deploymentEnd} \\
       of the previous season: {.val {wrong_deps}}. All deployment periods in \\
       each season must occur before the start of the next season."
@@ -231,12 +231,12 @@ check_mixed_predictors <- function(df, ...) {
 #' Check that survey predictors cover the full deployment period for each site
 #'
 #' @param site_predictors A dataframe of site-level predictors. Must contain
-#'   columns `deploymentID` and `.season`.
+#'   columns `locationID` and `.season`.
 #' @param deployments A dataframe of deployment information, one row per
-#'   site. Must contain columns `deploymentID` and `season`.
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#'   site. Must contain columns `locationID` and `season`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Must be a factor with identical levels in
-#'   `deployments` and `survey_predictors`. Default: `deploymentID`.
+#'   `deployments` and `survey_predictors`. Default: `locationID`.
 #' @param .season <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for season. Must be a factor with identical levels in `deployments`
 #'   and `survey_predictors`. Default: `.season`.
@@ -244,25 +244,25 @@ check_mixed_predictors <- function(df, ...) {
 check_site_predictors_coverage <- function(
   site_predictors,
   deployments,
-  deploymentID = deploymentID,
+  locationID = locationID,
   .season = .season,
   verbose = TRUE
 ) {
   df_name <- deparse(substitute(site_predictors))
-  site_lvl <- dplyr::pull(deployments, {{ deploymentID }}) |> levels()
+  site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
   complete <- dplyr::right_join(
     site_predictors,
-    dplyr::distinct(deployments, {{ deploymentID }}, {{ .season }}),
-    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+    dplyr::distinct(deployments, {{ locationID }}, {{ .season }}),
+    by = dplyr::join_by({{ locationID }}, {{ .season }})
   ) |>
     tidyr::drop_na() |>
-    dplyr::pull({{ deploymentID }})
+    dplyr::pull({{ locationID }})
   missing <- setdiff(site_lvl, complete)
   if (length(missing)) {
     cli::cli_abort(
       "{.arg {df_name}} has incomplete predictor values for the following \\
-      {.arg deploymentID}: {.vals {missing}}. Predictor values must be \\
-      supplied for each season a {.arg deploymentID} was active."
+      {.arg locationID}: {.vals {missing}}. Predictor values must be \\
+      supplied for each season a {.arg locationID} was active."
     )
   } else if (verbose) {
     cli::cli_alert_success(
@@ -274,13 +274,13 @@ check_site_predictors_coverage <- function(
 #' Check that survey predictors cover the full deployment period for each site
 #'
 #' @param survey_predictors A dataframe of survey-level predictors. Must
-#'    contain columns `deploymentID`, `.season`, and `date`.
+#'    contain columns `locationID`, `.season`, and `date`.
 #' @param deployments A dataframe of deployment information, one row per
-#'   site. Must contain columns `deploymentID`, `deploymentStart`,
+#'   site. Must contain columns `locationID`, `deploymentStart`,
 #'   `deploymentEnd`, and `season`.
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Must be a factor with identical levels in
-#'   `deployments` and `survey_predictors`. Default: `deploymentID`.
+#'   `deployments` and `survey_predictors`. Default: `locationID`.
 #' @param deploymentStart `Date`. <[`data-masking`][rlang::args_data_masking]>
 #'   Column name for deployment start dates in `deployments`. Default:
 #'   `deploymentStart`.
@@ -296,7 +296,7 @@ check_site_predictors_coverage <- function(
 check_survey_predictors_coverage <- function(
   survey_predictors,
   deployments,
-  deploymentID = deploymentID,
+  locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
   .season = .season,
@@ -307,17 +307,17 @@ check_survey_predictors_coverage <- function(
     dplyr::summarise(
       first = min({{ date }}),
       last = max({{ date }}),
-      .by = c({{ deploymentID }}, {{ .season }})
+      .by = c({{ locationID }}, {{ .season }})
     ) |>
     dplyr::left_join(
       deployments |>
         dplyr::select(
-          {{ deploymentID }},
+          {{ locationID }},
           {{ deploymentStart }},
           {{ deploymentEnd }},
           {{ .season }}
         ),
-      by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+      by = dplyr::join_by({{ locationID }}, {{ .season }})
     )
 
   incomplete <- first_last |>
@@ -325,7 +325,7 @@ check_survey_predictors_coverage <- function(
       first > {{ deploymentStart }} |
         last < {{ deploymentEnd }}
     ) |>
-    dplyr::pull({{ deploymentID }})
+    dplyr::pull({{ locationID }})
 
   if (length(incomplete)) {
     cli::cli_abort(
@@ -355,8 +355,8 @@ classify_predictors <- function(df) {
 #' Check that end dates are after start dates
 #'
 #' @param df A dataframe.
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for sites (ARUs). Default: `deploymentID`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Default: `locationID`.
 #' @param start <[`data-masking`][rlang::args_data_masking]> `Date`. Column name
 #'   for start dates to check. Default: `deploymentStart`.
 #' @param end <[`data-masking`][rlang::args_data_masking]> `Date`. Column name
@@ -364,18 +364,18 @@ classify_predictors <- function(df) {
 #' @noRd
 check_dates <- function(
   df,
-  deploymentID = deploymentID,
+  locationID = locationID,
   start = deploymentStart,
   end = deploymentEnd
 ) {
   df_name <- deparse(substitute(df))
   wrong_sites <- df |>
     dplyr::filter({{ end }} <= {{ start }}) |>
-    dplyr::distinct({{ deploymentID }}) |>
-    dplyr::pull({{ deploymentID }})
+    dplyr::distinct({{ locationID }}) |>
+    dplyr::pull({{ locationID }})
   if (length(wrong_sites)) {
     cli::cli_abort(
-      "The following {.arg deploymentID} in {.arg {df_name}} have end \\
+      "The following {.arg locationID} in {.arg {df_name}} have end \\
       times before start times: {.val {wrong_sites}}."
     )
   }
@@ -388,9 +388,9 @@ check_dates <- function(
 #' the projected coordinate matrix and the CRS string used.
 #'
 #' @param deployments A dataframe containing longitude and latitude columns.
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Must be a factor with identical levels in
-#'   `deployments` and `observations`. Default: `deploymentID`.
+#'   `deployments` and `observations`. Default: `locationID`.
 #' @param latitude <[`data-masking`][rlang::args_data_masking]> Column name
 #'   for WGS84 latitude in `deployments`. Default: `latitude`.
 #' @param longitude <[`data-masking`][rlang::args_data_masking]> Column name
@@ -404,8 +404,8 @@ check_dates <- function(
 #'       transformation.}
 #'   }
 #' @noRd
-coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
-  deployments <- dplyr::arrange(deployments, {{ deploymentID }})
+coords_to_utm <- function(deployments, locationID, latitude, longitude) {
+  deployments <- dplyr::arrange(deployments, {{ locationID }})
   lats <- dplyr::pull(deployments, {{ latitude }})
   lons <- dplyr::pull(deployments, {{ longitude }})
 
@@ -439,7 +439,7 @@ coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
     ) |>
     sf::st_transform(utm_crs) |>
     sf::st_coordinates()
-  row.names(XY) <- dplyr::pull(deployments, {{ deploymentID }}) |> levels()
+  row.names(XY) <- dplyr::pull(deployments, {{ locationID }}) |> levels()
 
   list(XY = XY, utm_crs = utm_crs)
 }
@@ -447,15 +447,15 @@ coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
 #' Remove observations outside deployment window
 #'
 #' @param deployments A dataframe of deployment information, one row per
-#'   site. Must contain columns `deploymentID`, `deploymentStart`, and
+#'   site. Must contain columns `locationID`, `deploymentStart`, and
 #'   `deploymentEnd` (or equivalents specified via the corresponding
 #'   arguments).
 #' @param observations A dataframe of observation records. Must contain
-#'   columns `deploymentID`, `eventStart`, `scientificName`, and `count`
+#'   columns `locationID`, `eventStart`, `scientificName`, and `count`
 #'   (or equivalents specified via the corresponding arguments).
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for sites (ARUs). Must be a factor with identical levels in
-#'   `deployments` and `observations`. Default: `deploymentID`.
+#'   `deployments` and `observations`. Default: `locationID`.
 #' @param deploymentStart <[`data-masking`][rlang::args_data_masking]> Column
 #'   name for deployment start dates in `deployments`. Must be a `Date`.
 #'   Default: `deploymentStart`.
@@ -470,7 +470,7 @@ coords_to_utm <- function(deployments, deploymentID, latitude, longitude) {
 filter_observations_window <- function(
   deployments,
   observations,
-  deploymentID = deploymentID,
+  locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
   eventStart = eventStart,
@@ -482,12 +482,12 @@ filter_observations_window <- function(
     observations,
     deployments |>
       dplyr::select(
-        {{ deploymentID }},
+        {{ locationID }},
         {{ deploymentStart }},
         {{ deploymentEnd }},
         {{ .season }}
       ),
-    by = dplyr::join_by({{ deploymentID }}, {{ .season }})
+    by = dplyr::join_by({{ locationID }}, {{ .season }})
   ) |>
     dplyr::filter(
       dplyr::between(

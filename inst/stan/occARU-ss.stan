@@ -4,10 +4,12 @@ functions {
 }
 
 data {
-  // dimensions, recording effort, site UTMs (km), and det. history
+  // dimensions, recording effort, site UTMs (km) and regions, and det. history
   int<lower=2> I, J;
+  int<lower=1> R;
   matrix<lower=0, upper=1>[I, J] Delta;
   array[I] vector[2] XY;
+  array[I] int<lower=1, upper=R> region;
   array[I, J] int<lower=0> y;
 
   // continuous preds for site occ. and site and survey det.
@@ -40,6 +42,7 @@ data {
                         latent,  // recover latent occ. states
                         PPC_y,  // posterior predictions of y
                         PPC_Q;  // posterior predictions of Q
+
   // priors
   vector<lower=0>[2] psi_bar_beta,  // mean occ. (prob. scale)
                      mu_bar_gamma,  // mean det. (rate scale)
@@ -56,7 +59,7 @@ data {
 
 transformed data {
   // transformed indicators
-  int SP = spatial > 0, TE = temporal > 0, I_GP = spatial == 2,
+  int SP = spatial > 0, TE = temporal > 0, I_GP = spatial == 2, MR = R > 1,
       J_GP = temporal == 2, periodic = period > 0 && J_GP, OLRE = OD == 1,
       NB = OD == 2, MC = (D > 0) * (SP || OLRE), Im1 = I - 1;
   real log_D = log(D);
@@ -66,11 +69,17 @@ transformed data {
   }
 
   // survey indices, total surveys, and offsets
-  tuple(array[I, J] int, array[I] int) indices = survey_indices(Delta);
-  array[I, J] int j_idx = indices.1;
-  array[I] int J_i = indices.2;
+  tuple(array[I, J] int, array[I] int) surv_indices = survey_indices(Delta);
+  array[I, J] int j_idx = surv_indices.1;
+  array[I] int J_i = surv_indices.2;
   int J_sum = sum(J_i);
   matrix[J, I] log_Delta = log(Delta');
+
+  // cluster indices
+  tuple(array[R, I] int, array[R] int) clus_indices = cluster_indices(region);
+  array[R] int I_r = clus_indices.2;
+  int I_max = MR ? max(I_r) : I;
+  array[R, I_max] int r_idx = clus_indices.1[:, :I_max];
 
   // aggregated counts
   array[I] int Q;
@@ -259,6 +268,7 @@ transformed parameters {
   // intercepts
   vector[2] alpha = [ logit(psi_bar), log(mu_bar) ]';
 
+
   // continuous predictor coefficients
   vector[P[1]] psi_beta;
   vector[P[2]] mu_beta;
@@ -373,9 +383,20 @@ transformed parameters {
     if (SP) {
       iota = mu_tau[mu_idx] * iota_z[1];
       if (I_GP) {
-        matrix[I, I] iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                     iota_L = cholesky_decompose(add_diag(iota_K, 1e-9))';
-        iota = iota_L * iota;
+        if (MR) {
+          for (r in 1:R) {
+            int I_rr = I_r[r];
+            array[I_rr] int idx = r_idx[r, :I_rr];
+            matrix[I_rr, I_rr]
+              iota_K = gp_exp_quad_cov(XY[idx], 1, iota_ell[1]),
+              iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
+            iota[idx] = iota_L * iota[idx];
+          }
+        } else {
+          matrix[I, I] iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1]),
+                       iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
+          iota = iota_L * iota;
+        }
       }
 
       // increment orthogonal projection
@@ -590,11 +611,22 @@ generated quantities {
       matrix[I, D] log_lik_k;
 
       // prepare site effect covariances
-      matrix[SP * I, I] iota_L;
+      array[SP * (MR ? R : 1)] matrix[I_max, I_max] iota_L;
       if (I_GP) {
-        iota_L =
-          cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                                      1e-9));
+        if (MR) {
+          for (r in 1:R) {
+            int I_rr = I_r[r];
+            array[I_rr] int idx = r_idx[r, :I_rr];
+            iota_L[r, :I_rr, :I_rr] =
+              cholesky_decompose(add_diag(gp_exp_quad_cov(XY[idx], 1,
+                                                          iota_ell[1]), 1e-9));
+
+          }
+        } else {
+          iota_L[1] =
+            cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1, iota_ell[1]),
+                                        1e-9));
+        }
       }
 
       // posterior predict site effects and OLREs and compute log likelihood
@@ -607,7 +639,15 @@ generated quantities {
           iota_u = to_vector(normal_rng(zeros, mu_tau[mu_idx]));
           iota_rep = sum_to_zero_constrain(iota_u);
           if (I_GP) {
-            iota_rep = iota_L * iota_rep;
+            if (MR) {
+              for (r in 1:R) {
+                int I_rr = I_r[r];
+                array[I_rr] int idx = r_idx[r, :I_rr];
+                iota_rep[idx] = iota_L[r, :I_rr, :I_rr] * iota_rep[idx];
+              }
+            } else {
+              iota_rep = iota_L[1] * iota_rep;
+            }
           }
         }
         if (OLRE) {

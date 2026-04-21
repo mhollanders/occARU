@@ -4,10 +4,12 @@ functions {
 }
 
 data {
-  // dimensions, recording effort, site UTMs (km), and det. history
+  // dimensions, recording effort, site UTMs (km) and regions, and det. history
   int<lower=2> I, J, S;
+  int<lower=1> R;
   matrix<lower=0, upper=1>[I, J] Delta;
   array[I] vector[2] XY;
+  array[I] int<lower=1, upper=R> region;
   array[I, J, S] int<lower=0> y;
 
   // continuous preds for site occ. and site and survey det.
@@ -62,7 +64,7 @@ data {
 
 transformed data {
   // transformed indicators
-  int SP = spatial > 0, TE = temporal > 0, I_GP = spatial == 2,
+  int SP = spatial > 0, TE = temporal > 0, I_GP = spatial == 2, MR = R > 1,
       J_GP = temporal == 2, periodic = period > 0 && J_GP, OLRE = OD == 1,
       NB = OD == 2, MC = (D > 0) * (SP || OLRE), Im1 = I - 1, Sm1 = S - 1,
       Sp1 = S + 1;
@@ -78,6 +80,12 @@ transformed data {
   array[I] int J_i = indices.2;
   int J_sum = sum(J_i);
   matrix[J, I] log_Delta = log(Delta');
+
+  // cluster indices
+  tuple(array[R, I] int, array[R] int) clus_indices = cluster_indices(region);
+  array[R] int I_r = clus_indices.2;
+  int I_max = MR ? max(I_r) : I;
+  array[R, I_max] int r_idx = clus_indices.1[:, :I_max];
 
   // aggregated counts
   array[I, S] int Q;
@@ -465,17 +473,38 @@ transformed parameters {
 
       // increment spatial GP
       if (I_GP) {
-        matrix[I, I] iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                     iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
-        iota_bar = iota_L * iota_bar;
-        if (SS) {
-          for (s in 1:S) {
-            iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1 + s]);
-            iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
-            iota_s[:, s] = iota_L * iota_s[:, s];
+        if (MR) {
+          for (r in 1:R) {
+            int I_rr = I_r[r];
+            array[I_rr] int idx = r_idx[r, :I_rr];
+            array[I_rr] vector[2] XY_r = XY[idx];
+            matrix[I_rr, I_rr] iota_K = gp_exp_quad_cov(XY_r, 1, iota_ell[1]),
+                               iota_L = cholesky_decompose(add_diag(iota_K,
+                                                                    1e-9));
+            iota_bar[idx] = iota_L * iota_bar[idx];
+            if (SS) {
+              for (s in 1:S) {
+                iota_K = gp_exp_quad_cov(XY_r, 1, iota_ell[1 + s]);
+                iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
+                iota_s[idx, s] = iota_L * iota_s[idx, s];
+              }
+            } else {
+              iota_s[idx] = iota_L * iota_s[idx];
+            }
           }
         } else {
-          iota_s = iota_L * iota_s;
+          matrix[I, I] iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1]),
+                       iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
+          iota_bar = iota_L * iota_bar;
+          if (SS) {
+            for (s in 1:S) {
+              iota_K = gp_exp_quad_cov(XY, 1, iota_ell[1 + s]);
+              iota_L = cholesky_decompose(add_diag(iota_K, 1e-9));
+              iota_s[:, s] = iota_L * iota_s[:, s];
+            }
+          } else {
+            iota_s = iota_L * iota_s;
+          }
         }
       }
       iota = rep_matrix(iota_bar, S) + iota_s;
@@ -792,21 +821,41 @@ generated quantities {
       array[D] matrix[S, I] log_lik_k;
 
       // prepare site effect covariances
-      array[I_GP * (SS ? S : 1)] matrix[I, I] iota_L;
+      array[MR ? R : 1, I_GP * (SS ? S : 1)] matrix[I_max, I_max] iota_L;
       matrix[S, S] iota_S_U;
       if (SP) {
         iota_S_U = diag_post_multiply(iota_O_L', iota_t);
         if (I_GP) {
-          if (SS) {
-            for (s in 1:S) {
-              iota_L[s] =
-                cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1,
-                                            iota_ell[1 + s]), 1e-9));
+          if (MR) {
+            for (r in 1:R) {
+              int I_rr = I_r[r];
+              array[I_rr] int idx = r_idx[r, :I_rr];
+              array[I_rr] vector[2] XY_r = XY[idx];
+              if (SS) {
+                for (s in 1:S) {
+                  iota_L[r, s, :I_rr, :I_rr] =
+                    cholesky_decompose(add_diag(gp_exp_quad_cov(XY_r, 1,
+                                                iota_ell[1 + s]), 1e-9));
+                }
+              } else {
+                iota_L[r, 1, :I_rr, :I_rr] =
+                  cholesky_decompose(add_diag(gp_exp_quad_cov(XY_r, 1,
+                                              iota_ell[1]), 1e-9));
+              }
             }
           } else {
-            iota_L[1] =
-              cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1, iota_ell[1]),
-                                 1e-9));
+
+            if (SS) {
+              for (s in 1:S) {
+                iota_L[1, s] =
+                  cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1,
+                                              iota_ell[1 + s]), 1e-9));
+              }
+            } else {
+              iota_L[1, 1] =
+                cholesky_decompose(add_diag(gp_exp_quad_cov(XY, 1, iota_ell[1]),
+                                   1e-9));
+            }
           }
         }
       }
@@ -821,12 +870,27 @@ generated quantities {
           iota_u = to_matrix(normal_rng(zeros, 1), Im1, Sm1);
           iota_s = sum_to_zero_constrain(iota_u) * iota_S_U;
           if (I_GP) {
-            if (SS) {
-              for (s in 1:S) {
-                iota_s[:, s] = iota_L[s] * iota_s[:, s];
+            if (MR) {
+              for (r in 1:R) {
+                int I_rr = I_r[r];
+                array[I_rr] int idx = r_idx[r, :I_rr];
+                if (SS) {
+                  for (s in 1:S) {
+                    iota_s[idx, s] = iota_L[r, s, :I_rr, :I_rr]
+                                     * iota_s[idx, s];
+                  }
+                } else {
+                  iota_s[idx] = iota_L[r, 1, :I_rr, :I_rr] * iota_s[idx];
+                }
               }
             } else {
-              iota_s = iota_L[1] * iota_s;
+              if (SS) {
+                for (s in 1:S) {
+                  iota_s[:, s] = iota_L[1, s] * iota_s[:, s];
+                }
+              } else {
+                iota_s = iota_L[1, 1] * iota_s;
+              }
             }
           }
           if (P_sum[2]) {

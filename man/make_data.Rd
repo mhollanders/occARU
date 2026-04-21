@@ -8,12 +8,13 @@ make_data(
   deployments,
   observations,
   failures = NULL,
-  deploymentID = deploymentID,
+  locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
   season = season,
+  region = region,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -33,25 +34,25 @@ make_data(
 }
 \arguments{
 \item{deployments}{A dataframe of deployment information, one row per
-site (and potentially season). Must contain columns \code{deploymentID},
+site (and potentially season). Must contain columns \code{locationID},
 \code{deploymentStart}, and \code{deploymentEnd} (or equivalents specified via the
 corresponding arguments). Optionally, \code{latitude} and \code{longitude} columns
 enable the spatial Gaussian process. If multiple seasons, must also contain
 column \code{season}.}
 
 \item{observations}{A dataframe of observation records. Must contain
-columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
+columns \code{locationID}, \code{eventStart}, \code{scientificName}, and \code{count}
 (or equivalents specified via the corresponding arguments). If multiple
 seasons, must also contain column \code{season}.}
 
 \item{failures}{Optional dataframe of ARU failure periods. Must contain
-columns \code{deploymentID}, \code{failureStart}, and \code{failureEnd}, with each row
-corresponding to one failure period at a \code{deploymentID} from \code{failureStart}
+columns \code{locationID}, \code{failureStart}, and \code{failureEnd}, with each row
+corresponding to one failure period at a \code{locationID} from \code{failureStart}
 to \code{failureEnd} (inclusive). See \code{\link[=find_failures]{find_failures()}}.}
 
-\item{deploymentID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
+\item{locationID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
 name for sites (ARUs). Retains levels if supplied as factor.  Default:
-\code{deploymentID}.}
+\code{locationID}.}
 
 \item{deploymentStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{Date}.
 Column name for deployment start dates in \code{deployments}. Default:
@@ -72,6 +73,12 @@ Column name for WGS84 longitude in \code{deployments}. Default: \code{longitude}
 specifying season. The column must be a factor to ensure correct ordering.
 If the column is not present in \code{deployments}, all observations are treated
 as a single season. Default: \code{season}.}
+
+\item{region}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column in
+\code{deployments} specifying region, defined as a cluster of ARUs. Leads to
+faster model fits when spatial site effects are included in \code{\link[=fit_model]{fit_model()}}.
+If the column is not present in \code{deployments}, all observations are treated
+as a single region. Default: \code{region}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Column name for observation timestamps in \code{observations}. Default:
@@ -112,10 +119,10 @@ Thinning is performed via \code{\link[=thin_observations]{thin_observations()}}.
 Default: \code{"midday"}.}
 
 \item{occupancy_site_predictors}{Optional dataframe of site-level
-covariates for the occupancy submodel. Must contain a \code{deploymentID} column
+covariates for the occupancy submodel. Must contain a \code{locationID} column
 with the same entries as \code{deployments}. Predictor columns must be \code{numeric}
 (continuous), \code{factor} (unordered categorical), or \verb{ordered factor}
-(ordinal). If multiple seasons, each \code{deploymentID} requires a value for
+(ordinal). If multiple seasons, each \code{locationID} requires a value for
 each \code{season} it was deployed.}
 
 \item{detection_site_predictors}{Optional dataframe of site-level
@@ -124,10 +131,10 @@ covariates for the detection submodel. Same column-type rules as
 \code{occupancy_site_predictors}, the same matrices are reused.}
 
 \item{survey_predictors}{Optional dataframe of site-by-survey level
-covariates, with one row per site and date. Must contain \code{deploymentID}
+covariates, with one row per site and date. Must contain \code{locationID}
 and \code{date} columns. Predictor columns follow the same type rules as the
 site-level predictor dataframes. Must cover the full deployment period for
-each \code{deploymentID}.}
+each \code{locationID}.}
 
 \item{date}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column name for
 dates in \code{survey_predictors}. Default: \code{date}.}
@@ -168,21 +175,21 @@ for occupancy, and site and survey detection.}
 predictors for each component.}
 \item{\code{P_ord}}{Integer vector of length 3: number of ordinal predictors
 for each component.}
-\item{\code{X1}}{\verb{[P[1](, K), I]} occupancy continuous design array.}
-\item{\code{X_cat1}}{\verb{[P_cat[1](, K), I]} occupancy categorical integer
+\item{\code{X1}}{\verb{[I(, K), P[1]]} occupancy continuous design array.}
+\item{\code{X_cat1}}{\verb{[I(, K), P_cat[1]]} occupancy categorical integer
 array.}
-\item{\code{X_ord1}}{\verb{[P_ord[1](, K), I]} occupancy ordinal integer array.}
-\item{\code{X2}}{\verb{[P[2](, K), I]} site-level detection continuous design
+\item{\code{X_ord1}}{\verb{[I(, K), P_ord[1]]} occupancy ordinal integer array.}
+\item{\code{X2}}{\verb{[I(, K), P[2]]} site-level detection continuous design
 array.}
-\item{\code{X_cat2}}{\verb{[P_cat[2](, K), I]} site-level detection categorical
+\item{\code{X_cat2}}{\verb{[I(, K), P_cat[2]]} site-level detection categorical
 integer array.}
-\item{\code{X_ord2}}{\verb{[P_ord[2](, K), I]} site-level detection ordinal integer
+\item{\code{X_ord2}}{\verb{[I(, K), P_ord[2]]} site-level detection ordinal integer
 array.}
-\item{\code{X3}}{\verb{[I(, K), P[3], J]} site-by-survey level detection continuous
+\item{\code{X3}}{\verb{[I(, K), J, P[3]]} site-by-survey level detection continuous
 array.}
-\item{\code{X_cat3}}{\verb{[I(, K), P_cat[3], J]} site-by-survey categorical
+\item{\code{X_cat3}}{\verb{[I(, K), J, P_cat[3]]} site-by-survey categorical
 integer array.}
-\item{\code{X_ord3}}{\verb{[I(, K), P_ord[3], J]} site-by-survey survey ordinal
+\item{\code{X_ord3}}{\verb{[I(, K), J, P_ord[3]]} site-by-survey survey ordinal
 integer array.}
 }
 The object also carries the following attributes, accessible via
@@ -192,6 +199,7 @@ The object also carries the following attributes, accessible via
 \item{\code{surveys}}{tibble of start dates and indices for each survey
 period per season.}
 \item{\code{seasons}}{Character vector of season identifiers.}
+\item{\code{regions}}{Character vector of region identifiers.}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates

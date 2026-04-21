@@ -43,7 +43,7 @@ effects.}
 \item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
 \code{FALSE} and the model was fit with \code{project_kappa = TRUE}, plots random
 survey effects with orthogonal projection, i.e.,
-\eqn{\boldsymbol{\kappa}(\boldsymbol{I} - \boldsymbol{P_{X_3}})}, where
+\eqn{(\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
 the column space of the site-averaged survey design matrix. If \code{FALSE},
 plots random effects without orthogonal projection, i.e.,

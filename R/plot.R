@@ -941,6 +941,235 @@ plot_partitions <- function(
   p
 }
 
+plot_partitions2 <- function(
+  fit,
+  scales = FALSE,
+  ...
+) {
+  if (!inherits(fit, "CmdStanFit")) {
+    cli::cli_abort(
+      "{.arg fit} must be a {.cls CmdStanFit} object from {.fun fit_model}."
+    )
+  }
+  stan_data <- attr(fit, "stan_data")
+  occARU_data <- attr(fit, "occARU_data")
+  S <- stan_data$S
+  MS <- S > 1
+  SP <- stan_data$spatial > 0
+  TE <- stan_data$temporal > 0
+  OLRE <- stan_data$OD == 1
+  P_sum <- stan_data$P + stan_data$P_cat + stan_data$P_ord
+
+  # labels
+  level <- c("Mean", "Species")
+
+  # multispecies
+  if (MS) {
+    psi_V <- 1 + 2 * P_sum[1]
+    mu_V <- 1 + 2 * (sum(P_sum[2:3]) + SP + TE + OLRE)
+    if (psi_V == 1 && mu_V == 1) {
+      cli::cli_abort(
+        "The model was fit without any predictors or random effects and \\
+        contains only random intercepts, so the variance partitions are 1."
+      )
+    } else {
+      if (psi_V > 1) {
+        V_lbl <- "Intercept"
+        if (P_sum[1]) {
+          X_lbl <- c(
+            colnames(stan_data$X1),
+            colnames(stan_data$X1_cat),
+            colnames(stan_data$X1_ord)
+          )
+          V_lbl <- c(
+            V_lbl,
+            paste(rep(X_lbl, 2), rep(level, each = length(X_lbl)))
+          )
+        }
+        psi_phi <- tidybayes::spread_rvars(fit, psi_phi[v], psi_W) |>
+          dplyr::mutate(
+            v = factor(v, labels = V_lbl),
+            submodel = "Occupancy",
+            .before = 1
+          ) |>
+          dplyr::rename(partition = v, phi = psi_phi, W = psi_W)
+      } else if (psi_V == 1) {
+        cli::cli_warn(
+          "The model was fit without any predictors for occupancy and \\
+          contains only random intercepts, so the variance partition is 1 and \\
+          not plotted."
+        )
+        psi_phi <- NULL
+      }
+      if (mu_V > 1) {
+        V_lbl <- "Intercept"
+        C_lbl <- NA_character_
+        if (P_sum[2]) {
+          X_lbl <- list(
+            colnames(stan_data$X2),
+            colnames(stan_data$X_cat2),
+            colnames(stan_data$X_ord2)
+          ) |>
+            purrr::map(~ if (!is.null(.)) paste("site:", rep(., 2)))
+          V_lbl <- c(V_lbl, unlist(X_lbl))
+          C_lbl <- c(
+            C_lbl,
+            purrr::map(X_lbl, ~ rep(level, each = length(.) / 2)) |> unlist()
+          )
+        }
+        if (P_sum[3]) {
+          X_lbl <- list(
+            dimnames(stan_data$X3)[[3]],
+            dimnames(stan_data$X_cat3)[[3]],
+            dimnames(stan_data$X_ord3)[[3]]
+          ) |>
+            purrr::map(~ if (!is.null(.)) paste("site:", rep(., 2)))
+          V_lbl <- c(V_lbl, unlist(X_lbl))
+          C_lbl <- c(
+            C_lbl,
+            purrr::map(X_lbl, ~ rep(level, each = length(.) / 2)) |> unlist()
+          )
+        }
+        if (SP) {
+          V_lbl <- c(V_lbl, rep("Site Effects", 2))
+          C_lbl <- c(C_lbl, level)
+        }
+        if (TE) {
+          V_lbl <- c(V_lbl, rep("Survey Effects", 2))
+          C_lbl <- c(C_lbl, level)
+        }
+        if (OLRE) {
+          V_lbl <- c(V_lbl, rep("OLRE", 2))
+          C_lbl <- c(C_lbl, level)
+        }
+        mu_phi <- tidybayes::spread_rvars(fit, mu_phi[v], mu_W) |>
+          dplyr::mutate(
+            v = factor(v, labels = V_lbl),
+            l = factor(C_lbl, levels = level),
+            submodel = "Detection",
+            .before = 1
+          ) |>
+          dplyr::rename(partition = v, phi = mu_phi, W = mu_W)
+      } else if (mu_V == 1) {
+        cli::cli_warn(
+          "The model was fit without any predictors for detection and \\
+          contains only random intercepts, so the variance partition is 1 and \\
+          not plotted."
+        )
+        mu_phi <- NULL
+      }
+    }
+
+    # single species
+  } else {
+    psi_V <- P_sum[1]
+    mu_V <- sum(P_sum[2:3]) + SP + TE + OLRE
+    if (psi_V == 0 && mu_V == 0) {
+      cli::cli_abort(
+        "The model was fit without any predictors or random effects, \\
+        so there are no variance partitions."
+      )
+    }
+    psi_phi <- NULL
+    if (psi_V > 1) {
+      V_lbl <- NULL
+      if (P_sum[1]) {
+        X_lbl <- c(
+          colnames(stan_data$X1),
+          colnames(stan_data$X1_cat),
+          colnames(stan_data$X1_ord)
+        )
+        V_lbl <- c(V_lbl, X_lbl)
+      }
+      psi_phi <- tidybayes::spread_rvars(fit, psi_phi[v], psi_W[d]) |>
+        dplyr::mutate(
+          v = factor(v, labels = V_lbl),
+          submodel = "Occupancy",
+          .before = 1
+        ) |>
+        dplyr::rename(partition = v, phi = psi_phi, W = psi_W)
+    } else if (psi_V == 1) {
+      cli::cli_warn(
+        "The model was fit with one predictor for occupancy, so the \\
+          variance partition is 1 and not plotted."
+      )
+    }
+    mu_phi <- NULL
+    if (mu_V > 1) {
+      V_lbl <- NULL
+      if (P_sum[2]) {
+        X_lbl <- c(
+          colnames(stan_data$X2),
+          colnames(stan_data$X_cat2),
+          colnames(stan_data$X_ord2)
+        )
+        V_lbl <- c(V_lbl, paste("site:", X_lbl))
+      }
+      if (P_sum[3]) {
+        X_lbl <- c(
+          dimnames(stan_data$X3)[[3]],
+          dimnames(stan_data$X_cat3)[[3]],
+          dimnames(stan_data$X_ord3)[[3]]
+        )
+        V_lbl <- c(V_lbl, paste("survey:", X_lbl))
+      }
+      if (SP) {
+        V_lbl <- c(V_lbl, "Site Effects")
+      }
+      if (TE) {
+        V_lbl <- c(V_lbl, "Survey Effects")
+      }
+      if (OLRE) {
+        V_lbl <- c(V_lbl, "OLRE")
+      }
+      mu_phi <- tidybayes::spread_rvars(fit, mu_phi[v], mu_W) |>
+        dplyr::mutate(
+          v = factor(v, labels = V_lbl),
+          submodel = "Detection",
+          .before = 1
+        ) |>
+        dplyr::rename(partition = v, phi = mu_phi, W = mu_W)
+    } else if (mu_V == 1) {
+      cli::cli_warn(
+        "The model was fit with only one component for detection, so the \\
+        variance partition is 1 and not plotted."
+      )
+    }
+  }
+
+  # join psi and mu and produce scales
+  phi <- dplyr::bind_rows(psi_phi, mu_phi) |>
+    dplyr::mutate(
+      submodel = factor(submodel, levels = c("Occupancy", "Detection")),
+      tau = sqrt(W * phi)
+    )
+
+  # plot
+  p <- ggplot2::ggplot(phi) +
+    ggplot2::aes(
+      xdist = if (scales) tau else phi,
+      y = forcats::fct_rev(partition),
+      shape = l
+    ) +
+    ggplot2::facet_wrap(
+      ~submodel,
+      nrow = 1,
+      scales = if (scales) "free" else "free_y"
+    ) +
+    ggdist::stat_pointinterval(
+      position = ggplot2::position_dodge(width = -0.5),
+      ...
+    ) +
+    ggplot2::scale_x_continuous(expand = c(0, 0)) +
+    ggplot2::labs(
+      x = "Estimate",
+      y = if (scales) "Scale" else "Variance Partition",
+      shape = "Level"
+    )
+  attr(p, "plot_data") <- phi
+  p
+}
+
 #' Plot realised occupancy proportions
 #'
 #' Plots species-level proportions of occupied sites,
@@ -1093,6 +1322,7 @@ plot_sites <- function(
   occARU_data <- attr(fit, "occARU_data")
   site_lvl <- attr(occARU_data, "sites")
   species_lvl <- attr(occARU_data, "species")
+  region_lvl <- attr(occARU_data, "regions")
   MS <- length(species_lvl) > 1
   survey_length <- attr(occARU_data, "survey_length")
   P <- occARU_data$P[2]
@@ -1150,6 +1380,10 @@ plot_sites <- function(
 
   # initialise log_mu
   draws <- tidyr::expand_grid(i = site_idx, s = species_idx) |>
+    dplyr::mutate(
+      region = factor(stan_data$region[i], labels = region_lvl),
+      .before = i
+    ) |>
     dplyr::mutate(log_mu = 0)
 
   # increment predictor effects
@@ -1877,7 +2111,7 @@ plot_surveys <- function(
   p <- ggplot2::ggplot(draws) +
     ggplot2::aes(x = survey, ydist = pred) +
     ggdist::stat_lineribbon(...) +
-    ggplot2::facet_wrap(~species, scales = if (transform) "free_y", ncol = 1) +
+    ggplot2::facet_wrap(~species, scales = if (transform) "free_y") +
     ggplot2::scale_x_date(expand = c(0, 0)) +
     ggplot2::scale_y_continuous(expand = c(0, 0)) +
     ggplot2::scale_fill_brewer(palette = palette) +
