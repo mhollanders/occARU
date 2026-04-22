@@ -370,7 +370,7 @@ check_dates <- function(
 ) {
   df_name <- deparse(substitute(df))
   wrong_sites <- df |>
-    dplyr::filter({{ end }} <= {{ start }}) |>
+    dplyr::filter({{ end }} < {{ start }}) |>
     dplyr::distinct({{ locationID }}) |>
     dplyr::pull({{ locationID }})
   if (length(wrong_sites)) {

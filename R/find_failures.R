@@ -5,10 +5,10 @@
 #' all records including null records, as a suitable gap threshold requires
 #' knowledge of expected detection rates.
 #'
-#' @param df A dataframe of records. Must contain columns `deploymentID` and
+#' @param df A dataframe of records. Must contain columns `locationID` and
 #'   `eventStart` (or equivalents).
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for site identifiers. Default: `deploymentID`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for site identifiers. Default: `locationID`.
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
 #'   Observation timestamps. Default: `eventStart`.
 #' @param buffer_days Positive integer. Number of days after the last detection
@@ -16,20 +16,20 @@
 #'   For example, `buffer_days = 2` means the failure period starts 2 days
 #'   after the last detection and ends 2 days before the next detection.
 #'
-#' @return A dataframe with columns `deploymentID`, `failureStart`, and
+#' @return A dataframe with columns `locationID`, `failureStart`, and
 #'   `failureEnd`, one row per inferred failure period, with `buffer_days`
 #'   stored as attribute.
 #' @export
 find_failures <- function(
   df,
-  deploymentID = deploymentID,
+  locationID = locationID,
   eventStart = eventStart,
   buffer_days
 ) {
   # checks
   check_cols_exist(
     df,
-    {{ deploymentID }},
+    {{ locationID }},
     {{ eventStart }}
   )
   if (!rlang::is_integerish(buffer_days) || buffer_days < 0) {
@@ -40,19 +40,19 @@ find_failures <- function(
 
   # produce failures
   df <- df |>
-    dplyr::arrange({{ deploymentID }}, {{ eventStart }}) |>
+    dplyr::arrange({{ locationID }}, {{ eventStart }}) |>
     dplyr::mutate(
       gap = difftime(
         dplyr::lead({{ eventStart }}),
         {{ eventStart }},
         units = "days"
       ),
-      failureStart = as.Date({{ eventStart }}) + buffer_days,
-      failureEnd = as.Date(dplyr::lead({{ eventStart }})) - buffer_days,
-      .by = {{ deploymentID }}
+      failureStart = as.Date({{ eventStart }}) + (buffer_days + 1),
+      failureEnd = as.Date(dplyr::lead({{ eventStart }})) - (buffer_days + 1),
+      .by = {{ locationID }}
     ) |>
     dplyr::filter(gap > 2 * buffer_days) |>
-    dplyr::select({{ deploymentID }}, failureStart, failureEnd)
+    dplyr::select({{ locationID }}, failureStart, failureEnd)
   attr(df, "buffer_days") <- buffer_days
   df
 }
