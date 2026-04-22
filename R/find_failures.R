@@ -39,6 +39,7 @@ find_failures <- function(
   }
 
   # produce failures
+  bdp1 <- buffer_days + 1
   df <- df |>
     dplyr::arrange({{ locationID }}, {{ eventStart }}) |>
     dplyr::mutate(
@@ -47,11 +48,11 @@ find_failures <- function(
         {{ eventStart }},
         units = "days"
       ),
-      failureStart = as.Date({{ eventStart }}) + (buffer_days + 1),
-      failureEnd = as.Date(dplyr::lead({{ eventStart }})) - (buffer_days + 1),
+      failureStart = as.Date({{ eventStart }}) + bdp1,
+      failureEnd = as.Date(dplyr::lead({{ eventStart }})) - bdp1,
       .by = {{ locationID }}
     ) |>
-    dplyr::filter(gap > 2 * buffer_days) |>
+    dplyr::filter(gap > 2 * bdp1) |>
     dplyr::select({{ locationID }}, failureStart, failureEnd)
   attr(df, "buffer_days") <- buffer_days
   df
