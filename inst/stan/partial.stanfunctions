@@ -24,8 +24,7 @@ real partial_regions_occARU_lpmf(
       S = size(y[1, 1]), MS = S > 1, random = size(iota_bar_z),
       SS = size(iota_ell) > 1, OLRE = size(epsilon_bar_z);
   real lp = 0.0;
-  array[I] int sites = linspaced_int_array(I, sum(I_r[:start - 1]) + 1,
-                                              sum(I_r[:end]));
+  array[I] int sites = linspaced_int_array(I, sum(I_r[:start - 1]) + 1, sum(I_r[:end]));
   matrix[random * I, S] iota;
   if (random) {
     vector[I] iota_bar;
@@ -66,8 +65,7 @@ real partial_regions_occARU_lpmf(
   array[OLRE * I] matrix[J, S] epsilon;
   if (OLRE) {
     array[J_sum] int surveys =
-      linspaced_int_array(J_sum, sum(J_i[:sites[1] - 1]) + 1,
-                          sum(J_i[:sites[I]]));
+      linspaced_int_array(J_sum, sum(J_i[:sites[1] - 1]) + 1, sum(J_i[:sites[I]]));
     vector[J_sum] epsilon_bar = epsilon_bar_t[1] * epsilon_bar_z[1, surveys];
     lp += std_normal_lpdf(epsilon_bar_z[1, surveys]);
     matrix[J_sum, S] epsilon_mat;
@@ -121,8 +119,8 @@ real partial_sites_occARU_lpmf(
   }
   array[OLRE * I] matrix[J, S] epsilon;
   if (OLRE) {
-    array[J] int surveys = linspaced_int_array(J, sum(J_i[:sites[1] - 1]) + 1,
-                                               sum(J_i[:sites[I]]));
+    array[J] int surveys =
+      linspaced_int_array(J, sum(J_i[:sites[1] - 1]) + 1, sum(J_i[:sites[I]]));
     vector[J] epsilon_bar = epsilon_bar_t[1] * epsilon_bar_z[1, surveys];
     lp += std_normal_lpdf(epsilon_bar_z[1, surveys]);
     matrix[J, S] epsilon_mat;

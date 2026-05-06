@@ -33,7 +33,7 @@
  *
  * @return log_lik     Log likelihood [S, I]
  * @return Omega       Marginal occupancy log likelihoods [I, S, 2]
- * @return log_mu      Log detection rates without beta/Poisson OLREs [I, J, S]
+ * @return log_mu      Log detection rates without continuous survey predictors [I, J, S]
  */
 tuple(matrix, array[] matrix, matrix, array[] matrix)
   occARU(data array[,,] int y, data array[,] int Q, data array[,] int j_idx,
@@ -93,16 +93,15 @@ tuple(matrix, array[] matrix, matrix, array[] matrix)
     if (random) {
       log_mu_j += kappa[idx];
     }
-    log_mu[i, idx] = log_mu_j;  // store
     if (OLRE) {
       log_mu_j += epsilon[i, idx];
     }
+    log_mu[i, idx] = log_mu_j;  // store
     if (P3) {
       matrix[J_ii, P3] X3_i = X3[i, idx];
       for (s in 1:S) {
         Omega_i[2, s] += NB ?
-          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s],
-                                                  gamma[:, s], phi[s])
+          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
           : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
       }
     } else {
@@ -118,7 +117,7 @@ tuple(matrix, array[] matrix, matrix, array[] matrix)
       } else {
         Omega_i[1, s] = log_psi[i, s] - logit_psi[i, s];
         log_lik[s, i] = log_sum_exp(Omega_i[:, s]);
-        Omega[i, :, s] = Omega_i[:, s];
+        Omega[i, :, s] = Omega_i[:, s];  // store
       }
     }
   }
@@ -196,8 +195,7 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
       matrix[J_ii, P3] X3_i = X3[i, idx];
       for (s in 1:S) {
         Omega[s] += NB ?
-          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s],
-                                                  gamma[:, s], phi[s])
+          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
           : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
       }
     } else {
@@ -212,195 +210,6 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
                  Omega[s]
                  : log_sum_exp(log_psi[i, s] - logit_psi[i, s], Omega[s]);
     }
-  }
-  return log_lik;
-}
-
-/**
- * Single species occupancy model for automated recording unit (ARU) data with
- * Poisson or negative binomial observation process.
- *
- * @param y             Detection history [I, J]
- * @param Q             Aggregated detection history [I]
- * @param j_idx         Survey indices [I, J]
- * @param J_i           Number of surveys [I]
- * @param log_Delta     Offsets [J, I]
- * @param X1            Occupancy site predictors (numeric) [I, P]
- * @param X_cat1        Occupancy site predictors (categorical) [I, P]
- * @param X_ord1        Occupancy site predictors (ordinal) [I, P]
- * @param X2            Detection site predictors (numeric) [I, P]
- * @param X_cat2        Detection site predictors (categorical) [I, P]
- * @param X_ord2        Detection site predictors (ordinal) [I, P]
- * @param X3            Survey predictors (numeric) [I, J, P]
- * @param X_cat3        Survey predictors (categorical) [I, J, P]
- * @param X_ord3        Survey predictors (ordinal) [I, J, P]
- * @param alpha         Intercepts [I, 2]
- * @param psi_beta      Occupancy site coefficients (numeric) [P]
- * @param psi_beta_cat  Occupancy site coefficients (categorical) [C_max, P]
- * @param psi_beta_ord  Occupancy site coefficients (realised ordinal) [O_max, P]
- * @param mu_beta       Detection site coefficients (numeric) [P]
- * @param mu_beta_cat   Detection site coefficients (categorical) [C_max, P]
- * @param mu_beta_ord   Detection site coefficients (realised ordinal) [O_max, P]
- * @param gamma         Survey coefficients (numeric) [P]
- * @param gamma_cat     Survey coefficients (categorical) [C_max, P]
- * @param gamma_ord     Survey coefficients (realised ordinal) [O_max, P]
- * @param iota          Site effects [I]
- * @param kappa         Survey effects [J]
- * @param epsilon       Poisson OLREs [J, I] (OD = 1)
- * @param phi           Negative binomial overdispersion (OD = 2)
- *
- * @return log_lik    Log likelihood [I]
- * @return Omega      Marginal occupancy log likelihoods [2, I]
- * @return logit_psi  Occupancy logits [I]
- * @return log_mu     Log detection rates without Poisson OLREs [J, I]
- */
-tuple(vector, matrix, vector, matrix)
-  occARU(data array[,] int y, data array[] int Q, data array[,] int j_idx,
-         data array[] int J_i, data matrix log_Delta, data matrix X1,
-         data array[,] int X_cat1, data array[,] int X_ord1, data matrix X2,
-         data array[,] int X_cat2, data array[,] int X_ord2,
-         data array[] matrix X3, data array[,,] int X_cat3,
-         data array[,,] int X_ord3, matrix alpha, vector psi_beta,
-         matrix psi_beta_cat, matrix psi_beta_ord, vector mu_beta,
-         matrix mu_beta_cat, matrix mu_beta_ord, vector gamma, matrix gamma_cat,
-         matrix gamma_ord, vector iota, vector kappa, matrix epsilon,
-         vector phi) {
-  int I = size(y), J = size(y[1]), P3 = size(gamma), P_cat3 = cols(gamma_cat),
-      P_ord3 = cols(gamma_ord), SP = size(iota), TE = size(kappa),
-      OLRE = size(epsilon), NB = size(phi);
-  vector[I] logit_psi = alpha[:, 1] + X1 * psi_beta, log_psi,
-            log_mu_i = alpha[:, 2] + X2 * mu_beta;
-  for (p in 1:cols(psi_beta_cat)) {
-    logit_psi += psi_beta_cat[X_cat1[:, p], p];
-  }
-  if (cols(psi_beta_ord)) {
-    logit_psi += increment_ordinal(X_ord1, psi_beta_ord);
-  }
-  log_psi = log_inv_logit(logit_psi);
-  for (p in 1:cols(mu_beta_cat)) {
-    log_mu_i += mu_beta_cat[X_cat2[:, p], p];
-  }
-  if (cols(mu_beta_ord)) {
-    log_mu_i += increment_ordinal(X_ord2, mu_beta_ord);
-  }
-  if (SP) {
-    log_mu_i += iota;
-  }
-  matrix[J, I] log_mu;
-  matrix[2, I] Omega;
-  Omega[2] = log_psi';
-  vector[I] log_lik;
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    array[J_ii] int idx = j_idx[i, :J_ii];
-    log_mu[idx, i] = log_mu_i[i] + log_Delta[idx, i];
-    if (P_cat3) {
-      array[J_ii, P_cat3] int X_cat3_i = X_cat3[i, idx];
-      for (p in 1:P_cat3) {
-        log_mu[idx, i] += gamma_cat[X_cat3_i[:, p], p];
-      }
-    }
-    if (P_ord3) {
-      log_mu[idx, i] += increment_ordinal(X_ord3[i, idx], gamma_ord);
-    }
-    if (TE) {
-      log_mu[idx, i] += kappa[idx];
-    }
-    vector[J_ii] log_mu_j = log_mu[idx, i];
-    if (OLRE) {
-      log_mu_j += epsilon[idx, i];
-    }
-    if (P3) {
-      Omega[2, i] += NB ?
-        neg_binomial_2_log_glm_lpmf(y[i, idx] | X3[i, idx], log_mu_j,
-                                                gamma, phi[1])
-        : poisson_log_glm_lpmf(y[i, idx] | X3[i, idx], log_mu_j, gamma);
-    } else {
-      Omega[2, i] += NB ?
-        neg_binomial_2_log_lpmf(y[i, idx] | log_mu_j, phi[1])
-        : poisson_log_lpmf(y[i, idx] | log_mu_j);
-    }
-    if (Q[i]) {
-      log_lik[i] = Omega[2, i];
-    } else {
-      Omega[1, i] = log_psi[i] - logit_psi[i];
-      log_lik[i] = log_sum_exp(Omega[:, i]);
-    }
-  }
-  return (log_lik, Omega, logit_psi, log_mu);
-}
-
-/**
- * Like occARU(), but only outputting joint log likelihood
- *
- * @return  Joint log likelihood across sites
- */
-real occARU_lpmf(data array[,] int y, data array[] int Q,
-                 data array[,] int j_idx, data array[] int J_i,
-                 data matrix log_Delta, data matrix X1,
-                 data array[,] int X_cat1, data array[,] int X_ord1,
-                 data matrix X2, data array[,] int X_cat2,
-                 data array[,] int X_ord2, data array[] matrix X3,
-                 data array[,,] int X_cat3, data array[,,] int X_ord3,
-                 matrix alpha, vector psi_beta, matrix psi_beta_cat,
-                 matrix psi_beta_ord, vector mu_beta, matrix mu_beta_cat,
-                 matrix mu_beta_ord, vector gamma, matrix gamma_cat,
-                 matrix gamma_ord, vector iota, vector kappa, matrix epsilon,
-                 vector phi) {
-  int I = size(y), J = size(y[1]), P3 = size(gamma), P_cat3 = cols(gamma_cat),
-      P_ord3 = cols(gamma_ord), SP = size(iota), TE = size(kappa),
-      OLRE = size(epsilon), NB = size(phi);
-  vector[I] logit_psi = alpha[:, 1] + X1 * psi_beta, log_psi,
-            log_mu_i = alpha[:, 2] + X2 * mu_beta;
-  for (p in 1:cols(psi_beta_cat)) {
-    logit_psi += psi_beta_cat[X_cat1[:, p], p];
-  }
-  if (cols(psi_beta_ord)) {
-    logit_psi += increment_ordinal(X_ord1, psi_beta_ord);
-  }
-  log_psi = log_inv_logit(logit_psi);
-  for (p in 1:cols(mu_beta_cat)) {
-    log_mu_i += mu_beta_cat[X_cat2[:, p], p];
-  }
-  if (cols(mu_beta_ord)) {
-    log_mu_i += increment_ordinal(X_ord2, mu_beta_ord);
-  }
-  if (SP) {
-    log_mu_i += iota;
-  }
-  real Omega;
-  real log_lik = 0.0;
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    array[J_ii] int idx = j_idx[i, :J_ii];
-    Omega = log_psi[i];
-    vector[J_ii] log_mu = log_mu_i[i] + log_Delta[idx, i];
-    if (P_cat3) {
-      array[J_ii, P_cat3] int X_cat3_i = X_cat3[i, idx];
-      for (p in 1:P_cat3) {
-        log_mu += gamma_cat[X_cat3_i[:, p], p];
-      }
-    }
-    if (P_ord3) {
-      log_mu += increment_ordinal(X_ord3[i, idx], gamma_ord);
-    }
-    if (TE) {
-      log_mu += kappa[idx];
-    }
-    if (OLRE) {
-      log_mu += epsilon[idx, i];
-    }
-    if (P3) {
-      Omega += NB ?
-        neg_binomial_2_log_glm_lpmf(y[i, idx] | X3[i, idx], log_mu,
-                                                gamma, phi[1])
-        : poisson_log_glm_lpmf(y[i, idx] | X3[i, idx], log_mu, gamma);
-    } else {
-      Omega += NB ?
-        neg_binomial_2_log_lpmf(y[i, idx] | log_mu, phi[1])
-        : poisson_log_lpmf(y[i, idx] | log_mu);
-    }
-    log_lik += Q[i] ? Omega : log_sum_exp(log_psi[i] - logit_psi[i], Omega);
   }
   return log_lik;
 }

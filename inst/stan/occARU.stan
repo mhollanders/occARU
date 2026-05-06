@@ -6,215 +6,6 @@ functions {
   #include coefficients.stanfunctions
   #include kernels.stanfunctions
   #include predict.stanfunctions
-/**
- * Multispecies occupancy model (MSOM) for automated recording unit (ARU) data
- * with Poisson or negative binomial observation process.
- *
- * @param y             Detection history [I, J, K, S]
- * @param Q             Aggregated detection history [I, S]
- * @param j_idx         Survey indices [I, J]
- * @param J_i           Number of surveys [I]
- * @param log_Delta     Offsets [J, I]
- * @param X1            Occupancy site predictors (numeric) [I, P]
- * @param X_cat1        Occupancy site predictors (categorical) [I, P]
- * @param X_ord1        Occupancy site predictors (ordinal) [I, P]
- * @param X2            Detection site predictors (numeric) [I, P]
- * @param X_cat2        Detection site predictors (categorical) [I, P]
- * @param X_ord2        Detection site predictors (ordinal) [I, P]
- * @param X3            Survey predictors (numeric) [I, J, P]
- * @param X_cat3        Survey predictors (categorical) [I, J, P]
- * @param X_ord3        Survey predictors (ordinal) [I, J, P]
- * @param alpha         Intercepts [2, I, S]
- * @param psi_beta      Detection site coefficients (numeric) [P, S]
- * @param psi_beta_cat  Detection site coefficients (categorical) [P, C_max, S]
- * @param psi_beta_ord  Detection site coefficients (realised ordinal) [P, O_max, S]
- * @param mu_beta       Detection site coefficients (numeric) [P, S]
- * @param mu_beta_cat   Detection site coefficients (categorical) [P, C_max, S]
- * @param mu_beta_ord   Detection site coefficients (realised ordinal) [P, O_max, S]
- * @param gamma         Survey coefficients (numeric) [P, S]
- * @param gamma_cat     Survey coefficients (categorical) [P, C_max, S]
- * @param gamma_ord     Survey coefficients (realised ordinal) [P, O_max, S]
- * @param iota          Site effects [I, S]
- * @param kappa         Survey effects [J, S]
- * @param epsilon       Poisson OLREs (OD = 1)
- * @param phi           Negative binomial overdispersion [S] (OD = 2)
- *
- * @return log_lik     Log likelihood [S, I]
- * @return Omega       Marginal occupancy log likelihoods [I, S, 2]
- * @return log_mu      Log detection rates without beta/Poisson OLREs [I, J, S]
- */
-tuple(matrix, array[] matrix, matrix, array[] matrix)
-  occARU(data array[,,,] int y, data array[,,] int Q, data array[,,] int j_idx,
-         data array[,] int J_i, data array[] matrix log_Delta, data array[] matrix X1,
-         data array[,,] int X_cat1, data array[,,] int X_ord1, data array[] matrix X2,
-         data array[,,] int X_cat2, data array[,,] int X_ord2,
-         data array[,] matrix X3, data array[,,,] int X_cat3,
-         data array[,,,] int X_ord3, array[] matrix alpha, matrix psi_beta,
-         array[] matrix psi_beta_cat, array[] matrix psi_beta_ord,
-         matrix mu_beta, array[] matrix mu_beta_cat, array[] matrix mu_beta_ord,
-         matrix gamma, array[] matrix gamma_cat, array[] matrix gamma_ord,
-         matrix iota, array[] matrix kappa, array[,] matrix epsilon, vector phi) {
-  int I = size(y), J = size(y[1]), K = size(y[1, 1]), S = size(y[1, 1, 1]),
-      P_cat1 = size(psi_beta_cat), P_ord1 = size(psi_beta_ord),
-      P3 = rows(gamma), P_cat3 = size(gamma_cat), P_ord3 = size(gamma_ord),
-      OLRE = size(epsilon), NB = size(phi);
-  array[5] int random;
-  random[1] = rows(iota);
-  random[2] = rows(kappa);
-  random[3] = rows(nu);
-  random[4] = rows(psi_iota);
-  random[5] = rows(psi_nu);
-  array[I] matrix[K, S] eta;
-  array[I, K] matrix[J, S] log_mu;
-  array[I, S] matrix[2, K] Omega;
-  matrix[S, I] log_lik;
-  array[I] matrix[S, K] lp_y;
-  for (i in 1:I) {
-    int f = f_l[i, 1], l = f_l[i, 2], K_i = l - f + 1;
-    matrix[K_i, S] eta_k = X1[f:k] * psi_beta,
-                   log_mu_k = rep_matrix(alpha[i], K_i) + X2[f:l] * mu_beta;
-    for (p in 1:P_cat1) {
-      eta_k += psi_beta_cat[p, X_cat1[i, f:l, p]];
-    }
-    for (p in 1:P_ord1) {
-      eta_k += psi_beta_ord[p, X_ord1[i, f:l, p]];
-    }
-    if (random[4]) {
-      eta_k += rep_matrix(psi_iota[i], K_i);
-    }
-    if (random[5]) {
-      eta_k += psi_nu[f:l];
-    }
-    eta[k, f:l] = eta_k; // store
-    for (p in 1:P_cat2) {
-      log_mu_k += mu_beta_cat[p, X_cat2[i, f:l, p]];
-    }
-    for (p in 1:P_ord2) {
-      log_mu_k += mu_beta_ord[p, X_ord2[i, f:l, p]];
-    }
-    if (random[4]) {
-      log_mu_k += rep_matrix(iota[i], K_i);
-    }
-    if (random[5]) {
-      log_mu_k += nu[f:l];
-    }
-    for (k in f:l) {
-      int J_ii = J_i[i, k];
-      array[J_ii] int idx = j_idx[i, k, :J_ii];
-      array[J_ii, S] int y_i = y[i, idx, k];
-      matrix[J_ii, S] log_mu_j = rep_matrix(log_mu_k[k], J_ii)
-                                 + rep_matrix(log_Delta[i, idx, k], S);
-      for (p in 1:P_cat3) {
-        log_mu_j += gamma_cat[p, X_cat3[i, k, :, p]];
-      }
-      for (p in 1:P_ord3) {
-        log_mu_j += gamma_ord[p, X_ord3[i, k, :, p]];
-      }
-      }
-      if (random[2]) {
-        log_mu_j += kappa[k, idx];
-      }
-      log_mu[i, k, idx] = log_mu_j;  // store
-      if (OLRE) {
-        log_mu_j += epsilon[i, k, idx];
-      }
-      if (P3) {
-        matrix[J_ii, P3] X3_i = X3[i, k, idx];
-        for (s in 1:S) {
-          lp_y[i, s, k] += NB ?
-            neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s],
-                                                    gamma[:, s], phi[s])
-          : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
-      }
-    } else {
-      for (s in 1:S) {
-        Omega_i[2, s] += NB ?
-          neg_binomial_2_log_lpmf(y_i[:, s] | log_mu_j[:, s], phi[s])
-          : poisson_log_lpmf(y_i[:, s] | log_mu_j[:, s]);
-      }
-    }
-
-    }
-
-
-  }
-
-  matrix[I, S] logit_psi = alpha[1] + X1 * psi_beta, log_psi,
-               log_mu_i = alpha[2] + X2 * mu_beta;
-  for (p in 1:size(psi_beta_cat)) {
-    logit_psi += psi_beta_cat[p, X_cat1[:, p]];
-  }
-  for (p in 1:size(psi_beta_ord)) {
-    logit_psi += psi_beta_ord[p, X_ord1[:, p]];
-  }
-  log_psi = log_inv_logit(logit_psi);
-  for (p in 1:size(mu_beta_cat)) {
-    log_mu_i += mu_beta_cat[p, X_cat2[:, p]];
-  }
-  for (p in 1:size(mu_beta_ord)) {
-    log_mu_i += mu_beta_ord[p, X_ord2[:, p]];
-  }
-  if (size(iota)) {
-    log_mu_i += iota;
-  }
-  array[I] matrix[J, S] log_mu;
-  matrix[2, S] Omega_i;
-  array[I] matrix[2, S] Omega;
-  matrix[S, I] log_lik;
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    array[J_ii] int idx = j_idx[i, :J_ii];
-    array[J_ii, S] int y_i = y[i, idx];
-    Omega_i[2] = log_psi[i];
-    matrix[J_ii, S] log_mu_j = rep_matrix(log_mu_i[i], J_ii)
-                               + rep_matrix(log_Delta[idx, i], S);
-    if (P_cat3) {
-      array[J_ii, P_cat3] int X_cat3_i = X_cat3[i, idx];
-      for (p in 1:P_cat3) {
-        log_mu_j += gamma_cat[p, X_cat3_i[:, p]];
-      }
-    }
-    if (P_ord3) {
-      array[J_ii, P_ord3] int X_ord3_i = X_ord3[i, idx];
-      for (p in 1:P_ord3) {
-        log_mu_j += gamma_ord[p, X_ord3_i[:, p]];
-      }
-    }
-    if (random) {
-      log_mu_j += kappa[idx];
-    }
-    log_mu[i, idx] = log_mu_j;  // store
-    if (OLRE) {
-      log_mu_j += epsilon[i, idx];
-    }
-    if (P3) {
-      matrix[J_ii, P3] X3_i = X3[i, idx];
-      for (s in 1:S) {
-        Omega_i[2, s] += NB ?
-          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s],
-                                                  gamma[:, s], phi[s])
-          : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
-      }
-    } else {
-      for (s in 1:S) {
-        Omega_i[2, s] += NB ?
-          neg_binomial_2_log_lpmf(y_i[:, s] | log_mu_j[:, s], phi[s])
-          : poisson_log_lpmf(y_i[:, s] | log_mu_j[:, s]);
-      }
-    }
-    for (s in 1:S) {
-      if (Q[i, s]) {
-        log_lik[s, i] = Omega_i[2, s];
-      } else {
-        Omega_i[1, s] = log_psi[i, s] - logit_psi[i, s];
-        log_lik[s, i] = log_sum_exp(Omega_i[:, s]);
-        Omega[i, :, s] = Omega_i[:, s];
-      }
-    }
-  }
-  return (log_lik, Omega, logit_psi, log_mu);
-}
-
 }
 
 data {
@@ -315,12 +106,12 @@ transformed data {
     }
   }
 
-  // site and survey sequences
+  // sequences
   array[I] int sites = linspaced_int_array(I, 1, I);
   array[R] int regions = linspaced_int_array(R, 1, R);
   array[J] real surveys = linspaced_array(J, 1, J);
 
-  // var. partitions for occ. and det.
+  // variance partitions
   int psi_V = MS + (1 + MS) * (MR + P_sum[1]),
       mu_V = MS + (1 + MS) * (MR + sum(P_sum[2:3]) + sum(random) + OLRE);
 
@@ -397,9 +188,9 @@ parameters {
   array[mu_V > 1] sum_to_zero_vector[mu_V > 1 ? mu_V : 1] mu_phi_z;
 
   // correlation matrices
-  cholesky_factor_corr[MS * P_sum[1] ? S : 0] psi_beta_O_L;
-  cholesky_factor_corr[MS * P_sum[2] ? S : 0] mu_beta_O_L;
-  cholesky_factor_corr[MS * P_sum[3] ? S : 0] gamma_O_L;
+  cholesky_factor_corr[MS && P_sum[1] ? S : 0] psi_beta_O_L;
+  cholesky_factor_corr[MS && P_sum[2] ? S : 0] mu_beta_O_L;
+  cholesky_factor_corr[MS && P_sum[3] ? S : 0] gamma_O_L;
   cholesky_factor_corr[MS && random[1] ? S : 0] iota_O_L;
   cholesky_factor_corr[MS && random[2] ? S : 0] kappa_O_L;
   cholesky_factor_corr[MS && OLRE ? S : 0] epsilon_O_L;
@@ -444,11 +235,11 @@ parameters {
   matrix<lower=0>[1 + (SS[2] * S), (kernel[2] > 0) + periodic] kappa_ell;
   array[periodic] simplex[2] K_phi;
 
-  // OLRE residuals or negbin overdispersion
+  // negative binomial overdispersion or OLRE residuals
+  vector<lower=0>[NB * S] phi;
   array[OLRE] sum_to_zero_vector[J_sum] epsilon_bar_z;
   array[MS * OLRE] sum_to_zero_matrix[J_sum, S] epsilon_s_z;
   array[MS * OLRE] simplex[S] epsilon_phi;
-  vector<lower=0>[NB * S] phi;
 }
 
 transformed parameters {
@@ -805,13 +596,14 @@ transformed parameters {
           kappa = orthogonalise(X3_mean, X3_plus, kappa);
         }
       }
+      mu_idx += 1 + MS;
     }
 
     // OLRE scales
     if (OLRE) {
-      epsilon_bar_t[1] = mu_tau[mu_V - 1];
+      epsilon_bar_t[1] = mu_tau[mu_idx];
       if (MS) {
-        epsilon_t = mu_tau[mu_V] * sqrt(epsilon_phi[1]);
+        epsilon_t = mu_tau[mu_idx + 1] * sqrt(epsilon_phi[1]);
       }
     }
   }
@@ -1094,9 +886,9 @@ model {
 generated quantities {
   // correlations
   corr_matrix[MS * 2] alpha_O;
-  corr_matrix[MS * P_sum[1] ? S : 0] psi_beta_O;
-  corr_matrix[MS * P_sum[2] ? S : 0] mu_beta_O;
-  corr_matrix[MS * P_sum[3] ? S : 0] gamma_O;
+  corr_matrix[MS && P_sum[1] ? S : 0] psi_beta_O;
+  corr_matrix[MS && P_sum[2] ? S : 0] mu_beta_O;
+  corr_matrix[MS && P_sum[3] ? S : 0] gamma_O;
   corr_matrix[MS && random[1] ? S : 0] iota_O;
   corr_matrix[MS && random[2] ? S : 0] kappa_O;
   corr_matrix[MS && OLRE ? S : 0] epsilon_O;
@@ -1124,13 +916,13 @@ generated quantities {
 
   // unconditional coefficients
   vector[project[1] * P[2]] mu_beta_bar2;
-  matrix[MS * project[1] * P[2], S] mu_beta2;
+  matrix[project[1] * MS * P[2], S] mu_beta2;
   vector[project[1] * P_ord[2]] mu_beta_ord_bar2;
-  matrix[MS * project[1] * P_ord[2], S] mu_beta_ord2;
+  matrix[project[1] * MS * P_ord[2], S] mu_beta_ord2;
   vector[project[2] * P[3]] gamma_bar2;
-  matrix[MS * project[2] * P[3], S] gamma2;
+  matrix[project[2] * MS * P[3], S] gamma2;
   vector[project[2] * P_ord[3]] gamma_ord_bar2;
-  matrix[MS * project[2] * P_ord[3], S] gamma_ord2;
+  matrix[project[2] * MS * P_ord[3], S] gamma_ord2;
   if (project[2]) {
     if (P[3]) {
       gamma_bar2 = uncondition(X3_plus[:P[3]], gamma_bar, kappa_bar2);
@@ -1239,7 +1031,7 @@ generated quantities {
     // posterior predictions
     if (PPC_y || PPC_Q) {
       tuple(array[I, J, S] int, array[I, S] int) pp =
-        pp_occARU_rng(j_idx, J_i, X3, logit_psi, lp.4, gamma, epsilon, phi);
+        pp_occARU_rng(j_idx, J_i, X3, logit_psi, lp.4, gamma, phi);
       if (PPC_y) {
         yrep = pp.1;
       }
@@ -1291,6 +1083,8 @@ generated quantities {
                  mu_beta_ord_realised, gamma, gamma_cat, gamma_ord_realised,
                  iota_rep, kappa, epsilon, phi).1;
       }
+
+      // average log likelihood over draws
       log_lik2 = rep_matrix(-log_D, S, I);
       for (i in 1:I) {
         for (s in 1:S) {

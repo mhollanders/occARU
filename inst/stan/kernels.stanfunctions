@@ -8,7 +8,7 @@
  * @param kernel  Class of kernel
  * @param ell     Length scales [1( + S)]
  *
- * @return        Cholesky factor(s) of kernel [R(, S), I_max, I_max]
+ * @return  Cholesky factor(s) of kernel [R, 1( + S), I_max, I_max]
  */
 array[,] matrix site_kernels(data array[] int I_r, data array[] vector XY,
                              data int kernel, vector ell) {
@@ -34,35 +34,30 @@ array[,] matrix site_kernels(data array[] int I_r, data array[] vector XY,
 
 /**
  * Produce Cholesky factors of Gaussian process (GP) kernels for survey random
- * effects. Overloaded for shared length scales and species-specific.
+ * effects.
  *
  * @param surveys  Survey indices [J]
  * @param kernel   Class of kernel
  * @param period   Period length if periodic kernel is included
  * @param tau      Square root of variance partitions of two kernels
- * @param ell      Length scales [2] or [S + 1, 2]
+ * @param ell      Length scales [1(+ S), 2]
  *
- * @return         Cholesky factor(s) of kernel [(S, )J, J]
+ * @return  Cholesky factor(s) of kernel [1( + S), J, J]
  */
 array[] matrix survey_kernels(data array[] real surveys, data int kernel,
                               data real period, vector tau, matrix ell) {
   int J = size(surveys), periodic = size(tau), Sp1 = rows(ell);
   matrix[J, J] K;
   array[Sp1] matrix[J, J] L;
+  real scale = periodic ? tau[1] : 1;
   for (s in 1:Sp1) {
+    K = kernel == 1 ?
+        gp_exp_quad_cov(surveys, scale, ell[s, 1])
+        : kernel == 2 ?
+          gp_matern32_cov(surveys, scale, ell[s, 1])
+          : gp_matern32_cov(surveys, scale, ell[s, 1]);
     if (periodic) {
-      K = kernel == 1 ?
-          gp_exp_quad_cov(surveys, tau[1], ell[s, 1])
-          : kernel == 2 ?
-            gp_matern32_cov(surveys, tau[1], ell[s, 1])
-            : gp_matern32_cov(surveys, tau[1], ell[s, 1]);
       K += gp_periodic_cov(surveys, tau[2], ell[s, 2], period);
-    } else {
-      K = kernel == 1 ?
-          gp_exp_quad_cov(surveys, 1, ell[s, 1])
-          : kernel == 2 ?
-            gp_matern32_cov(surveys, 1, ell[s, 1])
-            : gp_matern32_cov(surveys, 1, ell[s, 1]);
     }
     L[s] = cholesky_decompose(add_diag(K, 1e-9));
   }
@@ -71,20 +66,26 @@ array[] matrix survey_kernels(data array[] real surveys, data int kernel,
 
 /**
  * Produce Cholesky factors of Gaussian process (GP) kernels for season random
- * effects. Overloaded for shared length scales and species-specific.
+ * effects.
  *
- * @param seasons  Survey indices [K]
+ * @param seasons  Survey input [N]
  * @param kernel   Class of kernel
- * @param ell      Length scales [1] or [S]
+ * @param ell      Length scales [1(+ S)]
  *
- * @return         Cholesky factor(s) of kernel [(S, )K, K]
+ * @return         Cholesky factor(s) of kernel [1( + S), K, K]
  */
-matrix season_kernels(data array[] real seasons, data int kernel, vector ell) {
-  int N = size(seasons);
-  matrix[N, N] K = kernel == 1 ?
-                   gp_exp_quad_cov(seasons, 1, ell[1])
-                   : kernel == 2 ?
-                     gp_matern32_cov(seasons, 1, ell[1])
-                     : gp_matern52_cov(seasons, 1, ell[1]);
-  return cholesky_decompose(add_diag(K, 1e-9));
+array[] matrix season_kernels(data array[] real seasons, data int kernel,
+                              vector ell) {
+  int N = size(seasons), Sp1 = size(ell);
+  matrix[N, N] K;
+  array[Sp1] matrix[N, N] L;
+  for (s in 1:Sp1) {
+    K = kernel == 1 ?
+        gp_exp_quad_cov(seasons, 1, ell[1])
+        : kernel == 2 ?
+          gp_matern32_cov(seasons, 1, ell[1])
+          : gp_matern52_cov(seasons, 1, ell[1]);
+    L[s] = cholesky_decompose(add_diag(K, 1e-9));
+  }
+  return L;
 }

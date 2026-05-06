@@ -99,13 +99,13 @@ tuple(vector, matrix, matrix)
 /**
  * Produce realised coefficients from species-specific ordinal coefficients
  * and predictor-specific cumulative sums of simplexes. The first row is 0s,
- * requiring ordinal predictors start at 1, which allows indexing.
+ * requiring ordinal predictors start at 1, which allows efficient indexing.
  *
  * @param O        Category levels per predictor [P]
  * @param beta     Coefficients when X = max(O) [P, S]
  * @param simp_cs  Cumulative sum of simplex [O_max, P]
  *
- * @return         Realised coefficients per category [P, O_max + 1, S]
+ * @return  Realised coefficients per category [P, O_max + 1, S]
  */
 array[] matrix coef_ord_realised(data array[] int O, matrix beta,
                                  matrix simp_cs) {
@@ -121,13 +121,12 @@ array[] matrix coef_ord_realised(data array[] int O, matrix beta,
 
 /**
  * Add ordinal coefficients to linear predictor using realised ordinal
- * coefficients produced from coef_ord_realised(). Overloaded for
- * single- and multi-species.
+ * coefficients produced from coef_ord_realised(). Not used anymore.
  *
  * @param X     Integer design array [I, P]
- * @param beta  Realised ordinal coefficients [P, O_max, S] or [O_max, P]
+ * @param beta  Realised ordinal coefficients [P, O_max, S]
  *
- * @return      Site-level realisations [I, S]
+ * @return  Site-level realisations [I, S]
  */
 matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
   int I = size(X), P = size(X[1]), S = cols(beta[1]);
@@ -147,39 +146,21 @@ matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
   return mu;
 }
 
-vector increment_ordinal(data array[,] int X, matrix beta) {
-  int I = size(X), P = size(X[1]);
-  array[I] int X_p;
-  vector[rows(beta)] beta_p;
-  vector[I] mu = zeros_vector(I);
-  for (p in 1:P) {
-    X_p = X[:, p];
-    beta_p = beta[:, p];
-    for (i in 1:I) {
-      int X_i = X_p[i];
-      if (X_i) {
-        mu[i] += beta_p[X_i];
-      }
-    }
-  }
-  return mu;
-}
-
 /**
- * Produce "unconditional" coefficients when random effects were orthogonally
+ * Produce "unconditional" coefficients when random effects are orthogonally
  * projected, using the "conditional" coefficients, unrestricted random effects,
  * and the pseudo-inverse of the design matrix. Overloaded for vectors and
  * matrices.
  *
- * @param X_plus  Moore-penrose or pseudo-inverse
+ * @param X_plus  Moore-Penrose or pseudo-inverse
  * @param beta    Coefficients [P(, S)]
  * @param theta   Unrestricted random effects [I(, S)]
  *
  * @return  beta - (X'X)^-1 X' theta
  */
-matrix uncondition(data matrix X_plus, matrix beta, matrix theta) {
+vector uncondition(data matrix X_plus, vector beta, vector theta) {
   return beta - X_plus * theta;
 }
-vector uncondition(data matrix X_plus, vector beta, vector theta) {
+matrix uncondition(data matrix X_plus, matrix beta, matrix theta) {
   return beta - X_plus * theta;
 }
