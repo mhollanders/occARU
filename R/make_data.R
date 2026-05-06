@@ -911,7 +911,7 @@ make_site_predictors <- function(predictors, deployments, locationID, season) {
     check_cols_exist(predictors, {{ locationID }})
     site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
     predictors <- align_factor(
-      predictors,
+      predictors |> dplyr::filter({{ locationID }} %in% site_lvl),
       {{ locationID }},
       site_lvl,
       strict = TRUE
@@ -963,7 +963,7 @@ make_survey_predictors <- function(
     check_cols_exist(predictors, {{ locationID }}, {{ date }})
     site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
     predictors <- align_factor(
-      predictors,
+      predictors |> dplyr::filter({{ locationID }} %in% site_lvl),
       {{ locationID }},
       site_lvl,
       strict = TRUE
