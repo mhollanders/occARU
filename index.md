@@ -12,11 +12,22 @@ temporal Gaussian processes, variance decomposition via global-local
 shrinkage priors, and is built on [Stan](https://mc-stan.org/) via
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
+## Why occARU?
+
+To fit traditional occupancy models with binary observation models, data
+derived from ARUs is usually collapsed to detection/non-detection
+events. Models that do use the counts, like N-mixture models for
+estimating abundance, rely on assumptions that are usually violated with
+ARU data. occARU models the counts without imposing strict assumptions,
+while still accounting for species absences at the site level through
+occupancy modeling.
+
 ## Installation
 
 Install occARU from GitHub:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("mhollanders/occARU")
 ```
@@ -25,6 +36,7 @@ occARU requires CmdStan \>= 2.36.0. If you have not used Stan before,
 run:
 
 ``` r
+
 library(occARU)
 setup_occARU()
 ```
@@ -73,6 +85,7 @@ data
 ### 2. Fit a model
 
 ``` r
+
 # set some priors for hyperparameters (unspecified use defaults)
 priors <- set_priors(
   psi_bar = c(1, 2),  # Beta(1, 2) for mean occupancy
@@ -87,7 +100,7 @@ priors <- set_priors(
 #> ...
 
 # fit the model
-fit <- fit_model(data, prior = priors)
+fit <- occARU(data, prior = priors)
 ```
 
 By default this fits a model with spatial and temporal Gaussian
@@ -95,7 +108,7 @@ processes, Dirichlet variance decomposition, and Poisson observation
 model, initialised with
 [Pathfinder](https://mc-stan.org/docs/reference-manual/pathfinder.html)
 across 4 chains. See
-[`?fit_model`](https://mhollanders.github.io/occARU/reference/fit_model.md)
+[`?occARU`](https://mhollanders.github.io/occARU/reference/occARU.md)
 and
 [`?set_priors`](https://mhollanders.github.io/occARU/reference/set_priors.md)
 to customise the model structure and priors.
@@ -103,6 +116,7 @@ to customise the model structure and priors.
 ### 3. Check some output
 
 ``` r
+
 # site occupancy and detection rates
 plot_sites(fit)
 ```
@@ -110,6 +124,7 @@ plot_sites(fit)
 ![](reference/figures/sites.png)
 
 ``` r
+
 # temporal detection trends
 plot_surveys(fit, species = c("Species 1", "Species 2"))
 ```
@@ -123,6 +138,7 @@ responses to predictors and random effects to explore species
 interactions.
 
 ``` r
+
 # variance partitions
 plot_partitions(fit, scales = TRUE)
 ```
@@ -136,17 +152,15 @@ predictors.
 ### 4. Interrogate
 
 ``` r
+
 # use PSIS-LOO-CV on the site-by-species level log likelihood
 fit$loo("log_lik2")  # log_lik2 uses Monte Carlo integration of random effects
 
+# posterior predictive checking with rootograms of site-by-species counts
+pp_check(fit, level = "Q")
+
 # check prior sensitivity using power-scaling
 priorsense::powerscale_plot_dens(fit$draws("log_lik", "lprior", "psi_bar"))
-
-# posterior predictive checking of aggregated site-by-species counts
-bayesplot::pp_check(apply(data$y, c(1, 3), sum) |> c(),
-                    yrep = fit$draws("Qrep", format = "draws_matrix"),
-                    group = rep(attr(data, "species"), each = data$I),
-                    fun = "ppc_rootogram_grouped")
 ```
 
 The model stores marginal site-by-species log likelihoods (`log_lik`),
@@ -160,5 +174,5 @@ observation-level random effects produces marginal log likelihoods
 
 - [`vignette("model")`](https://mhollanders.github.io/occARU/articles/model.md)
 - [`?make_data`](https://mhollanders.github.io/occARU/reference/make_data.md),
-  [`?fit_model`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+  [`?occARU`](https://mhollanders.github.io/occARU/reference/occARU.md),
   [`?set_priors`](https://mhollanders.github.io/occARU/reference/set_priors.md)

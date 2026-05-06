@@ -1,12 +1,19 @@
 # Plot intercepts
 
 Plot species-specific intercepts for occupancy and detection, by default
-back-transformed to the orginal scale.
+back-transformed to the original scale.
 
 ## Usage
 
 ``` r
-plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
+plot_intercepts(
+  fit,
+  back_transform = TRUE,
+  by_region = FALSE,
+  species = NULL,
+  regions = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -14,12 +21,7 @@ plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-
-- species:
-
-  `character`. Vector of species to plot. If `NULL` (default), all
-  species are plotted. Must be one of `attr(occARU_data, "species")`.
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - back_transform:
 
@@ -28,6 +30,21 @@ plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
   [`exp()`](https://rdrr.io/r/base/Log.html) for detection rates. If
   `FALSE`, values are left on the scale of the link functions (logit for
   occupancy and log for detection).
+
+- by_region:
+
+  `logical`. Whether to plot intercepts by region, if multiple regions
+  were included.
+
+- species:
+
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
+
+- regions:
+
+  `character`. Vector of regions to plot. If `NULL` (default), all
+  regions are plotted. Must be one of `attr(occARU_data, "regions")`.
 
 - ...:
 
@@ -44,7 +61,7 @@ A `ggplot` object with occARU-specific attributes attached:
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),

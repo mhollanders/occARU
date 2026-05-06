@@ -14,7 +14,7 @@ plot_partitions(fit, scales = FALSE, ...)
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - scales:
 
@@ -52,7 +52,7 @@ simplex decomposition of the species-level components.
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md)
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md)
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),

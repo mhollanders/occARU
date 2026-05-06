@@ -2,7 +2,7 @@
 
 Transforms raw deployment and observation data into a named list
 suitable for passing to
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 Follows the [camtrapDP](https://tdwg.github.io/camtrap-dp/) data format
 by default. Site coordinates are automatically projected from WGS84
 latitude/longitude to UTM (km), with the zone auto-detected from the
@@ -20,8 +20,8 @@ make_data(
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
-  season = season,
   region = region,
+  season = season,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -97,6 +97,16 @@ make_data(
   `numeric`. Column name for WGS84 longitude in `deployments`. Default:
   `longitude`.
 
+- region:
+
+  \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
+  Optional column in `deployments` specifying region, defined as a
+  cluster of ARUs. Leads to faster model fits when spatial site effects
+  are included in
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
+  If the column is not present in `deployments`, all observations are
+  treated as a single region. Default: `region`.
+
 - season:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
@@ -104,16 +114,6 @@ make_data(
   ensure correct ordering. If the column is not present in
   `deployments`, all observations are treated as a single season.
   Default: `season`.
-
-- region:
-
-  \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  Optional column in `deployments` specifying region, defined as a
-  cluster of ARUs. Leads to faster model fits when spatial site effects
-  are included in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  If the column is not present in `deployments`, all observations are
-  treated as a single region. Default: `region`.
 
 - eventStart:
 
@@ -228,12 +228,16 @@ make_data(
 A named list of class `"occARU_data"` containing all inputs required by
 the occARU Stan model, except for model specification arguments which
 are added by
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 The list contains:
 
 - `I`:
 
   Number of sites (ARUs).
+
+- `R`:
+
+  Number of regions (groups of sites).
 
 - `J`:
 
@@ -242,6 +246,16 @@ The list contains:
 - `K`:
 
   Number of seasons (if multiseason).
+
+- `tau`:
+
+  Interval length in years between end of previous deploymment and start
+  of current deployment (if multiseason).
+
+- `dyn`:
+
+  Indicator for dynamic occupancy, when at least one site was deployed
+  over multiple seasons.
 
 - `S`:
 
@@ -346,7 +360,7 @@ The object also carries the following attributes, accessible via
 
 - `levels`:
 
-  Named list of category levels for categorical and ordinal predictors
+  Named list of category levels for categorical and ordinal predictors.
 
 - `survey_length`:
 
@@ -358,7 +372,7 @@ The object also carries the following attributes, accessible via
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`thin_observations()`](https://mhollanders.github.io/occARU/reference/thin_observations.md),
 [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
 The model is described in detail in

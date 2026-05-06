@@ -12,7 +12,7 @@ plot_coefficients(
   component = c("site", "survey"),
   type = c("continuous", "categorical", "ordinal"),
   level = c("species", "mean"),
-  facet_by = c("predictor", "species"),
+  facet_by = c("species", "predictor"),
   species = NULL,
   restricted = TRUE,
   ordinal_categories = FALSE,
@@ -25,7 +25,7 @@ plot_coefficients(
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - submodel:
 
@@ -68,14 +68,14 @@ plot_coefficients(
   projection of the detection random site or survey effects, e.g.,
   \\\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P\_{X_2}})\\, where
   \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
-  complement of the column space of the site or survey design matrix. If
-  `FALSE`, recovers coefficients without orthogonal projection,
+  complement of the column space of the design matrix. If `FALSE`,
+  recovers coefficients without orthogonal projection, e.g.,
   \\\boldsymbol{\beta} - \boldsymbol{X_2}^+ \boldsymbol{\iota}\\, where
   \\\boldsymbol{X_2}^+\\ is the pseudo-inverse of the design matrix.
-  Only used for site predictors if `submodel` is `"detection"`, or if
-  survey random effects were also projected with `project_kappa = TRUE`
-  in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  Only used for site predictors if `submodel = "detection"`, or if
+  survey random effects were projected with
+  `project = list(survey = TRUE)` in
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - ordinal_categories:
 
@@ -97,9 +97,19 @@ A `ggplot` object with occARU-specific attributes attached:
 
   The tibble used to produce the plot.
 
+## Details
+
+occARU accommodates three types of predictors: continuous, categorical,
+and ordinal (ordered categorical). Categorical predictors are modeled as
+zero-sum Gaussians, and coefficients are plotted for each level in each
+predictor. Ordinal predictors are modeled with a simplex decomposition
+of the category differences. Ordinal coefficients can be plotted as the
+overall effect (coefficient when the ordinal predictor has the maximum
+value) or plotted for each level.
+
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),

@@ -1,6 +1,6 @@
 # Plot interspecific correlations
 
-Plot pairwise species correlations for different model components.For
+Plot pairwise species correlations for different model components. For
 occupancy, interspecific correlations are only estimated for responses
 to site-level predictors. For detection, interspecific correlations are
 potentially estimated for responses to site-level predictors,
@@ -23,7 +23,7 @@ plot_correlations(
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - submodel:
 
@@ -50,7 +50,7 @@ A `ggplot` object with occARU-specific attributes attached:
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),

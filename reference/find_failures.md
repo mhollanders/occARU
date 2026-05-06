@@ -10,7 +10,7 @@ threshold requires knowledge of expected detection rates.
 ``` r
 find_failures(
   df,
-  deploymentID = deploymentID,
+  locationID = locationID,
   eventStart = eventStart,
   buffer_days
 )
@@ -20,13 +20,13 @@ find_failures(
 
 - df:
 
-  A dataframe of records. Must contain columns `deploymentID` and
+  A dataframe of records. Must contain columns `locationID` and
   `eventStart` (or equivalents).
 
-- deploymentID:
+- locationID:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  Column name for site identifiers. Default: `deploymentID`.
+  Column name for site identifiers. Default: `locationID`.
 
 - eventStart:
 
@@ -42,6 +42,6 @@ find_failures(
 
 ## Value
 
-A dataframe with columns `deploymentID`, `failureStart`, and
-`failureEnd`, one row per inferred failure period, with `buffer_days`
-stored as attribute.
+A dataframe with columns `locationID`, `failureStart`, and `failureEnd`,
+one row per inferred failure period, with `buffer_days` stored as
+attribute.

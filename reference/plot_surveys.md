@@ -1,7 +1,7 @@
 # Plot temporal detection rates
 
 Plots species-level temporal detection rates combining survey predictors
-(if included via
+averaged over sites (if included via
 [`make_data()`](https://mhollanders.github.io/occARU/reference/make_data.md))
 and survey random effects (`kappa`).
 
@@ -28,7 +28,7 @@ plot_surveys(
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - species:
 
@@ -61,8 +61,8 @@ plot_surveys(
 - restricted:
 
   `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`
-  and the model was fit with `project_kappa = TRUE`, plots random survey
-  effects with orthogonal projection, i.e., \\(\boldsymbol{I} -
+  and the model was fit `project = list(survey = TRUE)`, plots random
+  survey effects with orthogonal projection, i.e., \\(\boldsymbol{I} -
   \boldsymbol{P\_{X_3}}) \boldsymbol{\kappa}\\, where \\\boldsymbol{I} -
   \boldsymbol{P\_{X_3}}\\ is the orthogonal complement of the column
   space of the site-averaged survey design matrix. If `FALSE`, plots
@@ -104,7 +104,7 @@ A `ggplot` object with occARU-specific attributes attached:
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),

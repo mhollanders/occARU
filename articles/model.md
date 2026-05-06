@@ -50,7 +50,7 @@ Stan does not accommodate discrete parameters (z\_{is}) and they are
 marginalised out of the likelihood; however, posterior inference on
 underlying occupancy states is performed through the forward-backward
 sampling algorithm by setting the argument `latent = TRUE` in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+`fit_model()`.
 
 ## Detection
 
@@ -135,7 +135,7 @@ GP.
 
 occARU has the option to include a periodic kernel in the temporal GP
 kernel \boldsymbol{K\_\kappa} (by setting `periodic_gp = TRUE` in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md)):
+`fit_model()`):
 
 K\_{n, n'} = \tau^2 \exp \left(- \frac{2 \sin^2 \left( \pi \lvert x_n -
 x\_{n'} \rvert / p \right)}{\ell^2} \right), \tag{5}
@@ -151,10 +151,9 @@ is handled via a simplex \boldsymbol{K\_\phi} =
 Site and survey random effects can be fully disabled or fitted without
 GPs, collapsing to multivariate normals, with the arguments
 `spatial = c("gp", "mvn", "none")` and
-`temporal = c("gp", "mvn", "none")` in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-Identifiability of the matrix normal scales is ensured by fixing the
-marginal scale of the GP kernels to 1.
+`temporal = c("gp", "mvn", "none")` in `fit_model()`. Identifiability of
+the matrix normal scales is ensured by fixing the marginal scale of the
+GP kernels to 1.
 
 ### Orthogonal projection of random effects
 
@@ -176,13 +175,12 @@ matrix and thus prioritise inference on the fixed effects.
 
 occARU uses orthogonal projection for site effects and optionally survey
 effects, by setting the argument `project_kappa = TRUE` (default) in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
-which is also more efficient for HMC. Because \boldsymbol{X_3} varies by
-both site and survey, the site-averaged matrix is used to produce the
-orthogonal projection. This assumes that survey predictors will be
-correlated across sites; if these predictors vary considerably between
-sites, the confounding will be limited and orthogonal projection is
-unnecessary.
+`fit_model()`, which is also more efficient for HMC. Because
+\boldsymbol{X_3} varies by both site and survey, the site-averaged
+matrix is used to produce the orthogonal projection. This assumes that
+survey predictors will be correlated across sites; if these predictors
+vary considerably between sites, the confounding will be limited and
+orthogonal projection is unnecessary.
 
 “Unconditional” fixed effect coefficients can still be recovered as,
 e.g., \boldsymbol{\beta\_{\mu}} + \left(\boldsymbol{X_2^\prime}
@@ -201,7 +199,7 @@ categorical predictors are included in the projection.
 
 Two extensions beyond the basic Poisson observation model are available
 via the `overdispersion = c("none", "nb", "olre")` argument in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md):
+`fit_model()`:
 
 1.  Negative binomial (`overdispersion = "nb"`): a species-specific
     overdispersion parameter \phi_s is estimated, so that y\_{ijs} \mid
@@ -242,15 +240,15 @@ using the V-length simplexes \boldsymbol{\phi\_\psi} and
 Variance decomposition can be done with either Dirichlet or zero-sum
 logistic-normal distributions for \boldsymbol{\phi}, set via the
 `variance_decomposition = c("dirichlet", "logistic-normal")` argument in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-In either case, the hyperparameters \theta\_\psi and \theta\_\mu control
-the concentration or sparsity of the simplex: in Dirichlet models,
-\theta is the inverse concentration, and in logistic-normal models, it
-is the scale. For both underlying distributions, larger values of \theta
-correspond to a more sparse simplex (i.e., where a small number of
-components account for most of the variance), with smaller values
-corresponding to more concentrated simplexes (i.e., where different
-model components more evenly account for the variance).
+`fit_model()`. In either case, the hyperparameters \theta\_\psi and
+\theta\_\mu control the concentration or sparsity of the simplex: in
+Dirichlet models, \theta is the inverse concentration, and in
+logistic-normal models, it is the scale. For both underlying
+distributions, larger values of \theta correspond to a more sparse
+simplex (i.e., where a small number of components account for most of
+the variance), with smaller values corresponding to more concentrated
+simplexes (i.e., where different model components more evenly account
+for the variance).
 
 Veriance decomposition is also used for species-specific scales in site
 and survey effects (and potentially OLREs). The scales vector
@@ -258,6 +256,14 @@ and survey effects (and potentially OLREs). The scales vector
 deviations from the mean function for each, which are then simplex
 decomposed to produce the species-specific scales. Parameter names in
 the fit objects are `iota_t`, `kappa_t`, and `epsilon_t`, respectively.
+
+## Sites nested in regions
+
+occARU accommodates groups of ARUs nested in regions, for example when
+multiple independent grids are deployed. When multiple regions are
+included, occARU includes region-level intercepts for both occupancy and
+detection. Random (spatial) site effects are also computed separately
+per-region, which can significantly increase speed of model fits.
 
 ## Identifiability and sum-to-zero constraints
 
@@ -288,14 +294,12 @@ there are observation-level parameters, i.e. \iota\_{is} and, when OLREs
 are included, \epsilon\_{ijs}. As a remedy, Monte Carlo integration of
 these random effects is used to produce a second log likelihood object
 (`log_lik2`), where the user can set the number of Monte Carlo draws to
-perform per HMC iteration (argument `loo_draws` in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md)).
+perform per HMC iteration (argument `loo_draws` in `fit_model()`).
 
 Posterior predictions can be produced for both y\_{ijs} and Q\_{is} :=
 \sum\_{j=1}^J y\_{ijs}, by setting the argument
-`ppc = c("Q", "y", "both", "none")` in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-This facilitates posterior predictive checking, i.e. via the
+`ppc = c("Q", "y", "both", "none")` in `fit_model()`. This facilitates
+posterior predictive checking, i.e. via the
 [bayesplot](https://mc-stan.org/bayesplot/) package ([Gabry et al.
 2025](#ref-gabry2025)). Additionally, the log prior density of the prior
 hyperparameters is stored (`lprior`), facilitating prior predictive
@@ -309,19 +313,18 @@ on the natural scale of the outcome (species counts). Prior families of
 parameters are fixed, but hyperparameters can be configured. They can be
 inspected and modified with
 [`set_priors()`](https://mhollanders.github.io/occARU/reference/set_priors.md),
-which produces an `occARU_priors` object to be passed to
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+which produces an `occARU_priors` object to be passed to `fit_model()`.
 
-| Parameter                               | Interpretation                                        | Default Prior                             |
-|-----------------------------------------|-------------------------------------------------------|-------------------------------------------|
-| \bar{\psi}                              | Mean occupancy probability                            | \mathrm{Beta} \left( 1, 1 \right)         |
-| \bar{\mu}                               | Mean detection rate                                   | \mathrm{Gamma} \left( 1, 1 \right)        |
-| W\_{\psi}                               | Variance of occupancy log odds linear predictor       | \mathit{t}^+ \left( 3, 0, 1 \right)       |
-| W\_{\mu}                                | Variance of log detection rate linear predictor       | \mathit{t}^+ \left( 3, 0, 2.5 \right)     |
-| \theta\_{\psi}, \theta\_{\mu}           | Variance partition simplex sparsity                   | \mathrm{Gamma} \left( 1, 1 \right)        |
-| \ell\_\iota, \boldsymbol{\ell\_\kappa}  | GP length scales                                      | \mathrm{InvGamma} \left( 1, 1 \right)     |
-| \phi_s                                  | Negative binomial overdispersion                      | \mathrm{InvGamma} \left( 0.4, 0.3 \right) |
-| Cholesky factor of correlation matrices | Intercepts and coefficient/random effect correlations | \mathrm{LKJ} \left( 1 \right)             |
+| Parameter | Interpretation | Default Prior |
+|----|----|----|
+| \bar{\psi} | Mean occupancy probability | \mathrm{Beta} \left( 1, 1 \right) |
+| \bar{\mu} | Mean detection rate | \mathrm{Gamma} \left( 1, 1 \right) |
+| W\_{\psi} | Variance of occupancy log odds linear predictor | \mathit{t}^+ \left( 3, 0, 1 \right) |
+| W\_{\mu} | Variance of log detection rate linear predictor | \mathit{t}^+ \left( 3, 0, 2.5 \right) |
+| \theta\_{\psi}, \theta\_{\mu} | Variance partition simplex sparsity | \mathrm{Gamma} \left( 1, 1 \right) |
+| \ell\_\iota, \boldsymbol{\ell\_\kappa} | GP length scales | \mathrm{InvGamma} \left( 1, 1 \right) |
+| \phi_s | Negative binomial overdispersion | \mathrm{InvGamma} \left( 0.4, 0.3 \right) |
+| Cholesky factor of correlation matrices | Intercepts and coefficient/random effect correlations | \mathrm{LKJ} \left( 1 \right) |
 
 ## References
 

@@ -1,12 +1,19 @@
 # Plot realised occupancy proportions
 
 Plots species-level proportions of occupied sites, \\\frac{\sum\_{i =
-1}^I z\_{is}}{I}\\.
+1}^I z\_{is}}{I}\\, potentially by region.
 
 ## Usage
 
 ``` r
-plot_realised(fit, species = NULL, sites = NULL, ...)
+plot_realised(
+  fit,
+  by_region = FALSE,
+  species = NULL,
+  sites = NULL,
+  regions = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -14,7 +21,12 @@ plot_realised(fit, species = NULL, sites = NULL, ...)
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
+
+- by_region:
+
+  `logical`. Whether to plot by region, if multiple regions were
+  included.
 
 - species:
 
@@ -25,6 +37,11 @@ plot_realised(fit, species = NULL, sites = NULL, ...)
 
   `character`. Vector of sites to use. If `NULL` (default), all sites
   are used. Must be one of `attr(occARU_data, "sites")`.
+
+- regions:
+
+  `character`. Vector of regions to use. If `NULL` (default), all
+  regions are used. Must be one of `attr(occARU_data, "regions")`.
 
 - ...:
 
@@ -41,7 +58,7 @@ A `ggplot` object with occARU-specific attributes attached:
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_sites()`](https://mhollanders.github.io/occARU/reference/plot_sites.md),

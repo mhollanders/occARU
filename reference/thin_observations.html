@@ -49,7 +49,7 @@ retaining only the record with the highest count from each cluster.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">thin_observations</span><span class="op">(</span></span>
 <span>  <span class="va">observations</span>,</span>
-<span>  deploymentID <span class="op">=</span> <span class="va">deploymentID</span>,</span>
+<span>  locationID <span class="op">=</span> <span class="va">locationID</span>,</span>
 <span>  scientificName <span class="op">=</span> <span class="va">scientificName</span>,</span>
 <span>  eventStart <span class="op">=</span> <span class="va">eventStart</span>,</span>
 <span>  count <span class="op">=</span> <span class="va">count</span>,</span>
@@ -63,13 +63,13 @@ retaining only the record with the highest count from each cluster.</p>
 
 <dl><dt id="arg-observations">observations<a class="anchor" aria-label="anchor" href="#arg-observations"></a></dt>
 <dd><p>A dataframe of observation records. Must contain
-columns <code>deploymentID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
+columns <code>locationID</code>, <code>eventStart</code>, <code>scientificName</code>, and <code>count</code>
 (or equivalents specified via the corresponding arguments).</p></dd>
 
 
-<dt id="arg-deploymentid">deploymentID<a class="anchor" aria-label="anchor" href="#arg-deploymentid"></a></dt>
+<dt id="arg-locationid">locationID<a class="anchor" aria-label="anchor" href="#arg-locationid"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for sites (ARUs). Default: <code>deploymentID</code>.</p></dd>
+name for sites (ARUs). Default: <code>locationID</code>.</p></dd>
 
 
 <dt id="arg-scientificname">scientificName<a class="anchor" aria-label="anchor" href="#arg-scientificname"></a></dt>
@@ -95,7 +95,7 @@ observation, retaining the record with the highest <code>count</code>. Default: 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A dataframe of thinned observation records, sorted by <code>deploymentID</code>,
+    <p>A dataframe of thinned observation records, sorted by <code>locationID</code>,
 <code>scientificName</code>, and <code>eventStart</code>, or the original dataframe if
 <code>thin_minutes = 0</code>, with <code>thin_minutes</code> stored as attribute.</p>
     </div>

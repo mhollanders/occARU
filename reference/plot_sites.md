@@ -10,13 +10,14 @@ and site random effects (`iota`).
 ``` r
 plot_sites(
   fit,
-  species = NULL,
-  sites = NULL,
   map = TRUE,
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
   restricted = TRUE,
+  species = NULL,
+  sites = NULL,
+  regions = NULL,
   ndraws = NULL,
   seed = NULL,
   ...
@@ -28,17 +29,7 @@ plot_sites(
 - fit:
 
   A fitted model object from
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-
-- species:
-
-  `character`. Vector of species to plot. If `NULL` (default), all
-  species are plotted. Must be one of `attr(occARU_data, "species")`.
-
-- sites:
-
-  `character`. Vector of sites to plot. If `NULL` (default), all sites
-  are plotted. Must be one of `attr(occARU_data, "sites")`.
+  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 - map:
 
@@ -80,6 +71,21 @@ plot_sites(
   is `TRUE` as the linear predictor is unaffected by orthogonal
   projection.
 
+- species:
+
+  `character`. Vector of species to plot. If `NULL` (default), all
+  species are plotted. Must be one of `attr(occARU_data, "species")`.
+
+- sites:
+
+  `character`. Vector of sites to plot. If `NULL` (default), all sites
+  are plotted. Must be one of `attr(occARU_data, "sites")`.
+
+- regions:
+
+  `character`. Vector of regions to plot. If `NULL` (default), all
+  regions are plotted. Must be one of `attr(occARU_data, "regions")`.
+
 - ndraws:
 
   Positive integerish. Number of draws to use for plotting, passed to
@@ -113,14 +119,14 @@ If `map = TRUE` and site coordinates are present in the fitted object,
 effects are displayed as points sized by the magnitude of the detection
 rate on a map; otherwise site effects are plotted as point-intervals.
 When `latent = TRUE` was set in
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 sites with median posterior occupancy of 0 are shown as red crosses.
 When `latent = FALSE`, detection rates are weighted by occupancy
 probability (`inv_logit(logit_psi[i, s])`).
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md),
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
 [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md),
 [`plot_coefficients()`](https://mhollanders.github.io/occARU/reference/plot_coefficients.md),
 [`plot_surveys()`](https://mhollanders.github.io/occARU/reference/plot_surveys.md),

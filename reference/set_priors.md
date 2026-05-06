@@ -2,7 +2,7 @@
 
 Constructs and validates a named list of prior hyperparameters for use
 with
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 Any unspecified priors use the defaults listed below.
 
 ## Usage
@@ -10,6 +10,7 @@ Any unspecified priors use the defaults listed below.
 ``` r
 set_priors(
   psi_bar = c(1, 1),
+  q_bar = c(1, 3),
   mu_bar = c(1, 1),
   psi_W = c(3, 0, 1),
   mu_W = c(3, 0, 2.5),
@@ -19,6 +20,7 @@ set_priors(
   kappa_ell = c(1, 1),
   kappa_ell_periodic = c(1, 1),
   K_phi = c(1, 1),
+  nu_ell = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -37,6 +39,12 @@ set_priors(
 
   Numeric vector of length 2. `c(a, b)` for a Beta(a, b) prior on mean
   occupancy probability. Default: `c(1, 1)`.
+
+- q_bar:
+
+  Numeric vector of length 2. `c(shape, rate)` for Gamma(shape, rate)
+  priors on the mean annual colonisation and emigration rates for
+  multiseason models. Default: `c(1, 3)`.
 
 - mu_bar:
 
@@ -70,41 +78,35 @@ set_priors(
 - iota_ell:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
-  beta) prior on the spatial GP length scale(s). Only used when
-  `spatial = "gp"` in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  Default: `c(1, 1)`.
+  beta) prior on the spatial GP length scale(s). Default: `c(1, 1)`.
 
 - kappa_ell:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
-  beta) prior on the exp. quad. temporal GP length scale. Only used when
-  `temporal = "gp"` in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  Default: `c(1, 1)`.
+  beta) prior on the temporal GP length scale. Default: `c(1, 1)`.
 
 - kappa_ell_periodic:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
-  beta) prior on the periodic temporal GP length scale. Only used when
-  `temporal = "gp"` and `periodic = TRUE` in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  Default: `c(1, 1)`.
+  beta) prior on the periodic temporal GP length scale. Default:
+  `c(1, 1)`.
 
 - K_phi:
 
   Numeric vector of length 2. `c(alpha[1], alpha[2])` for a
   Dirichlet(alpha) prior on the temporal GP variance partitions of the
-  exp. quad. and periodic kernels. Only used when `temporal_gp = TRUE`
-  and `periodic_GP = TRUE`. Default: `c(1, 1)`.
+  Matern and periodic kernels. Default: `c(1, 1)`.
+
+- nu_ell:
+
+  Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
+  beta) prior on the seasonal GP length scale. Default: `c(1, 1)`.
 
 - phi:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
   beta) prior on species-specific negative binomial overdispersion
-  parameters. Only used when `overdispersion = "nb"` in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  Default: `c(0.4, 0.3)`.
+  parameters. Default: `c(0.4, 0.3)`.
 
 - alpha_O_L:
 
@@ -146,10 +148,7 @@ set_priors(
 - epsilon_O_L:
 
   Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
-  species-specific OLRE residuals. Only used when
-  `overdispersion = "olre"` in
-  [`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
-  Default: `1`.
+  species-specific OLRE residuals. Default: `1`.
 
 - verbose:
 
@@ -158,8 +157,8 @@ set_priors(
 ## Value
 
 An `occARU_priors` object (a named list) for use with
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md).
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
 
 ## See also
 
-[`fit_model()`](https://mhollanders.github.io/occARU/reference/fit_model.md)
+[`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md)

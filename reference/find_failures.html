@@ -52,7 +52,7 @@ knowledge of expected detection rates.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">find_failures</span><span class="op">(</span></span>
 <span>  <span class="va">df</span>,</span>
-<span>  deploymentID <span class="op">=</span> <span class="va">deploymentID</span>,</span>
+<span>  locationID <span class="op">=</span> <span class="va">locationID</span>,</span>
 <span>  eventStart <span class="op">=</span> <span class="va">eventStart</span>,</span>
 <span>  <span class="va">buffer_days</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -63,13 +63,13 @@ knowledge of expected detection rates.</p>
 
 
 <dl><dt id="arg-df">df<a class="anchor" aria-label="anchor" href="#arg-df"></a></dt>
-<dd><p>A dataframe of records. Must contain columns <code>deploymentID</code> and
+<dd><p>A dataframe of records. Must contain columns <code>locationID</code> and
 <code>eventStart</code> (or equivalents).</p></dd>
 
 
-<dt id="arg-deploymentid">deploymentID<a class="anchor" aria-label="anchor" href="#arg-deploymentid"></a></dt>
+<dt id="arg-locationid">locationID<a class="anchor" aria-label="anchor" href="#arg-locationid"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Column
-name for site identifiers. Default: <code>deploymentID</code>.</p></dd>
+name for site identifiers. Default: <code>locationID</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
@@ -86,7 +86,7 @@ after the last detection and ends 2 days before the next detection.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A dataframe with columns <code>deploymentID</code>, <code>failureStart</code>, and
+    <p>A dataframe with columns <code>locationID</code>, <code>failureStart</code>, and
 <code>failureEnd</code>, one row per inferred failure period, with <code>buffer_days</code>
 stored as attribute.</p>
     </div>

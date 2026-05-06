@@ -10,7 +10,7 @@ cluster.
 ``` r
 thin_observations(
   observations,
-  deploymentID = deploymentID,
+  locationID = locationID,
   scientificName = scientificName,
   eventStart = eventStart,
   count = count,
@@ -22,14 +22,14 @@ thin_observations(
 
 - observations:
 
-  A dataframe of observation records. Must contain columns
-  `deploymentID`, `eventStart`, `scientificName`, and `count` (or
-  equivalents specified via the corresponding arguments).
+  A dataframe of observation records. Must contain columns `locationID`,
+  `eventStart`, `scientificName`, and `count` (or equivalents specified
+  via the corresponding arguments).
 
-- deploymentID:
+- locationID:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  Column name for sites (ARUs). Default: `deploymentID`.
+  Column name for sites (ARUs). Default: `locationID`.
 
 - scientificName:
 
@@ -56,7 +56,7 @@ thin_observations(
 
 ## Value
 
-A dataframe of thinned observation records, sorted by `deploymentID`,
+A dataframe of thinned observation records, sorted by `locationID`,
 `scientificName`, and `eventStart`, or the original dataframe if
 `thin_minutes = 0`, with `thin_minutes` stored as attribute.
 
