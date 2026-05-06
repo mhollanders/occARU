@@ -106,4 +106,4 @@ pp_check.occARU_fit <- function(
 
 #' @importFrom bayesplot pp_check
 #' @export
-bayesplot::pp_check
+pp_check <- bayesplot::pp_check
