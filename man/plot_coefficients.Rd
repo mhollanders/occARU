@@ -10,7 +10,7 @@ plot_coefficients(
   component = c("site", "survey"),
   type = c("continuous", "categorical", "ordinal"),
   level = c("species", "mean"),
-  facet_by = c("predictor", "species"),
+  facet_by = c("species", "predictor"),
   species = NULL,
   restricted = TRUE,
   ordinal_categories = FALSE,
@@ -18,7 +18,7 @@ plot_coefficients(
 )
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
 
 \item{submodel}{\code{character}. Predictors of submodel to plot. One of
 \code{"detection"} (default) or \code{"occupancy"}.}
@@ -43,12 +43,12 @@ all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 orthogonal projection of the detection random site or survey effects, e.g.,
 \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
-the column space of the site or survey design matrix. If \code{FALSE}, recovers
-coefficients without orthogonal projection, \eqn{\boldsymbol{\beta} -
-  \boldsymbol{X_2}^+ \boldsymbol{\iota}}, where  \eqn{\boldsymbol{X_2}^+} is
+the column space of the design matrix. If \code{FALSE}, recovers coefficients
+without orthogonal projection, e.g., \eqn{\boldsymbol{\beta} -
+  \boldsymbol{X_2}^+ \boldsymbol{\iota}}, where \eqn{\boldsymbol{X_2}^+} is
 the pseudo-inverse of the design matrix. Only used for site predictors if
-\code{submodel} is \code{"detection"}, or if survey random effects were also
-projected with \code{project_kappa = TRUE} in \code{fit_model()}.}
+\code{submodel = "detection"}, or if survey random effects were projected with
+\code{project = list(survey = TRUE)} in \code{occARU()}.}
 
 \item{ordinal_categories}{\code{logical}. If \code{FALSE} (default), plots coefficients
 associated with maximum category (full effect). If \code{TRUE}, plots realised
@@ -67,8 +67,16 @@ A \code{ggplot} object with occARU-specific attributes attached:
 Plots coefficients of continuous, categorical, or ordinal predictors on
 occupancy or detection submodels.
 }
+\details{
+occARU accommodates three types of predictors: continuous, categorical,
+and ordinal (ordered categorical). Categorical predictors are modeled as
+zero-sum Gaussians, and coefficients are plotted for each level in each
+predictor. Ordinal predictors are modeled with a simplex decomposition of the
+category differences. Ordinal coefficients can be plotted as the overall
+effect (coefficient when the ordinal predictor has the maximum value) or
+plotted for each level.
+}
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_sites]{plot_sites()}},
-\code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}},
-\code{\link[=plot_realised]{plot_realised()}}
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}},
+\code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}}, \code{\link[=plot_realised]{plot_realised()}}
 }

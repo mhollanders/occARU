@@ -5,10 +5,10 @@
 #' retaining only the record with the highest count from each cluster.
 #'
 #' @param observations A dataframe of observation records. Must contain
-#'   columns `deploymentID`, `eventStart`, `scientificName`, and `count`
+#'   columns `locationID`, `eventStart`, `scientificName`, and `count`
 #'   (or equivalents specified via the corresponding arguments).
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Column
-#'   name for sites (ARUs). Default: `deploymentID`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Column
+#'   name for sites (ARUs). Default: `locationID`.
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
 #'   Column name for observation timestamps. Default: `eventStart`.
 #' @param scientificName <[`data-masking`][rlang::args_data_masking]> Column
@@ -19,14 +19,14 @@
 #'   minutes of each other (per site and species) are thinned to a single
 #'   observation, retaining the record with the highest `count`. Default: `30`.
 #'
-#' @return A dataframe of thinned observation records, sorted by `deploymentID`,
+#' @return A dataframe of thinned observation records, sorted by `locationID`,
 #'   `scientificName`, and `eventStart`, or the original dataframe if
 #'   `thin_minutes = 0`, with `thin_minutes` stored as attribute.
 #' @seealso [make_data()]
 #' @export
 thin_observations <- function(
   observations,
-  deploymentID = deploymentID,
+  locationID = locationID,
   scientificName = scientificName,
   eventStart = eventStart,
   count = count,
@@ -37,7 +37,7 @@ thin_observations <- function(
   } else if (thin_minutes > 0) {
     check_cols_exist(
       observations,
-      {{ deploymentID }},
+      {{ locationID }},
       {{ scientificName }},
       {{ eventStart }}
     )
@@ -46,18 +46,18 @@ thin_observations <- function(
     if (thin_minutes > 0) {
       observations <- observations |>
         dplyr::arrange(
-          {{ deploymentID }},
+          {{ locationID }},
           {{ scientificName }},
           {{ eventStart }}
         ) |>
         dplyr::mutate(
           cluster = assign_clusters({{ eventStart }}, thin_minutes),
-          .by = c({{ deploymentID }}, {{ scientificName }})
+          .by = c({{ locationID }}, {{ scientificName }})
         ) |>
         dplyr::slice_max(
           {{ count }},
           with_ties = FALSE,
-          by = c({{ deploymentID }}, {{ scientificName }}, cluster)
+          by = c({{ locationID }}, {{ scientificName }}, cluster)
         ) |>
         dplyr::select(-cluster)
     } else if (thin_minutes < 0) {

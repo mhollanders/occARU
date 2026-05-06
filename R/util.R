@@ -29,14 +29,14 @@ align_factor <- function(df, col, ref_levels, strict = FALSE) {
   if (n_missing) {
     if (strict) {
       cli::cli_abort(
-        "{.arg {df_name}} contains {n_missing} record{?s} with \\
-        {.val {col_name}} values not found."
+        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col_name}}
+        values not found."
       )
     } else {
       cli::cli_warn(
-        "{.arg {df_name}} contains {n_missing} record{?s} with \\
-        {.val {col_name}} values not found. \\
-        {cli::qty(n_missing)}{?This record/These records} will be ignored."
+        "{.arg {df_name}} contains {n_missing} record{?s} with {.val {col_name}}
+        values not found. {cli::qty(n_missing)}{?This record/These records} will
+        be ignored."
       )
       df <- tidyr::drop_na(df, {{ col }})
     }
@@ -56,7 +56,7 @@ check_cols_class <- function(df, class, ...) {
   wrong_cols <- purrr::discard(col_names, ~ inherits(df[[.]], class))
   if (length(wrong_cols)) {
     cli::cli_abort(
-      "The following columns in {.arg {df_name}} must be {.cls {class}}: \\
+      "The following columns in {.arg {df_name}} must be {.cls {class}}:
        {.val {wrong_cols}}."
     )
   }
@@ -79,7 +79,7 @@ check_cols_duplicates <- function(df, ...) {
         dplyr::pull(.data[[.]])
       if (length(dupes)) {
         cli::cli_abort(
-          "{.arg {df_name}} contains duplicate {.val {.}} values: \\
+          "{.arg {df_name}} contains duplicate {.val {.}} values:
           {.val {dupes}}."
         )
       }
@@ -98,8 +98,8 @@ check_cols_exist <- function(df, ...) {
   missing_cols <- purrr::discard(col_names, ~ rlang::has_name(df, .))
   if (length(missing_cols)) {
     cli::cli_abort(
-      "The following columns were not found in {.arg {df_name}}: \\
-       {.val {missing_cols}}."
+      "The following columns were not found in {.arg {df_name}}:
+      {.val {missing_cols}}."
     )
   }
 }
@@ -155,9 +155,9 @@ check_deployment_times <- function(
 
   if (length(wrong_deps)) {
     cli::cli_abort(
-      "The following {.arg locationID}{?s} in {.arg deployments} contain \\
-      {.arg deploymentStart} that occur before the last {.arg deploymentEnd} \\
-      of the previous season: {.val {wrong_deps}}. All deployment periods in \\
+      "The following {.arg locationID}{?s} in {.arg deployments} contain
+      {.arg deploymentStart} that occur before the last {.arg deploymentEnd}
+      of the previous season: {.val {wrong_deps}}. All deployment periods in
       each season must occur before the start of the next season."
     )
   }
@@ -181,12 +181,12 @@ check_empty_levels <- function(df, ..., strict = TRUE) {
     if (length(empty)) {
       if (strict) {
         cli::cli_abort(
-          "{.arg {df_name}} has missing {.arg {col_name}} factor level{?s}: \\
+          "{.arg {df_name}} has missing {.arg {col_name}} factor level{?s}:
           {.val {empty}}."
         )
       } else {
         cli::cli_warn(
-          "{.arg {df_name}} has missing {.arg {col_name}} factor level{?s}: \\
+          "{.arg {df_name}} has missing {.arg {col_name}} factor level{?s}:
           {.val {empty}}. This is not necessarily an error."
         )
       }
@@ -221,9 +221,9 @@ check_mixed_predictors <- function(df, ...) {
     colnames()
   if (length(bad)) {
     cli::cli_abort(
-      "{.arg {df_name}} contains columns that are not {.cls numeric}, \\
-       {.cls factor}, or {.cls ordered}: {.val {bad}}. \\
-       Convert them before passing to {.fun make_data}."
+      "{.arg {df_name}} contains columns that are not {.cls numeric},
+      {.cls factor}, or {.cls ordered}: {.val {bad}}. Convert them before
+      passing to {.fun make_data}."
     )
   }
 }
@@ -260,9 +260,9 @@ check_site_predictors_coverage <- function(
   missing <- setdiff(site_lvl, complete)
   if (length(missing)) {
     cli::cli_abort(
-      "{.arg {df_name}} has incomplete predictor values for the following \\
-      {.arg locationID}: {.vals {missing}}. Predictor values must be \\
-      supplied for each season a {.arg locationID} was active."
+      "{.arg {df_name}} has incomplete predictor values for the following
+      {.arg locationID}: {.vals {missing}}. Predictor values must be supplied
+      for each season a {.arg locationID} was active."
     )
   } else if (verbose) {
     cli::cli_alert_success(
@@ -329,8 +329,8 @@ check_survey_predictors_coverage <- function(
 
   if (length(incomplete)) {
     cli::cli_abort(
-      "{.arg survey_predictors} does not cover the full deployment period \\
-       for the following site{?s}: {.val {incomplete}}."
+      "{.arg survey_predictors} does not cover the full deployment period for
+      the following site{?s}: {.val {incomplete}}."
     )
   } else if (verbose) {
     cli::cli_alert_success(
@@ -375,8 +375,8 @@ check_dates <- function(
     dplyr::pull({{ locationID }})
   if (length(wrong_sites)) {
     cli::cli_abort(
-      "The following {.arg locationID} in {.arg {df_name}} have end \\
-      times before start times: {.val {wrong_sites}}."
+      "The following {.arg locationID} in {.arg {df_name}} have end times before
+      start times: {.val {wrong_sites}}."
     )
   }
 }
@@ -404,8 +404,7 @@ check_dates <- function(
 #'       transformation.}
 #'   }
 #' @noRd
-coords_to_utm <- function(deployments, locationID, latitude, longitude) {
-  deployments <- dplyr::arrange(deployments, {{ locationID }})
+coords_to_utm <- function(df, latitude, longitude) {
   lats <- dplyr::pull(deployments, {{ latitude }})
   lons <- dplyr::pull(deployments, {{ longitude }})
 
@@ -424,12 +423,12 @@ coords_to_utm <- function(deployments, locationID, latitude, longitude) {
   zones <- floor((lons + 180) / 6) + 1
   if (length(unique(zones)) > 1) {
     cli::cli_warn(
-      "Sites span multiple UTM zones ({.val {unique(zones)}}). \\
-       Projecting all sites to zone {zone}."
+      "Sites span multiple UTM zones ({.val {unique(zones)}}). Projecting all
+      sites to zone {zone}."
     )
   }
 
-  XY <- deployments |>
+  XY <- df |>
     sf::st_as_sf(
       coords = c(
         rlang::as_name(rlang::enquo(longitude)),
@@ -439,9 +438,10 @@ coords_to_utm <- function(deployments, locationID, latitude, longitude) {
     ) |>
     sf::st_transform(utm_crs) |>
     sf::st_coordinates()
-  row.names(XY) <- dplyr::pull(deployments, {{ locationID }}) |> levels()
 
-  list(XY = XY, utm_crs = utm_crs)
+  df <- dplyr::bind_cols(df, XY)
+  attr(df, "utm_crs") <- utm_crs
+  df
 }
 
 #' Remove observations outside deployment window
@@ -500,8 +500,8 @@ filter_observations_window <- function(
   n_removed <- n_before - nrow(observations)
   if (n_removed) {
     cli::cli_inform(
-      "{n_removed} event{?s} outside the deployment window \\
-       {?was/were} removed ({nrow(observations)} remaining)..."
+      "{n_removed} event{?s} outside the deployment window {?was/were} removed
+      ({nrow(observations)} remaining)..."
     )
   } else {
     cli::cli_inform("No events outside the deployment window...")
@@ -526,11 +526,11 @@ int_mode <- function(x) {
 #' @return Mean and SD of each predictor
 #' @noRd
 scaling_parameters <- function(df, cols) {
-  sds <- sapply(df[cols], sd)
+  sds <- sapply(df[cols], stats::sd)
   zero_var <- names(sds[sds == 0])
   if (length(zero_var)) {
     cli::cli_abort(
-      "The following continuous predictor{?s} {?has/have} zero variance: \\
+      "The following continuous predictor{?s} {?has/have} zero variance:
       {.val {zero_var}}. Remove {?it/them} before passing to {.fun make_data}."
     )
   }

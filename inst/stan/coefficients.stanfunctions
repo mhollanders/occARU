@@ -1,0 +1,185 @@
+/**
+ * Produce mean and species-specific offsets for continuous predictors
+ *
+ * @param tau    Scales for mean and species-specific realisations [2 * P]
+ * @param O_L    Cholesky factor of interspecific correlation matrix [S]
+ * @param bar_z  Mean coefficient z-scores [P]
+ * @param s_z    Species-specific z-scores (zero-sum per predictor) [P, S]
+ *
+ * @return beta_bar  Mean coefficients [P]
+ * @return beta_s    Species-specific offsets [S, P]
+ */
+tuple(vector, matrix)
+  coef_cont(vector tau, matrix O_L, vector bar_z, array[] vector s_z) {
+  int P = size(bar_z), S = rows(O_L);
+  vector[P] beta_bar = head(tau, P) .* bar_z;
+  matrix[P, S] z_mat, beta_s;
+  if (S) {
+    for (p in 1:P) {
+      z_mat[p] = s_z[p]';
+    }
+    beta_s = diag_pre_multiply(tail(tau, P), z_mat) * O_L';
+  }
+  return (beta_bar, beta_s);
+}
+
+/**
+ * Produce mean and species-specific offsets for categorical predictors. Also
+ * returns coefficient z-scores for priors (std_normal()).
+ *
+ * @param tau      Scales for mean and species-specific realisations [2 * P]
+ * @param O_L      Cholesky factor of interspecific correlation matrix [S]
+ * @param bar_z_u  Free mean coefficient z-scores to zero-sum [P * (C - 1)]
+ * @param s_z_u    Species-specific z-scores to zero-sum [P * (C - 1), S - 1]
+ * @param C        Number of category levels per predictor [P]
+ *
+ * @return beta_bar    Mean coefficients [C, P]
+ * @return beta_bar_z  Mean coefficient z-scores [P, C]
+ * @return beta_s      Species-specific offsets [P, C, S]
+ * @return beta_s_z    Species-specific z-scores [P, C, S]
+ */
+tuple(matrix, matrix, array[] matrix, array[] matrix)
+  coef_cat_jacobian(vector tau, matrix O_L, vector bar_z_u, matrix s_z_u,
+                    data array[] int C) {
+  int P = size(C), S = rows(O_L), Sm1 = S - 1, C_max = max(C[:P]);
+  matrix[C_max, P] bar_z, beta_bar;
+  array[P] matrix[C_max, S] s_z, beta_s;
+  int idx = 1;
+  for (p in 1:P) {
+    int C_p = C[p], Cm1 = C_p - 1;
+    bar_z[:C_p, p] = sum_to_zero_jacobian(segment(bar_z_u, idx, Cm1));
+    beta_bar[:C_p, p] = tau[p] * bar_z[:C_p, p];
+    if (S) {
+      s_z[p, :C_p] = sum_to_zero_jacobian(block(s_z_u, idx, 1, Cm1, Sm1));
+      beta_s[p, :C_p] = tau[P + p] * s_z[p, :C_p] * O_L';
+    }
+    idx += Cm1;
+  }
+  return (beta_bar, bar_z, beta_s, s_z);
+}
+
+/**
+ * Produce mean and species-specific offsets for ordinal predictors. Does not
+ * return the raw simplex partitions, but the cumulative sums for each
+ * predictor. The implied priors on the simplexes are uniform.
+ *
+ * @param tau    Scales for mean and species-specific realisations [2 * P]
+ * @param O_L    Cholesky factor of interspecific correlation matrix [S]
+ * @param bar_z  Mean coefficient z-scores [P]
+ * @param s_z    Species-specific z-scores (zero-sum per predictor) [P, S]
+ * @param c_u    Free simplex partitions to simplex constrain [P * (O - 1)]
+ * @param O      Number of category levels per predictor [P]
+ *
+ * @return beta_bar  Mean coefficients [P]
+ * @return beta_s    Species-specific coefficients [P, S]
+ * @return simp_cs   Cumulative sum of simplex partitions [O, P]
+ */
+tuple(vector, matrix, matrix)
+  coef_ord_jacobian(vector tau, matrix O_L, vector bar_z, array[] vector s_z,
+                    vector c_u, data array[] int O) {
+  int P = size(bar_z), S = rows(O_L);
+  vector[P] beta_bar = head(tau, P) .* bar_z;
+  matrix[max(O), P] simp_cs;
+  matrix[P, S] z_mat, beta_s;
+  int idx = 1;
+  for (p in 1:P) {
+    int O_p = O[p], Om1 = O_p - 1;
+    simp_cs[:O_p, p] = cumulative_sum(simplex_jacobian(segment(c_u, idx, Om1)));
+    if (S) {
+      z_mat[p] = s_z[p]';
+    }
+    idx += Om1;
+  }
+  if (S) {
+    beta_s = diag_pre_multiply(tail(tau, P), z_mat) * O_L';
+  }
+  return (beta_bar, beta_s, simp_cs);
+}
+
+/**
+ * Produce realised coefficients from species-specific ordinal coefficients
+ * and predictor-specific cumulative sums of simplexes. The first row is 0s,
+ * requiring ordinal predictors start at 1, which allows indexing.
+ *
+ * @param O        Category levels per predictor [P]
+ * @param beta     Coefficients when X = max(O) [P, S]
+ * @param simp_cs  Cumulative sum of simplex [O_max, P]
+ *
+ * @return         Realised coefficients per category [P, O_max + 1, S]
+ */
+array[] matrix coef_ord_realised(data array[] int O, matrix beta,
+                                 matrix simp_cs) {
+  int P = rows(beta), S = cols(beta), O_max = rows(simp_cs);
+  array[P] matrix[O_max + 1, S] realised;
+  for (p in 1:P) {
+    int O_p = O[p];
+    realised[p, 1] = zeros_row_vector(S);
+    realised[p, 2:O_p + 1] = simp_cs[:O_p, p] * beta[p];
+  }
+  return realised;
+}
+
+/**
+ * Add ordinal coefficients to linear predictor using realised ordinal
+ * coefficients produced from coef_ord_realised(). Overloaded for
+ * single- and multi-species.
+ *
+ * @param X     Integer design array [I, P]
+ * @param beta  Realised ordinal coefficients [P, O_max, S] or [O_max, P]
+ *
+ * @return      Site-level realisations [I, S]
+ */
+matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
+  int I = size(X), P = size(X[1]), S = cols(beta[1]);
+  array[I] int X_p;
+  matrix[rows(beta[1]), S] beta_p;
+  matrix[I, S] mu = rep_matrix(0, I, S);
+  for (p in 1:P) {
+    X_p = X[:, p];
+    beta_p = beta[p];
+    for (i in 1:I) {
+      int X_i = X_p[i];
+      if (X_i) {
+        mu[i] += beta_p[X_i];
+      }
+    }
+  }
+  return mu;
+}
+
+vector increment_ordinal(data array[,] int X, matrix beta) {
+  int I = size(X), P = size(X[1]);
+  array[I] int X_p;
+  vector[rows(beta)] beta_p;
+  vector[I] mu = zeros_vector(I);
+  for (p in 1:P) {
+    X_p = X[:, p];
+    beta_p = beta[:, p];
+    for (i in 1:I) {
+      int X_i = X_p[i];
+      if (X_i) {
+        mu[i] += beta_p[X_i];
+      }
+    }
+  }
+  return mu;
+}
+
+/**
+ * Produce "unconditional" coefficients when random effects were orthogonally
+ * projected, using the "conditional" coefficients, unrestricted random effects,
+ * and the pseudo-inverse of the design matrix. Overloaded for vectors and
+ * matrices.
+ *
+ * @param X_plus  Moore-penrose or pseudo-inverse
+ * @param beta    Coefficients [P(, S)]
+ * @param theta   Unrestricted random effects [I(, S)]
+ *
+ * @return  beta - (X'X)^-1 X' theta
+ */
+matrix uncondition(data matrix X_plus, matrix beta, matrix theta) {
+  return beta - X_plus * theta;
+}
+vector uncondition(data matrix X_plus, vector beta, vector theta) {
+  return beta - X_plus * theta;
+}

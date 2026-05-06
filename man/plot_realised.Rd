@@ -4,16 +4,29 @@
 \alias{plot_realised}
 \title{Plot realised occupancy proportions}
 \usage{
-plot_realised(fit, species = NULL, sites = NULL, ...)
+plot_realised(
+  fit,
+  by_region = FALSE,
+  species = NULL,
+  sites = NULL,
+  regions = NULL,
+  ...
+)
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
+
+\item{by_region}{\code{logical}. Whether to plot by region, if multiple regions
+were included.}
 
 \item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
 all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
 \item{sites}{\code{character}. Vector of sites to use. If \code{NULL} (default), all
 sites are used. Must be one of \code{attr(occARU_data, "sites")}.}
+
+\item{regions}{\code{character}. Vector of regions to use. If \code{NULL} (default),
+all regions are used. Must be one of \code{attr(occARU_data, "regions")}.}
 
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
@@ -25,10 +38,10 @@ A \code{ggplot} object with occARU-specific attributes attached:
 }
 \description{
 Plots species-level proportions of occupied sites,
-\eqn{\frac{\sum_{i = 1}^I z_{is}}{I}}.
+\eqn{\frac{\sum_{i = 1}^I z_{is}}{I}}, potentially by region.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
 \code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_correlations]{plot_correlations()}},
 \code{\link[=plot_partitions]{plot_partitions()}}
 }

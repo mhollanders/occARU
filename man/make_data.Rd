@@ -13,8 +13,8 @@ make_data(
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
-  season = season,
   region = region,
+  season = season,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -69,16 +69,16 @@ Column name for WGS84 latitude in \code{deployments}. If omitted alongside
 \item{longitude}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{numeric}.
 Column name for WGS84 longitude in \code{deployments}. Default: \code{longitude}.}
 
+\item{region}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column in
+\code{deployments} specifying region, defined as a cluster of ARUs. Leads to
+faster model fits when spatial site effects are included in \code{\link[=occARU]{occARU()}}.
+If the column is not present in \code{deployments}, all observations are treated
+as a single region. Default: \code{region}.}
+
 \item{season}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column
 specifying season. The column must be a factor to ensure correct ordering.
 If the column is not present in \code{deployments}, all observations are treated
 as a single season. Default: \code{season}.}
-
-\item{region}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column in
-\code{deployments} specifying region, defined as a cluster of ARUs. Leads to
-faster model fits when spatial site effects are included in \code{\link[=fit_model]{fit_model()}}.
-If the column is not present in \code{deployments}, all observations are treated
-as a single region. Default: \code{region}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Column name for observation timestamps in \code{observations}. Default:
@@ -159,11 +159,16 @@ SDs) are stored as an attribute. Default: \code{TRUE}.}
 \value{
 A named list of class \code{"occARU_data"} containing all inputs
 required by the occARU Stan model, except for model specification
-arguments which are added by \code{\link[=fit_model]{fit_model()}}. The list contains:
+arguments which are added by \code{\link[=occARU]{occARU()}}. The list contains:
 \describe{
 \item{\code{I}}{Number of sites (ARUs).}
+\item{\code{R}}{Number of regions (groups of sites).}
 \item{\code{J}}{Number of survey periods.}
 \item{\code{K}}{Number of seasons (if multiseason).}
+\item{\code{tau}}{Interval length in years between end of previous deploymment
+and start of current deployment (if multiseason).}
+\item{\code{dyn}}{Indicator for dynamic occupancy, when at least one site was
+deployed over multiple seasons.}
 \item{\code{S}}{Number of species.}
 \item{\code{Delta}}{\verb{[I, J(, K)]} array of recording effort (0-1).}
 \item{\code{y}}{\verb{[I, J(, K), S]} array of detection counts.}
@@ -208,7 +213,7 @@ were supplied.}
 standardise continuous predictors, or \code{NULL} if
 \code{scale_predictors = FALSE}.}
 \item{\code{levels}}{Named list of category levels for categorical and ordinal
-predictors}
+predictors.}
 \item{\code{survey_length}}{}
 \item{\code{thin_minutes}}{}
 \item{\code{reference_dates}}{}
@@ -217,12 +222,13 @@ predictors}
 }
 \description{
 Transforms raw deployment and observation data into a named list suitable
-for passing to \code{\link[=fit_model]{fit_model()}}. Follows the
+for passing to \code{\link[=occARU]{occARU()}}. Follows the
 \href{https://tdwg.github.io/camtrap-dp/}{camtrapDP} data format by default.
 Site coordinates are automatically projected from WGS84 latitude/longitude
 to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
-The model is described in detail in \code{vignette("model", package = "occARU")}.
+\code{\link[=occARU]{occARU()}}, \code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
+The model is described in detail in
+\code{vignette("model", package = "occARU")}.
 }

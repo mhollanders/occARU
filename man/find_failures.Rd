@@ -6,17 +6,17 @@
 \usage{
 find_failures(
   df,
-  deploymentID = deploymentID,
+  locationID = locationID,
   eventStart = eventStart,
   buffer_days
 )
 }
 \arguments{
-\item{df}{A dataframe of records. Must contain columns \code{deploymentID} and
+\item{df}{A dataframe of records. Must contain columns \code{locationID} and
 \code{eventStart} (or equivalents).}
 
-\item{deploymentID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for site identifiers. Default: \code{deploymentID}.}
+\item{locationID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
+name for site identifiers. Default: \code{locationID}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Observation timestamps. Default: \code{eventStart}.}
@@ -27,7 +27,7 @@ For example, \code{buffer_days = 2} means the failure period starts 2 days
 after the last detection and ends 2 days before the next detection.}
 }
 \value{
-A dataframe with columns \code{deploymentID}, \code{failureStart}, and
+A dataframe with columns \code{locationID}, \code{failureStart}, and
 \code{failureEnd}, one row per inferred failure period, with \code{buffer_days}
 stored as attribute.
 }

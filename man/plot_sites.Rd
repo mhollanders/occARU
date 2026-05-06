@@ -6,26 +6,21 @@
 \usage{
 plot_sites(
   fit,
-  species = NULL,
-  sites = NULL,
   map = TRUE,
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
   restricted = TRUE,
+  species = NULL,
+  sites = NULL,
+  regions = NULL,
   ndraws = NULL,
   seed = NULL,
   ...
 )
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
-
-\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
-all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
-
-\item{sites}{\code{character}. Vector of sites to plot. If \code{NULL} (default), all
-sites are plotted. Must be one of \code{attr(occARU_data, "sites")}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
 
 \item{map}{\code{logical}. If \code{TRUE} (default), plot site effects summarised with
 posterior medians on a map using UTM coordinates. Requires site coordinates
@@ -54,6 +49,15 @@ effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
 Has no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
 is unaffected by orthogonal projection.}
 
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+
+\item{sites}{\code{character}. Vector of sites to plot. If \code{NULL} (default), all
+sites are plotted. Must be one of \code{attr(occARU_data, "sites")}.}
+
+\item{regions}{\code{character}. Vector of regions to plot. If \code{NULL} (default),
+all regions are plotted. Must be one of \code{attr(occARU_data, "regions")}.}
+
 \item{ndraws}{Positive integerish. Number of draws to use for plotting,
 passed to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
 
@@ -77,12 +81,12 @@ Plots species-level occupancy and detection rates combining site predictors
 If \code{map = TRUE} and site coordinates are present in the fitted object,
 effects are displayed as points sized by the magnitude of the detection rate
 on a map; otherwise site effects are plotted as point-intervals. When
-\code{latent = TRUE} was set in \code{\link[=fit_model]{fit_model()}}, sites with median posterior
+\code{latent = TRUE} was set in \code{\link[=occARU]{occARU()}}, sites with median posterior
 occupancy of 0 are shown as red crosses. When \code{latent = FALSE}, detection
 rates are weighted by occupancy probability (\code{inv_logit(logit_psi[i, s])}).
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
 \code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}},
 \code{\link[=plot_realised]{plot_realised()}}
 }

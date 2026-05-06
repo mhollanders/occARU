@@ -1,258 +1,108 @@
 /**
- * Produce mean and species-specific coefficients for continuous predictors
+ * Get indices of regions and number of sites per region.
  *
- * @param tau    Scales for mean and species-specific realisations [2 * P]
- * @param O_L    Cholesky factor of interspecific correlation matrix [S]
- * @param bar_z  Mean coefficient z-scores [P]
- * @param z      Species-specific z-scores (zero-sum per predictor) [P, S]
+ * @param region  Region indicator [I]
  *
- * @return beta_bar  Mean coefficients [P]
- * @return beta      Species-specific coefficients (incl. mean) [S, P]
+ * @return r_idx  Indices of regions [R, I]
+ * @return I_r    Number of sites [R]
  */
-tuple(vector, matrix)
-  coef_cont(vector tau, matrix O_L, vector bar_z, array[] vector z) {
-  int P = size(bar_z), S = rows(O_L);
-  vector[P] beta_bar = head(tau, P) .* bar_z;
-  matrix[P, S] z_mat, beta = rep_matrix(beta_bar, S);
-  for (p in 1:P) {
-    z_mat[p] = z[p]';
-  }
-  beta += diag_pre_multiply(tail(tau, P), z_mat) * O_L';
-  return (beta_bar, beta);
-}
-
-/**
- * Produce mean and species-specific coefficients for categorical predictors.
- * Returns coefficient z-scores for priors (std_normal()). Overloaded for
- * single-species scenario.
- *
- * @param tau      Scales for mean and species-specific realisations [2 * P]
- * @param O_L      Cholesky factor of interspecific correlation matrix [S]
- * @param bar_z_u  Free mean coefficient z-scores to zero-sum [P * (C - 1)]
- * @param z        Species-specific z-scores to zero-sum [P * (C - 1), S - 1]
- * @param C        Number of category levels per predictor [P]
- *
- * @return beta_bar    Mean coefficients [C, P]
- * @return beta_bar_z  Mean coefficient z-scores [P, C]
- * @return beta        Species-specific coefficients (incl. mean) [P, C, S]
- * @return beta_z      Species-specific z-scores [P, C, S]
- */
-tuple(matrix, matrix, array[] matrix, array[] matrix)
-  coef_cat_jacobian(vector tau, matrix O_L, vector bar_z_u, matrix z_u,
-                    data array[] int C) {
-  int P = size(C), S = rows(O_L), Sm1 = S - 1, C_max = max(C[:P]);
-  matrix[C_max, P] beta_bar_z, beta_bar;
-  array[P] matrix[C_max, S] beta_z, beta;
-  int idx = 1;
-  for (p in 1:P) {
-    int C_p = C[p], Cm1 = C_p - 1;
-    beta_bar_z[:C_p, p] = sum_to_zero_jacobian(segment(bar_z_u, idx, Cm1));
-    beta_bar[:C_p, p] = tau[p] * beta_bar_z[:C_p, p];
-    beta_z[p, :C_p] = sum_to_zero_jacobian(block(z_u, idx, 1, Cm1, Sm1));
-    beta[p, :C_p] = rep_matrix(beta_bar[:C_p, p], S)
-                    + tau[P + p] * beta_z[p, :C_p] * O_L';
-    idx += Cm1;
-  }
-  return (beta_bar, beta_bar_z, beta, beta_z);
-}
-
-tuple(matrix, matrix)
-  coef_cat_jacobian(vector tau, vector z_u, data array[] int C) {
-  int P = size(C), C_max = max(C);
-  matrix[C_max, P] beta_z, beta;
-  int idx = 1;
-  for (p in 1:P) {
-    int C_p = C[p], Cm1 = C_p - 1;
-    beta_z[:C_p, p] = sum_to_zero_jacobian(segment(z_u, idx, Cm1));
-    beta[:C_p, p] = tau[p] * beta_z[:C_p, p];
-    idx += Cm1;
-  }
-  return (beta, beta_z);
-}
-
-/**
- * Produce mean and species-specific coefficients for ordinal predictors. Does
- * not return the raw simplex partitions, but the cumulative sums for each
- * predictor. The implied priors on the simplexes are uniform. Overloaded for
- * single-species scenario.
- *
- * @param tau    Scales for mean and species-specific realisations [2 * P]
- * @param O_L    Cholesky factor of interspecific correlation matrix [S]
- * @param bar_z  Mean coefficient z-scores [P]
- * @param z      Species-specific z-scores (zero-sum per predictor) [P, S]
- * @param c_u    Free simplex partitions to simplex constrain [P * (O - 1)]
- * @param O      Number of category levels per predictor [P]
- *
- * @return beta_bar  Mean coefficients [P]
- * @return beta      Species-specific coefficients (incl. mean) [P, S]
- * @return simp_cs   Cumulative sum of simplex partitions [O, P]
- */
-tuple(vector, matrix, matrix)
-  coef_ord_jacobian(vector tau, matrix O_L, vector bar_z, array[] vector z,
-                    vector c_u, data array[] int O) {
-  int P = size(bar_z), S = rows(O_L);
-  vector[P] beta_bar = head(tau, P) .* bar_z;
-  matrix[P, S] z_mat, beta = rep_matrix(beta_bar, S);
-  matrix[max(O), P] simp_cs;
-  int idx = 1;
-  for (p in 1:P) {
-    int O_p = O[p], Om1 = O_p - 1;
-    z_mat[p] = z[p]';
-    simp_cs[:O_p, p] = cumulative_sum(simplex_jacobian(segment(c_u, idx, Om1)));
-    idx += Om1;
-  }
-  beta += diag_pre_multiply(tail(tau, P), z_mat) * O_L';
-  return (beta_bar, beta, simp_cs);
-}
-
-tuple(vector, matrix)
-  coef_ord_jacobian(vector tau, vector z, vector c_u, data array[] int O) {
-  int P = size(z);
-  vector[P] beta = tau .* z;
-  matrix[max(O), P] simp_cs;
-  int idx = 1;
-  for (p in 1:P) {
-    int O_p = O[p], Om1 = O_p - 1;
-    simp_cs[:O_p, p] = cumulative_sum(simplex_jacobian(segment(c_u, idx, Om1)));
-    idx += Om1;
-  }
-  return (beta, simp_cs);
-}
-
-/**
- * Produce realised coefficients from species-specific ordinal coefficients
- * and predictor-specific cumulative sums of simplexes. Overloaded for
- * single-species scenario.
- *
- * @param O        Category levels per predictor [P]
- * @param beta     Coefficients when X = max(O) [P(, S)]
- * @param simp_cs  Cumulative sum of simplex [O_max, P]
- *
- * @return         Realised coefficients per category [P, O_max(, S)]
- */
-array[] matrix coef_ord_realised(data array[] int O, matrix beta,
-                                 matrix simp_cs) {
-  int P = rows(beta), S = cols(beta), O_max = rows(simp_cs);
-  array[P] matrix[O_max, S] realised;
-  for (p in 1:P) {
-    int O_p = O[p];
-    realised[p, :O_p] = simp_cs[:O_p, p] * beta[p];
-  }
-  return realised;
-}
-
-matrix coef_ord_realised(data array[] int O, vector beta, matrix simp_cs) {
-  int P = size(beta), O_max = rows(simp_cs);
-  matrix[O_max, P] realised;
-  for (p in 1:P) {
-    int O_p = O[p];
-    realised[:O_p, p] = beta[p] * simp_cs[:O_p, p];
-  }
-  return realised;
-}
-
-/**
- * Get first and last seasons and surveys per site
- *
- * @param Delta  Deployment times [I, K, J]
- *
- * @return       First and last season [I, 2]
- * @return       First and last survey [I, K, 2]
- */
-tuple(array[,] int, array[,,] int) first_last(data array[] matrix Delta) {
-  int I = size(Delta), J = cols(Delta[1]), K = rows(Delta[1]);
-  array[I, 2] int f_l_k;
-  array[I, K, 2] int f_l_j = rep_array(0, I, K, 2);
-  for (i in 1:I) {
-    for (k in 1:K) {
-      for (j in 1:J) {
-        if (Delta[i, k, j] > 0) {
-          f_l_j[i, k] = rep_array(j, 2);
-          break;
-        }
-      }
-      int f = f_l_j[i, k, 1], JJ = J - f;
-      if (JJ) {
-        array[JJ] int idx = linspaced_int_array(JJ, f + 1, J);
-        for (j in reverse(idx)) {
-          if (Delta[i, k, j] > 0) {
-            f_l_j[i, k, 2] = j;
-            break;
-          }
-        }
+tuple(array[,] int, array[] int) region_indices(data array[] int region) {
+  int I = size(region), R = max(region);
+  array[R, I] int indices = rep_array(0, R, I);
+  array[R] int I_r = zeros_int_array(R);
+  for (r in 1:R) {
+    int n = 1;
+    for (i in 1:I) {
+      if (region[i] == r) {
+        indices[r, n] = i;
+        I_r[r] += 1;
+        n += 1;
       }
     }
+  }
+  return(indices, I_r);
+}
+
+/**
+ * Get first and last season per site
+ *
+ * @param J_i  Number of surveys [I, K]
+ *
+ * @return  First and last season [I, 2]
+ */
+array[,] int first_last(data array[,] int J_i) {
+  int I = size(J_i), K = size(J_i[1]);
+  array[I, 2] int f_l;
+  for (i in 1:I) {
     for (k in 1:K) {
-      if (f_l_j[i, k, 1]) {
-        f_l_k[i] = rep_array(k, 2);
+      if (J_i[i, k]) {
+        f_l[i] = rep_array(k, 2);
         break;
       }
     }
-    int f = f_l_k[i, 1], KK = K - f;
-    if (KK) {
-      array[KK] int idx = linspaced_int_array(KK, f + 1, K);
+    int f = f_l[i, 1], K_i = K - f;
+    if (K_i) {
+      array[K_i] int idx = linspaced_int_array(K_i, f + 1, K);
       for (k in reverse(idx)) {
-        if (f_l_j[i, k, 1]) {
-          f_l_k[i, 2] = k;
+        if (J_i[i, k]) {
+          f_l[i, 2] = k;
           break;
         }
       }
     }
   }
-  return (f_l_k, f_l_j);
+  return f_l;
 }
 
 /**
- * Add ordinal coefficients to linear predictor using realised ordinal
- * coefficients produced from coef_ord_realised(). Overloaded for
- * single-species and dynamic models.
+ * Increment spatial effects to random site effects, potentially by region and
+ * species
  *
- * @param X     Integer design array [I, P]
- * @param beta  Realised ordinal coefficients [P, O_max, S] or [O_max, P]
+ * @param I_r    Number of sites [R]
+ * @param L      GP kernels (lower triangular) [R, S, I_max, I_max]
+ * @param iota   Site effects [I(, S)]
  *
- * @return      Site-level realisations [I, S]
+ * @return  L * iota
  */
-matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
-  int I = size(X), P = size(X[1]), S = cols(beta[1]);
-  array[I] int X_p;
-  matrix[rows(beta[1]), S] beta_p;
-  matrix[I, S] mu = rep_matrix(0, I, S);
-  for (p in 1:P) {
-    X_p = X[:, p];
-    beta_p = beta[p];
-    for (i in 1:I) {
-      int X_i = X_p[i];
-      if (X_i) {
-        mu[i] += beta_p[X_i];
+matrix increment_spatial(data array[] int I_r, array[,] matrix L, matrix iota) {
+  int R = size(I_r), I = rows(iota), S = cols(iota), SS = size(L[1]) > 1;
+  matrix[I, S] iota_sp;
+  int idx = 0;
+  for (r in 1:R) {
+    int I_rr = I_r[r];
+    array[I_rr] int sites = linspaced_int_array(I_rr, idx + 1, idx + I_rr);
+    if (SS) {
+      array[S] matrix[I_rr, I_rr] L_r = L[r, 2:, :I_rr, :I_rr];
+      for (s in 1:S) {
+        iota_sp[sites, s] = L_r[s] * iota[sites, s];
       }
+    } else {
+      iota_sp[sites] = L[r, 1, :I_rr, :I_rr] * iota[sites];
     }
+    idx += I_rr;
   }
-  return mu;
+  return iota_sp;
 }
 
-vector increment_ordinal(data array[,] int X, matrix beta) {
-  int I = size(X), P = size(X[1]);
-  array[I] int X_p;
-  vector[rows(beta)] beta_p;
-  vector[I] mu = zeros_vector(I);
-  for (p in 1:P) {
-    X_p = X[:, p];
-    beta_p = beta[:, p];
-    for (i in 1:I) {
-      int X_i = X_p[i];
-      if (X_i) {
-        mu[i] += beta_p[X_i];
-      }
-    }
+vector increment_spatial(data array[] int I_r, array[] matrix L, vector iota) {
+  int R = size(I_r), I = size(iota);
+  vector[I] iota_sp;
+  int idx = 0;
+  for (r in 1:R) {
+    int I_rr = I_r[r];
+    array[I_rr] int sites = linspaced_int_array(I_rr, idx + 1, idx + I_rr);
+    iota_sp[sites] = L[r, :I_rr, :I_rr] * iota[sites];
+    idx += I_rr;
   }
-  return mu;
+  return iota_sp;
 }
 
 /**
- * Fill a matrix with a vector or an array of matrices with a matrix
+ * Fill a matrix with a vector or an array of matrices with a matrix or a
+ * vector. Used for single and multispecies and single and multiseason models.
  *
- * @param j_idx         Survey indices [I, J]
- * @param J_i           Number of surveys [I]
+ * @param j_idx         Survey indices [I(, K), J]
+ * @param J_i           Number of surveys [I(, K)]
  * @param epsilon_long  "Long" format of OLREs [J_sum(, S)]
  *
  * @return              Matrix or array of matrices of OLREs [J, I] or [I, J, S]
@@ -265,7 +115,7 @@ matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
   for (i in 1:I) {
     int J_ii = J_i[i];
     epsilon[j_idx[i, :J_ii], i] = epsilon_long[idx + 1:idx + J_ii];
-    idx += 1;
+    idx += J_ii;
   }
   return epsilon;
 }
@@ -283,6 +133,21 @@ array[] matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
   return epsilon;
 }
 
+array[] matrix fill_epsilon(data array[,,] int j_idx, data array[,] int J_i,
+                            vector epsilon_long) {
+  int I = size(j_idx), K = size(j_idx[1]), J = size(j_idx[1, 1]);
+  array[I] matrix[J, K] epsilon;
+  int idx = 0;
+  for (i in 1:I) {
+    for (k in 1:K) {
+      int J_ii = J_i[i, k];
+      epsilon[i, j_idx[i, k, :J_ii], k] = epsilon_long[idx + 1:idx + J_ii];
+      idx += J_ii;
+    }
+  }
+  return epsilon;
+}
+
 /**
  * Log 2x2 transition probability matrix from log transition rates and interval.
  *
@@ -291,11 +156,11 @@ array[] matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
  *
  * @return   log(matrix_exp(Q) * tau), where Q is a 2x2 generator matrix
  */
-matrix log_matrix_exp(array[] real log_q, real tau) {
+matrix log_matrix_exp(vector log_q, real tau) {
   real log_S = log_sum_exp(log_q),
        Stau = exp(log_S) * tau,
        log_1mexp_Stau = log1m_exp(-Stau);
-  array[2] real log_pi = { log_q[1] - log_S, log_q[2] - log_S };
+  vector[2] log_pi = log_q - log_S;
   return [[ log_sum_exp(log_pi[2], log_pi[1] - Stau),
             log_pi[1] + log_1mexp_Stau ],
           [ log_pi[2] + log_1mexp_Stau,
@@ -345,136 +210,6 @@ real log_prod_exp(row_vector A, vector B) {
 }
 
 /**
- * Orthogonalise a vector or matrix with respect to a design matrix, i.e.
- * remove the component of theta in the column space of X.
- *
- * @param theta   Matrix to orthogonalise [I(, J)]
- * @param X       Design matrix [I, P]
- * @param X_plus  Pseudo-inverse of design matrix [P, I]
- *
- * @return        theta * (I - X * X_plus) * theta [I(, J)]
- */
-vector orthogonalise(vector theta, data matrix X, data matrix X_plus) {
-  return theta - X * X_plus * theta;
-}
-matrix orthogonalise(matrix theta, data matrix X, data matrix X_plus) {
-  return theta - X * X_plus * theta;
-}
-
-/**
- * Posterior predict Poisson OLREs. Overloaded for multi- and single-species.
- *
- * @param j_idx  Survey indices [I, J]
- * @param J_i    Number of surveys [I]
- * @param bar    Mean OLREs [N]
- * @param S_U    Covariance matrix (upper triangular) [S]
- *
- * @return       Posterior predictive OLREs in array or matrix
- */
-array[] matrix pp_epsilon_rng(data array[,] int j_idx, data array[] int J_i,
-                              vector bar, matrix S_U) {
-  int I = size(j_idx), J = size(j_idx[1]), S = rows(S_U), Sm1 = S - 1,
-      N = size(bar), Nm1 = N - 1, NSm1 = Nm1 * Sm1;
-  array[NSm1] int zeros = zeros_int_array(NSm1);
-  matrix[Nm1, Sm1] u = to_matrix(normal_rng(zeros, 1), Nm1, Sm1);
-  return fill_epsilon(j_idx, J_i,
-                      rep_matrix(bar, S) + sum_to_zero_constrain(u) * S_U);
-}
-
-matrix pp_epsilon_rng(data array[,] int j_idx, data array[] int J_i, real tau) {
-  int I = size(j_idx), J = size(j_idx[1]), Nm1 = sum(J_i) - 1;
-  vector[Nm1] u = to_vector(normal_rng(zeros_vector(Nm1), tau));
-  return fill_epsilon(j_idx, J_i, sum_to_zero_constrain(u));
-}
-
-/**
- * Posterior predictions for occARU model. Overloaded for multi- and single-
- * species versions.
- *
- * @param j_idx      Survey indices [I, J]
- * @param J_i        Number of surveys [I]
- * @param logit_psi  Occupancy logits [I(, S)]
- * @param log_mu     Log detection rates without OLREs [I, J, S] or [J, I]
- * @param log_mu     Survey coefficients [P(, S)]
- * @param epsilon    Poisson OLREs [I, J, S] or [J, I]
- * @param phi        Negative binomial overdispersion [S]
- *
- * @return yrep   Survey-level posterior predictions [I, J(, S)]
- * @return Qrep   Site-level aggregated counts [I(, S)]
- */
-tuple(array[,,] int, array[,] int)
-  pp_occARU_rng(data array[,] int j_idx, data array[] int J_i,
-                data array[] matrix X3, matrix logit_psi, array[] matrix log_mu,
-                matrix gamma, array[] matrix epsilon, vector phi) {
-  int I = size(j_idx), J = size(j_idx[1]), S = cols(logit_psi),
-      P3 = size(gamma), OLRE = size(epsilon), NB = size(phi);
-  array[I, J, S] int y = rep_array(0, I, J, S);
-  array[I, S] int Q = rep_array(0, I, S);
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    array[J_ii] int idx = j_idx[i, :J_ii];
-    matrix[J_ii, S] log_mu_i = log_mu[i, idx];
-    if (P3) {
-      log_mu_i += X3[i, idx] * gamma;
-    }
-    if (OLRE) {
-      log_mu_i += epsilon[i, idx];
-    }
-    for (s in 1:S) {
-      if (bernoulli_logit_rng(logit_psi[i, s])) {
-        y[i, idx, s] = NB ?
-                       neg_binomial_2_log_rng(log_mu_i[:, s], phi[s])
-                       : poisson_log_rng(log_mu_i[:, s]);
-        Q[i, s] = sum(y[i, idx, s]);
-      }
-    }
-  }
-  return (y, Q);
-}
-
-tuple(array[,] int, array[] int)
-  pp_occARU_rng(data array[,] int j_idx, data array[] int J_i,
-                data array[] matrix X3, vector logit_psi, matrix log_mu,
-                vector gamma, matrix epsilon, vector phi) {
-  int I = size(j_idx), J = size(j_idx[1]), P3 = size(gamma),
-      OLRE = size(epsilon), NB = size(phi);
-  array[I, J] int y = rep_array(0, I, J);
-  array[I] int Q = zeros_int_array(I);
-  for (i in 1:I) {
-    if (bernoulli_logit_rng(logit_psi[i])) {
-      int J_ii = J_i[i];
-      array[J_ii] int idx = j_idx[i, :J_ii];
-      vector[J_ii] log_mu_i = log_mu[idx, i];
-      if (P3) {
-        log_mu_i += X3[i, idx] * gamma;
-      }
-      if (OLRE) {
-        log_mu_i += epsilon[idx, i];
-      }
-      y[i, idx] = NB ?
-                  neg_binomial_2_log_rng(log_mu_i, phi[1])
-                  : poisson_log_rng(log_mu_i);
-      Q[i] = sum(y[i, idx]);
-    }
-  }
-  return (y, Q);
-}
-
-/**
- * Moore–Penrose or pseudo-inverse, with observations in rows and predictors
- * in columns
- *
- * @param X  Design matrix X [I, P]
- *
- * @return   (X' * X)^-1 * X'
- */
-matrix pseudo_inverse(data matrix X) {
-  int I = rows(X), P = cols(X);
-  matrix[P, I] Xt = X';
-  return inverse_spd(Xt * X) * Xt;
-}
-
-/**
  * Simplex constrain a zero-sum vector and increment Jacobian adjustment.
  * Differs from simplex_jacobian() in that it does not first
  * sum_to_zero_constrain a free vector.
@@ -492,50 +227,43 @@ vector sum_to_zero_simplex_jacobian(vector u) {
 
 /**
  * Get indices of active surveys (where Delta > 0) and number of surveys.
+ * Overload for single- and multiseason deployments.
  *
- * @param Delta  Survey effort [I, J]
+ * @param Delta  Survey effort [I, J(, K)]
  *
- * @return j_idx  Indices of active surveys [I, J]
- * @return J_i    Number of surveys [I]
+ * @return j_idx  Indices of active surveys [I(, K), J]
+ * @return J_i    Number of surveys [I(, K)]
  */
 tuple(array[,] int, array[] int) survey_indices(data matrix Delta) {
   int I = rows(Delta), J = cols(Delta);
   array[I, J] int indices = rep_array(0, I, J);
   array[I] int J_i = zeros_int_array(I);
   for (i in 1:I) {
-    int n = 1;
     for (j in 1:J) {
       if (Delta[i, j] > 0) {
-        indices[i, n] = j;
         J_i[i] += 1;
-        n += 1;
+        indices[i, J_i[i]] = j;
       }
     }
   }
   return (indices, J_i);
 }
 
-/**
- * Get indices of regions and number of sites per region.
- *
- * @param region  Region indicator [I]
- *
- * @return r_idx  Indices of regions [R, I]
- * @return I_r    Number of sites [R]
- */
-tuple(array[,] int, array[] int) cluster_indices(data array[] int region) {
-  int I = size(region), R = max(region);
-  array[R, I] int indices = rep_array(0, R, I);
-  array[R] int I_r = zeros_int_array(R);
-  for (r in 1:R) {
-    int n = 1;
-    for (i in 1:I) {
-      if (region[i] == r) {
-        indices[r, n] = i;
-        I_r[r] += 1;
-        n += 1;
+tuple(array[,,] int, array[,] int) survey_indices(data array[] matrix Delta) {
+  int I = size(Delta), J = rows(Delta[1]), K = cols(Delta[1]);
+  array[I, K, J] int indices = rep_array(0, I, K, J);
+  array[I, K] int J_i = rep_array(0, I, K);
+  for (i in 1:I) {
+    for (k in 1:K) {
+      int n = 1;
+      for (j in 1:J) {
+        if (Delta[i, j, k] > 0) {
+          indices[i, k, n] = j;
+          J_i[i, k] += 1;
+          n += 1;
+        }
       }
     }
   }
-  return(indices, I_r);
+  return (indices, J_i);
 }

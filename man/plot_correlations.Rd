@@ -12,7 +12,7 @@ plot_correlations(
 )
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
 
 \item{submodel}{\code{character}. Correlations of submodel to plot. One of
 \code{"detection"} (default) or \code{"occupancy"}.}
@@ -29,7 +29,7 @@ A \code{ggplot} object with occARU-specific attributes attached:
 }
 }
 \description{
-Plot pairwise species correlations for different model components.For
+Plot pairwise species correlations for different model components. For
 occupancy, interspecific correlations are only estimated for responses
 to site-level predictors. For detection, interspecific correlations are
 potentially estimated for responses to site-level predictors, survey-level
@@ -37,7 +37,7 @@ predictors, random site effects, random survey effects, and potentially
 Poisson OLREs.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
 \code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_partitions]{plot_partitions()}},
 \code{\link[=plot_realised]{plot_realised()}}
 }

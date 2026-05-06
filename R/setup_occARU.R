@@ -5,7 +5,6 @@
 #' and working, this function does nothing.
 #'
 #' @param ... Additional arguments passed to [cmdstanr::install_cmdstan()].
-#'
 #' @export
 setup_occARU <- function(...) {
   # pass immediately if a sufficient version is already installed
@@ -27,7 +26,7 @@ setup_occARU <- function(...) {
   if (inherits(check, "error")) {
     cli::cli_abort(c(
       "C++ toolchain check failed.",
-      "i" = "See {.url https://mc-stan.org/cmdstanr/articles/cmdstanr.html} \\
+      "i" = "See {.url https://mc-stan.org/cmdstanr/articles/cmdstanr.html}
             for platform-specific setup instructions.",
       "x" = "{check$message}"
     ))
@@ -38,8 +37,8 @@ setup_occARU <- function(...) {
     cli::cli_inform(c("i" = "CmdStan not found. Installing..."))
   } else {
     cli::cli_inform(c(
-      "i" = "CmdStan {current} is too old (>= 2.36.0 required). \\
-      Installing latest..."
+      "i" = "CmdStan {current} is too old (>= 2.36.0 required).
+            Installing latest..."
     ))
   }
   cmdstanr::install_cmdstan(...)

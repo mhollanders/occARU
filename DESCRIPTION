@@ -13,13 +13,13 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 VignetteBuilder: quarto
 Suggests: 
-    bayesplot (>= 1.15.0.9000),
     loo,
     priorsense,
     quarto,
     testthat
 Config/testthat/edition: 3
 Imports: 
+    bayesplot (>= 1.15.0.9000),
     cli,
     cmdstanr,
     dplyr,

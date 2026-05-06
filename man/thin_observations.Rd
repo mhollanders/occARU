@@ -6,7 +6,7 @@
 \usage{
 thin_observations(
   observations,
-  deploymentID = deploymentID,
+  locationID = locationID,
   scientificName = scientificName,
   eventStart = eventStart,
   count = count,
@@ -15,11 +15,11 @@ thin_observations(
 }
 \arguments{
 \item{observations}{A dataframe of observation records. Must contain
-columns \code{deploymentID}, \code{eventStart}, \code{scientificName}, and \code{count}
+columns \code{locationID}, \code{eventStart}, \code{scientificName}, and \code{count}
 (or equivalents specified via the corresponding arguments).}
 
-\item{deploymentID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
-name for sites (ARUs). Default: \code{deploymentID}.}
+\item{locationID}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
+name for sites (ARUs). Default: \code{locationID}.}
 
 \item{scientificName}{<\code{\link[rlang:args_data_masking]{data-masking}}> Column
 name for species names. Default: \code{scientificName}.}
@@ -35,7 +35,7 @@ minutes of each other (per site and species) are thinned to a single
 observation, retaining the record with the highest \code{count}. Default: \code{30}.}
 }
 \value{
-A dataframe of thinned observation records, sorted by \code{deploymentID},
+A dataframe of thinned observation records, sorted by \code{locationID},
 \code{scientificName}, and \code{eventStart}, or the original dataframe if
 \code{thin_minutes = 0}, with \code{thin_minutes} stored as attribute.
 }

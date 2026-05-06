@@ -19,7 +19,7 @@ plot_surveys(
 )
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
 
 \item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
 all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
@@ -40,9 +40,9 @@ via \code{exp()}. If \code{FALSE}, values are left on the log scale.}
 in the survey effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
-\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
-\code{FALSE} and the model was fit with \code{project_kappa = TRUE}, plots random
-survey effects with orthogonal projection, i.e.,
+\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors}
+is \code{FALSE} and the model was fit \code{project = list(survey = TRUE)}, plots
+random survey effects with orthogonal projection, i.e.,
 \eqn{(\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}}, where
 \eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
 the column space of the site-averaged survey design matrix. If \code{FALSE},
@@ -69,11 +69,12 @@ A \code{ggplot} object with occARU-specific attributes attached:
 }
 }
 \description{
-Plots species-level temporal detection rates combining survey predictors (if
-included via \code{\link[=make_data]{make_data()}}) and survey random effects (\code{kappa}).
+Plots species-level temporal detection rates combining survey predictors
+averaged over sites (if included via \code{\link[=make_data]{make_data()}}) and survey random effects
+(\code{kappa}).
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},
 \code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}},
 \code{\link[=plot_realised]{plot_realised()}}
 }

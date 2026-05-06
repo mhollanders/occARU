@@ -17,6 +17,15 @@ Gaussian processes, variance decomposition via  global-local shrinkage priors,
 and is built on [Stan](https://mc-stan.org/) via 
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
+## Why occARU?
+
+To fit traditional occupancy models with binary observation models, data derived
+from ARUs is usually collapsed to detection/non-detection events. Models that do
+use the counts, like $N$-mixture models for estimating abundance, rely on 
+assumptions that are usually violated with ARU data. occARU models the counts 
+without imposing strict assumptions, while still accounting for species absences
+at the site level through occupancy modeling. 
+
 ## Installation
 
 Install occARU from GitHub:
@@ -87,13 +96,13 @@ priors <- set_priors(
 #> ...
 
 # fit the model
-fit <- fit_model(data, prior = priors)
+fit <- occARU(data, prior = priors)
 ```
 
 By default this fits a model with spatial and temporal Gaussian processes,
 Dirichlet variance decomposition, and Poisson observation model, initialised
 with [Pathfinder](https://mc-stan.org/docs/reference-manual/pathfinder.html)
-across 4 chains. See `?fit_model` and `?set_priors` to customise the model 
+across 4 chains. See `?occARU` and `?set_priors` to customise the model 
 structure and priors.
 
 ### 3. Check some output
@@ -133,14 +142,11 @@ variance decomposition of the occupancy and detection linear predictors.
 # use PSIS-LOO-CV on the site-by-species level log likelihood
 fit$loo("log_lik2")  # log_lik2 uses Monte Carlo integration of random effects
 
+# posterior predictive checking with rootograms of site-by-species counts
+pp_check(fit, level = "Q")
+
 # check prior sensitivity using power-scaling
 priorsense::powerscale_plot_dens(fit$draws("log_lik", "lprior", "psi_bar"))
-
-# posterior predictive checking of aggregated site-by-species counts
-bayesplot::pp_check(apply(data$y, c(1, 3), sum) |> c(),
-                    yrep = fit$draws("Qrep", format = "draws_matrix"),
-                    group = rep(attr(data, "species"), each = data$I),
-                    fun = "ppc_rootogram_grouped")
 ```
 
 The model stores marginal site-by-species log likelihoods (`log_lik`), the log
@@ -152,4 +158,4 @@ marginal log likelihoods (`log_lik2`) with improved PSIS-LOO-CV performance.
 ## Learn more
 
 - `vignette("model")`
-- `?make_data`, `?fit_model`, `?set_priors`
+- `?make_data`, `?occARU`, `?set_priors`

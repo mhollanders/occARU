@@ -14,7 +14,7 @@ reference:
   - title: Core Functions
     contents:
       - make_data
-      - fit_model
+      - occARU
       - set_priors
   - title: Plotting
     contents:
@@ -25,6 +25,7 @@ reference:
       - plot_surveys
       - plot_partitions
       - plot_realised
+      - pp_check.occARU_fit
   - title: Helpers
     contents:
       - setup_occARU

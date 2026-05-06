@@ -6,6 +6,7 @@
 \usage{
 set_priors(
   psi_bar = c(1, 1),
+  q_bar = c(1, 3),
   mu_bar = c(1, 1),
   psi_W = c(3, 0, 1),
   mu_W = c(3, 0, 2.5),
@@ -15,6 +16,7 @@ set_priors(
   kappa_ell = c(1, 1),
   kappa_ell_periodic = c(1, 1),
   K_phi = c(1, 1),
+  nu_ell = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -29,6 +31,10 @@ set_priors(
 \arguments{
 \item{psi_bar}{Numeric vector of length 2. \code{c(a, b)} for a Beta(a, b) prior
 on mean occupancy probability. Default: \code{c(1, 1)}.}
+
+\item{q_bar}{Numeric vector of length 2. \code{c(shape, rate)} for
+Gamma(shape, rate) priors on the mean annual colonisation and emigration
+rates for multiseason models. Default: \code{c(1, 3)}.}
 
 \item{mu_bar}{Numeric vector of length 2. \code{c(shape, rate)} for a
 Gamma(shape, rate) prior on mean detection rate. Default: \code{c(1, 1)}.}
@@ -50,27 +56,28 @@ Gamma(shape, rate) prior on the detection variance partition sparsity
 parameter. Default: \code{c(1, 1)}.}
 
 \item{iota_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
-InvGamma(alpha, beta) prior on the spatial GP length scale(s). Only used
-when \code{spatial = "gp"} in \code{\link[=fit_model]{fit_model()}}. Default: \code{c(1, 1)}.}
+InvGamma(alpha, beta) prior on the spatial GP length scale(s). Default:
+\code{c(1, 1)}.}
 
 \item{kappa_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
-InvGamma(alpha, beta) prior on the exp. quad. temporal GP length scale.
-Only used when \code{temporal = "gp"} in \code{\link[=fit_model]{fit_model()}}. Default: \code{c(1, 1)}.}
+InvGamma(alpha, beta) prior on the temporal GP length scale. Default:
+\code{c(1, 1)}.}
 
 \item{kappa_ell_periodic}{Numeric vector of length 2. \code{c(alpha, beta)} for an
-InvGamma(alpha, beta) prior on the periodic temporal GP length scale. Only
-used when \code{temporal = "gp"} and \code{periodic = TRUE} in \code{\link[=fit_model]{fit_model()}}.
+InvGamma(alpha, beta) prior on the periodic temporal GP length scale.
 Default: \code{c(1, 1)}.}
 
 \item{K_phi}{Numeric vector of length 2. \code{c(alpha[1], alpha[2])} for a
 Dirichlet(alpha) prior on the temporal GP variance partitions of the
-exp. quad. and periodic kernels. Only used when \code{temporal_gp = TRUE} and
-\code{periodic_GP = TRUE}. Default: \code{c(1, 1)}.}
+Matern and periodic kernels. Default: \code{c(1, 1)}.}
+
+\item{nu_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
+InvGamma(alpha, beta) prior on the seasonal GP length scale. Default:
+\code{c(1, 1)}.}
 
 \item{phi}{Numeric vector of length 2. \code{c(alpha, beta)} for an
 InvGamma(alpha, beta) prior on species-specific negative binomial
-overdispersion parameters. Only used when \code{overdispersion = "nb"} in
-\code{\link[=fit_model]{fit_model()}}. Default: \code{c(0.4, 0.3)}.}
+overdispersion parameters. Default: \code{c(0.4, 0.3)}.}
 
 \item{alpha_O_L}{Positive scalar. LKJ prior on the \eqn{[2, 2]} occupancy
 log odds/log detection rate correlation matrix. Default: \code{1}.}
@@ -96,18 +103,17 @@ matrix of species-specific site effects. Default: \code{1}.}
 matrix of species-specific survey effects. Default: \code{1}.}
 
 \item{epsilon_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]}
-correlation matrix of species-specific OLRE residuals. Only used when
-\code{overdispersion = "olre"} in \code{\link[=fit_model]{fit_model()}}. Default: \code{1}.}
+correlation matrix of species-specific OLRE residuals. Default: \code{1}.}
 
 \item{verbose}{Logical. If \code{TRUE} (default), prints list of priors.}
 }
 \value{
-An \code{occARU_priors} object (a named list) for use with \code{\link[=fit_model]{fit_model()}}.
+An \code{occARU_priors} object (a named list) for use with \code{\link[=occARU]{occARU()}}.
 }
 \description{
 Constructs and validates a named list of prior hyperparameters for use with
-\code{\link[=fit_model]{fit_model()}}. Any unspecified priors use the defaults listed below.
+\code{\link[=occARU]{occARU()}}. Any unspecified priors use the defaults listed below.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}
+\code{\link[=occARU]{occARU()}}
 }

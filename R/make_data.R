@@ -1,7 +1,7 @@
 #' Prepare data for the occARU model
 #'
 #' Transforms raw deployment and observation data into a named list suitable
-#' for passing to [fit_model()]. Follows the
+#' for passing to [occARU()]. Follows the
 #' [camtrapDP](https://tdwg.github.io/camtrap-dp/) data format by default.
 #' Site coordinates are automatically projected from WGS84 latitude/longitude
 #' to UTM (km), with the zone auto-detected from the mean longitude.
@@ -34,15 +34,15 @@
 #'   `longitude`, no spatial Gaussian process is fitted. Default: `latitude`.
 #' @param longitude <[`data-masking`][rlang::args_data_masking]> `numeric`.
 #'   Column name for WGS84 longitude in `deployments`. Default: `longitude`.
+#' @param region <[`data-masking`][rlang::args_data_masking]> Optional column in
+#'   `deployments` specifying region, defined as a cluster of ARUs. Leads to
+#'   faster model fits when spatial site effects are included in [occARU()].
+#'   If the column is not present in `deployments`, all observations are treated
+#'   as a single region. Default: `region`.
 #' @param season <[`data-masking`][rlang::args_data_masking]> Optional column
 #'   specifying season. The column must be a factor to ensure correct ordering.
 #'   If the column is not present in `deployments`, all observations are treated
 #'   as a single season. Default: `season`.
-#' @param region <[`data-masking`][rlang::args_data_masking]> Optional column in
-#'   `deployments` specifying region, defined as a cluster of ARUs. Leads to
-#'   faster model fits when spatial site effects are included in [fit_model()].
-#'   If the column is not present in `deployments`, all observations are treated
-#'   as a single region. Default: `region`.
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
 #'   Column name for observation timestamps in `observations`. Default:
 #'   `eventStart`.
@@ -107,11 +107,16 @@
 #'
 #' @return A named list of class `"occARU_data"` containing all inputs
 #'   required by the occARU Stan model, except for model specification
-#'   arguments which are added by [fit_model()]. The list contains:
+#'   arguments which are added by [occARU()]. The list contains:
 #'   \describe{
 #'     \item{`I`}{Number of sites (ARUs).}
+#'     \item{`R`}{Number of regions (groups of sites).}
 #'     \item{`J`}{Number of survey periods.}
 #'     \item{`K`}{Number of seasons (if multiseason).}
+#'     \item{`tau`}{Interval length in years between end of previous deploymment
+#'       and start of current deployment (if multiseason).}
+#'     \item{`dyn`}{Indicator for dynamic occupancy, when at least one site was
+#'       deployed over multiple seasons.}
 #'     \item{`S`}{Number of species.}
 #'     \item{`Delta`}{`[I, J(, K)]` array of recording effort (0-1).}
 #'     \item{`y`}{`[I, J(, K), S]` array of detection counts.}
@@ -156,7 +161,7 @@
 #'       standardise continuous predictors, or `NULL` if
 #'       `scale_predictors = FALSE`.}
 #'     \item{`levels`}{Named list of category levels for categorical and ordinal
-#'       predictors}
+#'       predictors.}
 #'     \item{`survey_length`}{}
 #'     \item{`thin_minutes`}{}
 #'     \item{`reference_dates`}{}
@@ -164,8 +169,9 @@
 #'   }
 #' @importFrom rlang :=
 #'
-#' @seealso [fit_model()], [thin_observations()], [find_failures()]
-#'   The model is described in detail in `vignette("model", package = "occARU")`.
+#' @seealso [occARU()], [thin_observations()], [find_failures()]
+#'   The model is described in detail in
+#'   `vignette("model", package = "occARU")`.
 #' @export
 make_data <- function(
   deployments,
@@ -176,8 +182,8 @@ make_data <- function(
   deploymentEnd = deploymentEnd,
   latitude = latitude,
   longitude = longitude,
-  season = season,
   region = region,
+  season = season,
   eventStart = eventStart,
   scientificName = scientificName,
   count = count,
@@ -194,138 +200,42 @@ make_data <- function(
   scale_predictors = TRUE,
   verbose = TRUE
 ) {
-  # DEPLOYMENTS
-  check_cols_exist(
+  # deployments
+  deployments <- make_deployments(
     deployments,
     {{ locationID }},
     {{ deploymentStart }},
-    {{ deploymentEnd }}
+    {{ deploymentEnd }},
+    {{ region }},
+    {{ season }}
   )
-  check_cols_class(
-    deployments,
-    "Date",
-    {{ deploymentStart }},
-    {{ deploymentEnd }}
-  )
-  check_dates(
-    deployments,
-    {{ locationID }},
-    {{ deploymentStart }},
-    {{ deploymentEnd }}
-  )
-  if (is.factor(deployments |> dplyr::pull({{ locationID }}))) {
-    check_empty_levels(deployments, {{ locationID }})
-  } else {
-    deployments <- deployments |>
-      dplyr::mutate({{ locationID }} := factor({{ locationID }}))
-  }
+
+  # levels and dimensions
   site_lvl <- deployments |> dplyr::pull({{ locationID }}) |> levels()
   I <- length(site_lvl)
   if (I == 1L) {
     cli::cli_abort("occARU requires more than one site (ARU).")
   }
-
-  # seasons
-  if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(season)))) {
-    deployments <- dplyr::mutate(deployments, .season = factor(1L))
-    check_cols_duplicates(deployments, {{ locationID }})
-  } else if (!is.factor(dplyr::pull(deployments, {{ season }}))) {
-    cli::cli_abort(
-      "{.arg season} must be a factor to ensure correct ordering."
-    )
-  } else {
-    deployments <- dplyr::rename(deployments, .season = {{ season }})
-    check_empty_levels(deployments, .season)
-    if (nlevels(deployments$.season) == 1) {
-      cli::cli_warn(
-        "{.arg season} has one level. Proceeding with single season model."
-      )
-    } else {
-      check_deployment_times(deployments)
-    }
-  }
+  region_lvl <- deployments |> dplyr::pull(.region) |> levels()
+  R <- length(region_lvl)
   season_lvl <- deployments |> dplyr::pull(.season) |> levels()
   K <- length(season_lvl)
 
-  # regions
-  if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(region)))) {
-    deployments <- dplyr::mutate(deployments, .region = factor(1L))
-  } else {
-    deployments <- dplyr::rename(deployments, .region = {{ region }})
-    if (!is.factor(dplyr::pull(deployments, .region))) {
-      deployments <- dplyr::mutate(
-        deployments,
-        .region = factor(.region) |>
-          forcats::fct_reorder(as.integer({{ locationID }}))
-      )
-    }
-  }
-  region_lvl <- deployments |> dplyr::pull(.region) |> levels()
-  R <- length(region_lvl)
-  check_missing(deployments)
-
-  # expand deployments to individual dates
-  daily_grid <- deployments |>
-    dplyr::select(
-      {{ locationID }},
-      {{ deploymentStart }},
-      {{ deploymentEnd }},
-      .season
-    ) |>
-    dplyr::mutate(
-      .date = purrr::map2(
-        {{ deploymentStart }},
-        {{ deploymentEnd }},
-        ~ seq.Date(.x, .y, by = "day")
-      ),
-      .by = c({{ locationID }}, .season)
-    ) |>
-    tidyr::unnest(.date) |>
-    dplyr::mutate(.Delta = 1L)
-
-  # incorporate failure dates
-  if (!is.null(failures)) {
-    check_missing(failures)
-    check_cols_exist(
-      failures,
-      {{ locationID }},
-      {{ failureStart }},
-      {{ failureEnd }}
-    )
-    failures <- align_factor(failures, {{ locationID }}, site_lvl)
-    check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
-    check_dates(
-      failures,
-      {{ locationID }},
-      {{ failureStart }},
-      {{ failureEnd }}
-    )
-
-    failure_dates <- failures |>
-      dplyr::select({{ locationID }}, {{ failureStart }}, {{ failureEnd }}) |>
-      dplyr::mutate(
-        .date = purrr::map2(
-          {{ failureStart }},
-          {{ failureEnd }},
-          ~ seq.Date(.x, .y, by = "day")
-        ),
-        .failure = 1L
-      ) |>
-      tidyr::unnest(.date) |>
-      dplyr::select({{ locationID }}, .date, .failure)
-
-    daily_grid <- dplyr::left_join(
-      daily_grid,
-      failure_dates,
-      by = dplyr::join_by({{ locationID }}, .date)
-    ) |>
-      dplyr::mutate(.Delta = replace_when(.Delta, .failure == 1L ~ 0L)) |>
-      dplyr::select(-.failure)
-  }
-
-  # reference date
+  # reference dates
   reference_dates <- deployments |>
     dplyr::summarise(reference = min({{ deploymentStart }}), .by = .season)
+
+  # expand deployments to dates and incorporate failures
+  daily_grid <- make_daily_grid(
+    deployments,
+    failures,
+    {{ locationID }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }},
+    .season,
+    {{ failureStart }},
+    {{ failureEnd }}
+  )
 
   # aggregate surveys
   if (!rlang::is_integerish(survey_length) || survey_length < 1) {
@@ -345,10 +255,14 @@ make_data <- function(
       .by = c({{ locationID }}, .survey, .season)
     )
 
+  # surveys
   surveys <- deployments_aggregated |>
     dplyr::distinct(.season, .survey) |>
     dplyr::arrange(.season, .survey) |>
-    dplyr::mutate(.survey_idx = dplyr::dense_rank(.survey), .by = .season)
+    dplyr::mutate(
+      .survey_idx = factor(dplyr::dense_rank(.survey)),
+      .by = .season
+    )
   J <- surveys |>
     dplyr::count(.season) |>
     dplyr::pull(n)
@@ -366,12 +280,11 @@ make_data <- function(
       by = c(".season", ".survey")
     ) |>
     tidyr::complete(
-      {{ locationID }},
-      .survey_idx,
       .season,
+      .survey_idx,
+      {{ locationID }},
       fill = list(.Delta = 0)
     ) |>
-    dplyr::arrange(.season, .survey_idx, {{ locationID }}) |>
     dplyr::pull(.Delta) |>
     array(
       c(I, J_max, K),
@@ -382,50 +295,42 @@ make_data <- function(
       )
     )
 
-  # OBSERVATIONS
-  check_cols_exist(
-    observations,
-    {{ locationID }},
-    {{ eventStart }},
-    {{ scientificName }},
-    {{ count }}
-  )
-  observations <- align_factor(observations, {{ locationID }}, site_lvl)
-  if (K == 1) {
-    observations <- dplyr::mutate(
-      observations,
-      .season = factor(1L, labels = season_lvl)
-    )
-  } else {
-    check_cols_exist(observations, {{ season }})
-    observations <- dplyr::rename(observations, .season = {{ season }})
-    observations <- align_factor(observations, .season, season_lvl)
+  # produce tau
+  if (K > 1) {
+    tau <- deployments |>
+      dplyr::arrange({{ locationID }}, .season) |>
+      dplyr::mutate(
+        tau = difftime(
+          {{ deploymentStart }},
+          dplyr::lag({{ deploymentEnd }}),
+          units = "weeks"
+        ) |>
+          as.numeric(),
+        .by = {{ locationID }}
+      ) |>
+      tidyr::drop_na() |>
+      tidyr::complete(
+        {{ locationID }},
+        .season = season_lvl[-1],
+        fill = list(tau = 0)
+      ) |>
+      dplyr::pull(tau) |>
+      matrix(K - 1, I, dimnames = list(season_lvl[-1], site_lvl))
+    dyn <- any(colSums(tau) > 0)
   }
-  check_cols_class(observations, "POSIXt", {{ eventStart }})
-  check_empty_levels(observations, {{ locationID }}, .season, strict = FALSE)
-  if (is.factor(observations |> dplyr::pull({{ scientificName }}))) {
-    check_empty_levels(observations, {{ scientificName }})
-  } else {
-    observations <- dplyr::mutate(
-      observations,
-      {{ scientificName }} := factor({{ scientificName }})
-    )
-  }
-  species_lvl <- dplyr::pull(observations, {{ scientificName }}) |> levels()
-  S <- length(species_lvl)
-  observations <- dplyr::select(
+
+  # observations
+  observations <- make_observations(
     observations,
+    daily_grid,
     {{ locationID }},
     {{ eventStart }},
     {{ scientificName }},
     {{ count }},
-    .season
-  ) |>
-    dplyr::arrange(
-      {{ locationID }},
-      {{ eventStart }}
-    )
-  check_missing(observations)
+    {{ season }}
+  )
+  species_lvl <- dplyr::pull(observations, {{ scientificName }}) |> levels()
+  S <- length(species_lvl)
 
   # modify eventStart for midday
   day_start <- match.arg(day_start, c("midday", "midnight"))
@@ -457,6 +362,8 @@ make_data <- function(
     {{ count }},
     thin_minutes
   )
+  species_lvl <- dplyr::pull(observations, {{ scientificName }}) |> levels()
+  S <- length(species_lvl)
 
   # aggregate and fill array
   observations_aggregated <- dplyr::left_join(
@@ -474,23 +381,18 @@ make_data <- function(
       .by = c({{ locationID }}, .survey, .season, {{ scientificName }})
     )
 
+  # make detection history
   y <- dplyr::left_join(
     observations_aggregated,
     surveys,
     by = c(".season", ".survey")
   ) |>
     tidyr::complete(
-      {{ locationID }} := factor(site_lvl, site_lvl),
-      .survey_idx = 1:J_max,
-      .season = factor(season_lvl, season_lvl),
-      {{ scientificName }},
-      fill = list(.y = 0)
-    ) |>
-    dplyr::arrange(
       {{ scientificName }},
       .season,
       .survey_idx,
-      {{ locationID }}
+      {{ locationID }},
+      fill = list(.y = 0)
     ) |>
     dplyr::pull(.y) |>
     array(
@@ -503,164 +405,21 @@ make_data <- function(
       )
     )
 
-  # SITE COORDINATES
-  has_coords <- rlang::has_name(
+  # site_coordinates
+  XY <- make_coordinates(
     deployments,
-    rlang::as_name(rlang::enquo(latitude))
-  ) &&
-    rlang::has_name(deployments, rlang::as_name(rlang::enquo(latitude)))
-  if (has_coords) {
-    wrong_coords <- dplyr::distinct(
-      deployments,
-      {{ locationID }},
-      {{ latitude }},
-      {{ longitude }}
-    ) |>
-      dplyr::add_count({{ locationID }}) |>
-      dplyr::filter(n > 1) |>
-      pull({{ locationID }})
-    if (length(wrong_coords)) {
-      cli::cli_abort(
-        "The following {.arg locationID}{?s} have different {.arg latitude} \\
-        or {.arg longitude} across seasons."
-      )
-    }
-    utm <- coords_to_utm(
-      dplyr::distinct(deployments, {{ locationID }}, .keep_all = TRUE),
-      {{ locationID }},
-      {{ latitude }},
-      {{ longitude }}
-    )
-    XY <- utm$XY
-    utm_crs <- utm$utm_crs
-  } else {
-    XY <- matrix(0, I, 2, dimnames = list(site_lvl, c("X", "Y")))
-    utm_crs <- NA_character_
-  }
+    {{ locationID }},
+    {{ latitude }},
+    {{ longitude }}
+  )
 
-  # PREDICTORS
-
-  # occupancy site predictors
-  if (!is.null(occupancy_site_predictors)) {
-    check_missing(occupancy_site_predictors)
-    check_cols_exist(occupancy_site_predictors, {{ locationID }})
-    occupancy_site_predictors <- align_factor(
-      occupancy_site_predictors,
-      {{ locationID }},
-      site_lvl,
-      strict = TRUE
-    )
-    if (K == 1) {
-      occupancy_site_predictors <- dplyr::mutate(
-        occupancy_site_predictors,
-        .season = factor(1L, labels = season_lvl)
-      )
-      check_cols_duplicates(occupancy_site_predictors, {{ locationID }})
-    } else {
-      check_cols_exist(occupancy_site_predictors, {{ season }})
-      occupancy_site_predictors <- dplyr::rename(
-        occupancy_site_predictors,
-        .season = {{ season }}
-      )
-      occupancy_site_predictors <- align_factor(
-        occupancy_site_predictors,
-        .season,
-        season_lvl
-      )
-    }
-    check_site_predictors_coverage(
-      occupancy_site_predictors,
-      deployments,
-      {{ locationID }},
-      .season,
-      verbose = FALSE
-    )
-    check_mixed_predictors(occupancy_site_predictors, {{ locationID }})
-  }
-
-  # detection site predictors
-  if (
-    !is.null(detection_site_predictors) &&
-      !isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))
-  ) {
-    check_missing(detection_site_predictors)
-    check_cols_exist(detection_site_predictors, {{ locationID }})
-    detection_site_predictors <- align_factor(
-      detection_site_predictors,
-      {{ locationID }},
-      site_lvl,
-      strict = TRUE
-    )
-    if (K == 1) {
-      detection_site_predictors <- dplyr::mutate(
-        detection_site_predictors,
-        .season = factor(1L, labels = season_lvl)
-      )
-      check_cols_duplicates(detection_site_predictors, {{ locationID }})
-    } else {
-      check_cols_exist(detection_site_predictors, {{ season }})
-      detection_site_predictors <- dplyr::rename(
-        detection_site_predictors,
-        .season = {{ season }}
-      )
-      detection_site_predictors <- align_factor(
-        detection_site_predictors,
-        .season,
-        season_lvl
-      )
-    }
-    check_site_predictors_coverage(
-      detection_site_predictors,
-      deployments,
-      {{ locationID }},
-      .season,
-      verbose = FALSE
-    )
-    check_mixed_predictors(detection_site_predictors, {{ locationID }})
-  }
-
-  # survey predictors
-  if (!is.null(survey_predictors)) {
-    check_missing(survey_predictors)
-    check_cols_exist(survey_predictors, {{ locationID }}, {{ date }})
-    survey_predictors <- align_factor(
-      survey_predictors,
-      {{ locationID }},
-      site_lvl,
-      strict = TRUE
-    )
-    if (K == 1) {
-      survey_predictors <- dplyr::mutate(
-        survey_predictors,
-        .season = factor(1L, labels = season_lvl)
-      )
-    } else {
-      check_cols_exist(survey_predictors, {{ season }})
-      survey_predictors <- dplyr::rename(
-        survey_predictors,
-        .season = {{ season }}
-      )
-      survey_predictors <- align_factor(
-        survey_predictors,
-        .season,
-        season_lvl
-      )
-    }
-    check_survey_predictors_coverage(
-      survey_predictors,
-      deployments,
-      {{ locationID }},
-      {{ deploymentStart }},
-      {{ deploymentEnd }},
-      .season,
-      {{ date }},
-      verbose = FALSE
-    )
-    check_mixed_predictors(survey_predictors, {{ locationID }}, {{ date }})
-  }
-
-  # encode predictors
-
+  # predictors
+  occupancy_site_predictors <- make_site_predictors(
+    occupancy_site_predictors,
+    deployments,
+    {{ locationID }},
+    .season
+  )
   enc1 <- encode_predictors(
     occupancy_site_predictors,
     "site",
@@ -670,12 +429,17 @@ make_data <- function(
     season_lvl = season_lvl,
     scale_predictors = scale_predictors
   )
-  enc2 <- if (
-    isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))
-  ) {
-    enc1
+
+  if (isTRUE(all.equal(occupancy_site_predictors, detection_site_predictors))) {
+    enc2 <- enc1
   } else {
-    encode_predictors(
+    detection_site_predictors <- make_site_predictors(
+      detection_site_predictors,
+      deployments,
+      {{ locationID }},
+      .season
+    )
+    enc2 <- encode_predictors(
       detection_site_predictors,
       "site",
       {{ locationID }},
@@ -686,6 +450,15 @@ make_data <- function(
     )
   }
 
+  survey_predictors <- make_survey_predictors(
+    survey_predictors,
+    deployments,
+    {{ locationID }},
+    {{ season }},
+    {{ date }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
+  )
   if (!is.null(survey_predictors)) {
     survey_predictors <- dplyr::semi_join(
       survey_predictors,
@@ -725,23 +498,21 @@ make_data <- function(
   # return
   data <- structure(
     c(
-      list(I = I, R = R),
-      if (K == 1) {
-        list(J = J_max)
-      } else {
-        list(J_max = J_max, K = K, J = J)
+      list(I = I, J = J_max, R = R, K = K),
+      if (K > 1) {
+        list(tau = tau / 52, dyn = dyn, J_i = J)
       },
       list(
         S = S,
         Delta = Delta[,, 1:K],
         region = as.integer(deployments$.region),
         XY = XY,
-        y = y[,, 1:K, 1:S],
+        y = y, # y[,, 1:K, ],
         P = P,
         P_cat = P_cat,
         P_ord = P_ord,
         X1 = enc1$X,
-        X_cat1 = if (K == 1) enc1$X_cat,
+        X_cat1 = enc1$X_cat,
         X_ord1 = enc1$X_ord,
         X2 = enc2$X,
         X_cat2 = enc2$X_cat,
@@ -757,7 +528,7 @@ make_data <- function(
     seasons = season_lvl,
     regions = region_lvl,
     species = species_lvl,
-    utm_crs = utm_crs,
+    utm_crs = attr(XY, "utm_crs"),
     scaling = if (scale_predictors) {
       list(
         X1 = enc1$scale_params,
@@ -789,25 +560,28 @@ make_data <- function(
 print.occARU_data <- function(x, ...) {
   cli::cli_h1("occARU data")
   P <- sapply(1:3, \(p) x$P[p] + x$P_cat[p] + x$P_ord[p])
-  K <- !is.null(x$K)
   surveys <- attr(x, "surveys")
 
   cli::cli_dl(c(
     "Sites (I)" = "{x$I}",
-    if (K) {
-      c("Seasons (K)" = "{x$K}")
-    },
-    "Surveys (J)" = "{paste(x$J, collapse = ', ')}"
+    if (x$K > 1) {
+      c(
+        "Seasons (K)" = "{x$K}",
+        "Surveys (J)" = "{paste(x$J_i, collapse = ', ')}"
+      )
+    } else {
+      c("Surveys (J)" = "{x$J}")
+    }
   ))
 
-  if (K) {
+  if (x$K > 1) {
     cli::cli_text("Deployment spans:")
     cli::cli_div(theme = list(dl = list("margin-left" = 2)))
     cli::cli_dl(
       purrr::map_chr(
         levels(surveys$.season),
         ~ {
-          s <- dplyr::filter(surveys, .season == .x)
+          s <- dplyr::filter(surveys, .season == .)
           paste(
             as.character(min(s$.survey)),
             "to",
@@ -820,7 +594,7 @@ print.occARU_data <- function(x, ...) {
     cli::cli_end()
   } else {
     cli::cli_text(
-      "Deployment span: {as.character(min(surveys$.survey))} to \\
+      "Deployment span: {as.character(min(surveys$.survey))} to
       {as.character(max(surveys$.survey))}"
     )
   }
@@ -865,4 +639,361 @@ print.occARU_data <- function(x, ...) {
       " " = "Ordinal: {x$P_ord[3]}"
     ))
   }
+}
+
+
+#' Prepare deployments dataframe
+#' @noRd
+make_deployments <- function(
+  deployments,
+  locationID,
+  deploymentStart,
+  deploymentEnd,
+  region,
+  season
+) {
+  # checks
+  check_cols_exist(
+    deployments,
+    {{ locationID }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
+  )
+  check_cols_class(
+    deployments,
+    "Date",
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
+  )
+  check_dates(
+    deployments,
+    {{ locationID }},
+    {{ deploymentStart }},
+    {{ deploymentEnd }}
+  )
+
+  # regions
+  if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(region)))) {
+    deployments <- dplyr::mutate(deployments, .region = factor(1L))
+  } else {
+    deployments <- dplyr::rename(deployments, .region = {{ region }})
+    if (!is.factor(dplyr::pull(deployments, .region))) {
+      deployments <- dplyr::mutate(deployments, .region = factor(.region))
+    }
+  }
+
+  # seasons
+  if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(season)))) {
+    deployments <- dplyr::mutate(deployments, .season = factor(1L))
+    check_cols_duplicates(deployments, {{ locationID }})
+  } else if (!is.factor(dplyr::pull(deployments, {{ season }}))) {
+    cli::cli_abort(
+      "{.arg season} must be a factor to ensure correct ordering."
+    )
+  } else {
+    deployments <- dplyr::rename(deployments, .season = {{ season }})
+    check_empty_levels(deployments, .season)
+    if (nlevels(deployments$.season) == 1) {
+      cli::cli_warn(
+        "{.arg season} has one level. Proceeding with single season model."
+      )
+    } else {
+      check_deployment_times(deployments)
+    }
+  }
+
+  # sites
+  if (is.factor(deployments |> dplyr::pull({{ locationID }}))) {
+    check_empty_levels(deployments, {{ locationID }})
+  } else {
+    deployments <- dplyr::mutate(
+      deployments,
+      {{ locationID }} := factor({{ locationID }})
+    )
+  }
+  deployments <- dplyr::mutate(
+    deployments,
+    {{ locationID }} := forcats::fct_reorder(
+      {{ locationID }},
+      as.integer(.region)
+    )
+  )
+  check_missing(deployments)
+  deployments |>
+    dplyr::arrange({{ locationID }}, .season)
+}
+
+#' Produce daily grid with failure dates
+#' @noRd
+make_daily_grid <- function(
+  deployments,
+  failures = NULL,
+  locationID,
+  deploymentStart,
+  deploymentEnd,
+  season,
+  failureStart,
+  failureEnd
+) {
+  # expand deployment dates
+  daily_grid <- deployments |>
+    dplyr::select(
+      {{ locationID }},
+      {{ deploymentStart }},
+      {{ deploymentEnd }},
+      {{ season }}
+    ) |>
+    dplyr::mutate(
+      .date = purrr::map2(
+        {{ deploymentStart }},
+        {{ deploymentEnd }},
+        ~ seq.Date(.x, .y, by = "day")
+      ),
+      .by = c({{ locationID }}, {{ season }})
+    ) |>
+    tidyr::unnest(.date) |>
+    dplyr::mutate(.Delta = 1L)
+
+  # join failures
+  if (!is.null(failures)) {
+    check_missing(failures)
+    check_cols_exist(
+      failures,
+      {{ locationID }},
+      {{ failureStart }},
+      {{ failureEnd }}
+    )
+    failures <- align_factor(failures, {{ locationID }}, site_lvl)
+    check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
+    check_dates(
+      failures,
+      {{ locationID }},
+      {{ failureStart }},
+      {{ failureEnd }}
+    )
+
+    failure_dates <- failures |>
+      dplyr::select({{ locationID }}, {{ failureStart }}, {{ failureEnd }}) |>
+      dplyr::mutate(
+        .date = purrr::map2(
+          {{ failureStart }},
+          {{ failureEnd }},
+          ~ seq.Date(.x, .y, by = "day")
+        ),
+        .failure = 1L
+      ) |>
+      tidyr::unnest(.date) |>
+      dplyr::select({{ locationID }}, .date, .failure)
+
+    daily_grid <- dplyr::left_join(
+      daily_grid,
+      failure_dates,
+      by = dplyr::join_by({{ locationID }}, .date)
+    ) |>
+      dplyr::mutate(
+        .Delta = dplyr::replace_when(.Delta, .failure == 1L ~ 0L)
+      ) |>
+      dplyr::select(-.failure)
+  }
+  daily_grid
+}
+
+#' Prepare observations dataframe
+#' @noRd
+make_observations <- function(
+  observations,
+  daily_grid,
+  locationID,
+  eventStart,
+  scientificName,
+  count,
+  season
+) {
+  # checks
+  check_cols_exist(
+    observations,
+    {{ locationID }},
+    {{ eventStart }},
+    {{ scientificName }},
+    {{ count }}
+  )
+  site_lvl <- dplyr::pull(daily_grid, {{ locationID }}) |> levels()
+  observations <- align_factor(observations, {{ locationID }}, site_lvl)
+  season_lvl <- dplyr::pull(daily_grid, .season) |> levels()
+  if (length(season_lvl) == 1) {
+    observations <- dplyr::mutate(
+      observations,
+      .season = factor(1L, labels = season_lvl)
+    )
+  } else {
+    check_cols_exist(observations, {{ season }})
+    observations <- dplyr::rename(observations, .season = {{ season }})
+    observations <- align_factor(observations, .season, season_lvl)
+  }
+  check_cols_class(observations, "POSIXt", {{ eventStart }})
+  check_empty_levels(observations, {{ locationID }}, .season, strict = FALSE)
+  if (is.factor(observations |> dplyr::pull({{ scientificName }}))) {
+    check_empty_levels(observations, {{ scientificName }})
+  } else {
+    observations <- dplyr::mutate(
+      observations,
+      {{ scientificName }} := factor({{ scientificName }})
+    )
+  }
+  observations <- dplyr::select(
+    observations,
+    {{ locationID }},
+    {{ eventStart }},
+    {{ scientificName }},
+    {{ count }},
+    .season
+  ) |>
+    dplyr::arrange(
+      {{ locationID }},
+      {{ eventStart }}
+    )
+  check_missing(observations)
+  observations
+}
+
+#' Make coordinates matrix
+#' @noRd
+make_coordinates <- function(
+  deployments,
+  locationID,
+  latitude,
+  longitude
+) {
+  has_coords <- rlang::has_name(
+    deployments,
+    rlang::as_name(rlang::enquo(latitude))
+  ) &&
+    rlang::has_name(deployments, rlang::as_name(rlang::enquo(longitude)))
+  if (has_coords) {
+    wrong_coords <- deployments |>
+      dplyr::distinct({{ locationID }}, {{ latitude }}, {{ longitude }}) |>
+      dplyr::add_count({{ locationID }}) |>
+      dplyr::filter(n > 1) |>
+      dplyr::pull({{ locationID }})
+    n_wrong <- length(wrong_coords)
+    if (n_wrong) {
+      cli::cli_abort(
+        "The following {n_wrong} {.arg locationID} {?has/have} different
+        {.arg latitude} or {.arg longitude} across seasons:
+        {.val {wrong_coords}}."
+      )
+    }
+    deployments <- deployments |>
+      dplyr::distinct({{ locationID }}, {{ latitude }}, {{ longitude }}) |>
+      coords_to_utm({{ latitude }}, {{ longitude }})
+
+    XY <- tibble::column_to_rownames(
+      deployments |>
+        dplyr::select(-c({{ latitude }}, {{ longitude }})) |>
+        dplyr::arrange({{ locationID }}),
+      rlang::as_name(rlang::enquo(locationID))
+    )
+    utm_crs <- attr(deployments, "utm_crs")
+  } else {
+    XY <- matrix(0, I, 2, dimnames = list(site_lvl, c("X", "Y")))
+    utm_crs <- NA_character_
+  }
+  attr(XY, "utm_crs") <- utm_crs
+  XY
+}
+
+#' Prepare site predictors dataframe
+#' @noRd
+make_site_predictors <- function(predictors, deployments, locationID, season) {
+  # checks
+  if (!is.null(predictors)) {
+    check_missing(predictors)
+    check_cols_exist(predictors, {{ locationID }})
+    site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
+    predictors <- align_factor(
+      predictors,
+      {{ locationID }},
+      site_lvl,
+      strict = TRUE
+    )
+    season_lvl <- dplyr::pull(deployments, .season) |> levels()
+    if (length(season_lvl == 1)) {
+      predictors <- dplyr::mutate(
+        predictors,
+        .season = factor(1L, labels = season_lvl)
+      )
+      check_cols_duplicates(predictors, {{ locationID }})
+    } else {
+      check_cols_exist(predictors, {{ season }})
+      predictors <- dplyr::rename(
+        predictors,
+        .season = {{ season }}
+      )
+      predictors <- align_factor(
+        predictors,
+        .season,
+        season_lvl
+      )
+    }
+    check_site_predictors_coverage(
+      predictors,
+      deployments,
+      {{ locationID }},
+      .season,
+      verbose = FALSE
+    )
+    check_mixed_predictors(predictors, {{ locationID }})
+  }
+  predictors
+}
+
+#' Prepare survey predictors dataframe
+#' @noRd
+make_survey_predictors <- function(
+  predictors,
+  deployments,
+  locationID,
+  season,
+  date,
+  deploymentStart,
+  deploymentEnd
+) {
+  if (!is.null(predictors)) {
+    check_missing(predictors)
+    check_cols_exist(predictors, {{ locationID }}, {{ date }})
+    site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
+    predictors <- align_factor(
+      predictors,
+      {{ locationID }},
+      site_lvl,
+      strict = TRUE
+    )
+    season_lvl <- dplyr::pull(deployments, .season) |> levels()
+    if (length(season_lvl)) {
+      predictors <- dplyr::mutate(
+        predictors,
+        .season = factor(1L, labels = season_lvl)
+      )
+    } else {
+      check_cols_exist(predictors, {{ season }})
+      predictors <- dplyr::rename(predictors, .season = {{ season }})
+      predictors <- align_factor(
+        predictors,
+        .season,
+        season_lvl
+      )
+    }
+    check_survey_predictors_coverage(
+      predictors,
+      deployments,
+      {{ locationID }},
+      {{ deploymentStart }},
+      {{ deploymentEnd }},
+      .season,
+      {{ date }},
+      verbose = FALSE
+    )
+    check_mixed_predictors(predictors, {{ locationID }}, {{ date }})
+  }
+  predictors
 }

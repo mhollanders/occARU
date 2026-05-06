@@ -1,10 +1,13 @@
 #' Set priors for the occARU model
 #'
 #' Constructs and validates a named list of prior hyperparameters for use with
-#' [fit_model()]. Any unspecified priors use the defaults listed below.
+#' [occARU()]. Any unspecified priors use the defaults listed below.
 #'
 #' @param psi_bar Numeric vector of length 2. `c(a, b)` for a Beta(a, b) prior
 #'   on mean occupancy probability. Default: `c(1, 1)`.
+#' @param q_bar Numeric vector of length 2. `c(shape, rate)` for
+#'   Gamma(shape, rate) priors on the mean annual colonisation and emigration
+#'   rates for multiseason models. Default: `c(1, 3)`.
 #' @param mu_bar Numeric vector of length 2. `c(shape, rate)` for a
 #'   Gamma(shape, rate) prior on mean detection rate. Default: `c(1, 1)`.
 #' @param psi_W Numeric vector of length 3. `c(df, mu, sigma)` for a
@@ -20,23 +23,23 @@
 #'   Gamma(shape, rate) prior on the detection variance partition sparsity
 #'   parameter. Default: `c(1, 1)`.
 #' @param iota_ell Numeric vector of length 2. `c(alpha, beta)` for an
-#'   InvGamma(alpha, beta) prior on the spatial GP length scale(s). Only used
-#'   when `spatial = "gp"` in [fit_model()]. Default: `c(1, 1)`.
+#'   InvGamma(alpha, beta) prior on the spatial GP length scale(s). Default:
+#'   `c(1, 1)`.
 #' @param kappa_ell Numeric vector of length 2. `c(alpha, beta)` for an
-#'   InvGamma(alpha, beta) prior on the exp. quad. temporal GP length scale.
-#'   Only used when `temporal = "gp"` in [fit_model()]. Default: `c(1, 1)`.
+#'   InvGamma(alpha, beta) prior on the temporal GP length scale. Default:
+#'   `c(1, 1)`.
 #' @param kappa_ell_periodic Numeric vector of length 2. `c(alpha, beta)` for an
-#'   InvGamma(alpha, beta) prior on the periodic temporal GP length scale. Only
-#'   used when `temporal = "gp"` and `periodic = TRUE` in [fit_model()].
+#'   InvGamma(alpha, beta) prior on the periodic temporal GP length scale.
 #'   Default: `c(1, 1)`.
 #' @param K_phi Numeric vector of length 2. `c(alpha[1], alpha[2])` for a
 #'   Dirichlet(alpha) prior on the temporal GP variance partitions of the
-#'   exp. quad. and periodic kernels. Only used when `temporal_gp = TRUE` and
-#'   `periodic_GP = TRUE`. Default: `c(1, 1)`.
+#'   Matern and periodic kernels. Default: `c(1, 1)`.
+#' @param nu_ell Numeric vector of length 2. `c(alpha, beta)` for an
+#'   InvGamma(alpha, beta) prior on the seasonal GP length scale. Default:
+#'   `c(1, 1)`.
 #' @param phi Numeric vector of length 2. `c(alpha, beta)` for an
 #'   InvGamma(alpha, beta) prior on species-specific negative binomial
-#'   overdispersion parameters. Only used when `overdispersion = "nb"` in
-#'   [fit_model()]. Default: `c(0.4, 0.3)`.
+#'   overdispersion parameters. Default: `c(0.4, 0.3)`.
 #' @param alpha_O_L Positive scalar. LKJ prior on the \eqn{[2, 2]} occupancy
 #'   log odds/log detection rate correlation matrix. Default: `1`.
 #' @param psi_beta_O_L Positive scalar. LKJ prior on the \eqn{[S, S]}
@@ -55,16 +58,16 @@
 #' @param kappa_O_L Positive scalar. LKJ prior on the \eqn{[S, S]} correlation
 #'   matrix of species-specific survey effects. Default: `1`.
 #' @param epsilon_O_L Positive scalar. LKJ prior on the \eqn{[S, S]}
-#'   correlation matrix of species-specific OLRE residuals. Only used when
-#'   `overdispersion = "olre"` in [fit_model()]. Default: `1`.
+#'   correlation matrix of species-specific OLRE residuals. Default: `1`.
 #' @param verbose Logical. If `TRUE` (default), prints list of priors.
 #'
-#' @return An `occARU_priors` object (a named list) for use with [fit_model()].
+#' @return An `occARU_priors` object (a named list) for use with [occARU()].
 #'
-#' @seealso [fit_model()]
+#' @seealso [occARU()]
 #' @export
 set_priors <- function(
   psi_bar = c(1, 1),
+  q_bar = c(1, 3),
   mu_bar = c(1, 1),
   psi_W = c(3, 0, 1),
   mu_W = c(3, 0, 2.5),
@@ -74,6 +77,7 @@ set_priors <- function(
   kappa_ell = c(1, 1),
   kappa_ell_periodic = c(1, 1),
   K_phi = c(1, 1),
+  nu_ell = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -87,6 +91,7 @@ set_priors <- function(
   # length checks
   expected_lengths <- list(
     psi_bar = 2L,
+    q_bar = 2L,
     mu_bar = 2L,
     psi_W = 3L,
     mu_W = 3L,
@@ -95,6 +100,7 @@ set_priors <- function(
     iota_ell = 2L,
     kappa_ell = 2L,
     kappa_ell_periodic = 2L,
+    nu_ell = 2L,
     K_phi = 2L,
     phi = 2L,
     alpha_O_L = 1L,
@@ -123,6 +129,7 @@ set_priors <- function(
   priors <- structure(
     list(
       psi_bar_beta = psi_bar,
+      q_bar_gamma = q_bar,
       mu_bar_gamma = mu_bar,
       psi_W_t = psi_W,
       mu_W_t = mu_W,
@@ -132,6 +139,7 @@ set_priors <- function(
       kappa_ell_inv_gamma = kappa_ell,
       kappa_ell_periodic_inv_gamma = kappa_ell_periodic,
       K_phi_dirichlet = K_phi,
+      nu_ell_inv_gamma = nu_ell,
       phi_inv_gamma = phi,
       alpha_O_L_LKJ = alpha_O_L,
       psi_beta_O_L_LKJ = psi_beta_O_L,
@@ -149,6 +157,65 @@ set_priors <- function(
   invisible(priors)
 }
 
+#' Automatically determine inverse gamma hyperparameters, used for Gaussian
+#' process length scales in occARU models.
+#'
+#' Finds inverse gamma shape (alpha) and rate (beta) parameters such that
+#' \code{tail_prob} prior probability mass falls below \code{bounds[1]} and
+#' \code{tail_prob} falls above \code{bounds[2]}, placing
+#' \code{1 - 2 * tail_prob} of the mass within the bounds.
+#'
+#' @param bounds Numeric vector of length 2. Lower and upper bounds on the
+#'   length scale. For a spatial GP, the bounds could be the minimum and maximum
+#'   distance between sites
+#'
+#'   For a periodic kernel with a fixed annual cycle, the lower
+#'   bound should be the minimum temporal spacing between observations (e.g.
+#'   \code{1/52} for weekly data) and the upper bound should be the period
+#'   (e.g. \code{1} for an annual cycle).
+#' @param tail_prob Numeric scalar in (0, 0.5). The probability mass to place
+#'   in each tail. For example, \code{0.05} places 5% of the prior below
+#'   \code{bounds[1]} and 5% above \code{bounds[2]}.
+#' @return Numeric vector of length 2, \code{c(alpha, beta)}, giving the shape
+#'   and rate of the fitted inverse gamma prior.
+#' @keywords internal
+auto_inv_gamma <- function(bounds, tail_prob) {
+  # checks
+  if (tail_prob < 0 | tail_prob > 1) {
+    cli::cli_abort(
+      "{.arg tails} must be between 0 and 1."
+    )
+  }
+  if (any(bounds < 0)) {
+    cli::cli_abort(
+      "{.arg bounds} must be greater than 0."
+    )
+  }
+
+  # inverse gamma CDF
+  pinvgamma <- function(q, alpha, beta) {
+    stats::pgamma(1 / q, alpha, beta, lower.tail = FALSE)
+  }
+
+  # initial values
+  mid <- sqrt(bounds[1] * bounds[2])
+  alpha0 <- 3
+  beta0 <- mid * (alpha0 + 1)
+  init <- log(c(alpha0, beta0))
+
+  fit <- stats::optim(
+    init,
+    \(params) {
+      alpha <- exp(params[1])
+      beta <- exp(params[2])
+      r1 <- pinvgamma(bounds[1], alpha, beta) - tail_prob
+      r2 <- 1 - pinvgamma(bounds[2], alpha, beta) - tail_prob
+      r1^2 + r2^2
+    },
+    method = "Nelder-Mead"
+  )
+  fit$par
+}
 
 #' Print method for occARU_priors objects
 #'
@@ -158,8 +225,10 @@ set_priors <- function(
 #' @export
 print.occARU_priors <- function(x, ...) {
   cli::cli_h1("occARU priors")
+  K <- attr(x, "K")
   cli::cli_dl(c(
     "psi_bar" = "Beta({x$psi_bar_beta[1]}, {x$psi_bar_beta[2]})",
+    "q_bar" = "Gamma({x$q_bar_gamma[1]}, {x$q_bar_gamma[2]})",
     "mu_bar" = "Gamma({x$mu_bar_gamma[1]}, {x$mu_bar_gamma[2]})",
     "psi_W" = "Student-t+({x$psi_W_t[1]}, {x$psi_W_t[2]}, {x$psi_W_t[3]})",
     "mu_W" = "Student-t+({x$mu_W_t[1]}, {x$mu_W_t[2]}, {x$mu_W_t[3]})",
@@ -167,11 +236,12 @@ print.occARU_priors <- function(x, ...) {
     "mu_theta" = "Gamma({x$mu_theta_gamma[1]}, {x$mu_theta_gamma[2]})",
     "iota_ell" = "InvGamma({x$iota_ell_inv_gamma[1]}, \\
                   {x$iota_ell_inv_gamma[2]})",
-    "kappa_ell (exp. quad.)" = "InvGamma({x$kappa_ell_inv_gamma[1]}, \\
+    "kappa_ell" = "InvGamma({x$kappa_ell_inv_gamma[1]}, \\
                                          {x$kappa_ell_inv_gamma[2]})",
     "kappa_ell (periodic)" = "InvGamma({x$kappa_ell_periodic_inv_gamma[1]}, \\
                              {x$kappa_ell_periodic_inv_gamma[2]})",
     "K_phi" = "Dirichlet({x$K_phi_dirichlet[1]}, {x$K_phi_dirichlet[2]})",
+    "nu_ell" = "InvGamma({x$nu_ell_inv_gamma[1]}, {x$nu_ell_inv_gamma[2]})",
     "phi" = "InvGamma({x$phi_inv_gamma[1]}, {x$phi_inv_gamma[2]})",
     "alpha_O_L" = "LKJ({x$alpha_O_L_LKJ})",
     "psi_beta_O_L" = "LKJ({x$psi_beta_O_L_LKJ})",

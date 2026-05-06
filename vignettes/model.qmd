@@ -113,6 +113,10 @@ Variance decomposition can be done with either Dirichlet or zero-sum logistic-no
 
 Veriance decomposition is also used for species-specific scales in site and survey effects (and potentially OLREs). The scales vector $\boldsymbol{\phi_\mu}$ contains one partition for the species-level deviations from the mean function for each, which are then simplex decomposed to produce the species-specific scales. Parameter names in the fit objects are `iota_t`, `kappa_t`, and `epsilon_t`, respectively.
 
+## Sites nested in regions
+
+occARU accommodates groups of ARUs nested in regions, for example when multiple independent grids are deployed. When multiple regions are included, occARU includes region-level intercepts for both occupancy and detection. Random (spatial) site effects are also computed separately per-region, which can significantly increase speed of model fits.
+
 ## Identifiability and sum-to-zero constraints
 
 All random effects (species-level intercepts, fixed effect coefficients, site effects, survey effects, and OLRE residuals) are fit with sum-to-zero constraints for parameter identifiability [@ogle2020]. Without these constraints, the overall intercepts ($\bar{\psi}$ and $\bar{\mu}$), mean effects (i.e., $\bar{\boldsymbol{\beta}}$, $\bar{\boldsymbol{\gamma}}$, $\boldsymbol{\bar{\iota}}$, $\boldsymbol{\bar{\kappa}}$, and $\boldsymbol{\bar{\epsilon}}$) and the species-level deviations are weakly identified. The constraints are implemented directly in the Stan parameterisation using `sum_to_zero_vector` and `sum_to_zero_matrix` types, which induce the constraint with a favourable posterior geometry leading to increased computational efficiency. Note that technically, the resulting distributions are no longer (multivariate/matrix) normal, but rather the zero-sum variants.

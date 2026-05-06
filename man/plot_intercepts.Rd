@@ -4,18 +4,31 @@
 \alias{plot_intercepts}
 \title{Plot intercepts}
 \usage{
-plot_intercepts(fit, species = NULL, back_transform = TRUE, ...)
+plot_intercepts(
+  fit,
+  back_transform = TRUE,
+  by_region = FALSE,
+  species = NULL,
+  regions = NULL,
+  ...
+)
 }
 \arguments{
-\item{fit}{A fitted model object from \code{\link[=fit_model]{fit_model()}}.}
-
-\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
-all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+\item{fit}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
 
 \item{back_transform}{\code{logical}. If \code{TRUE} (default), intercepts are
 back-transformed to the natural scale via \code{inv_logit()} for occupancy and
 \code{exp()} for detection rates. If \code{FALSE}, values are left on the scale of
 the link functions (logit for occupancy and log for detection).}
+
+\item{by_region}{\code{logical}. Whether to plot intercepts by region, if multiple
+regions were included.}
+
+\item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
+all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
+
+\item{regions}{\code{character}. Vector of regions to plot. If \code{NULL} (default),
+all regions are plotted. Must be one of \code{attr(occARU_data, "regions")}.}
 
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
@@ -27,10 +40,9 @@ A \code{ggplot} object with occARU-specific attributes attached:
 }
 \description{
 Plot species-specific intercepts for occupancy and detection, by default
-back-transformed to the orginal scale.
+back-transformed to the original scale.
 }
 \seealso{
-\code{\link[=fit_model]{fit_model()}}, \code{\link[=plot_coefficients]{plot_coefficients()}}, \code{\link[=plot_sites]{plot_sites()}},
-\code{\link[=plot_surveys]{plot_surveys()}}, \code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}},
-\code{\link[=plot_realised]{plot_realised()}}
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_coefficients]{plot_coefficients()}}, \code{\link[=plot_sites]{plot_sites()}}, \code{\link[=plot_surveys]{plot_surveys()}},
+\code{\link[=plot_correlations]{plot_correlations()}}, \code{\link[=plot_partitions]{plot_partitions()}}, \code{\link[=plot_realised]{plot_realised()}}
 }

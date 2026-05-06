@@ -9,8 +9,8 @@
 #'   and for survey mode a date column. If `NULL`, returns `NULL` immediately.
 #' @param mode Character. Either `"site"` (returns `[I, P]` matrices) or
 #'   `"survey"` (returns `[I, P, J]` arrays).
-#' @param deploymentID <[`data-masking`][rlang::args_data_masking]> Name of the
-#'   site column. Default: `deploymentID`.
+#' @param locationID <[`data-masking`][rlang::args_data_masking]> Name of the
+#'   site column. Default: `locationID`.
 #' @param season <[`data-masking`][rlang::args_data_masking]> Name of the season
 #'   column. Default: `season`.
 #' @param date `Date`. <[`data-masking`][rlang::args_data_masking]> Name of the
@@ -50,7 +50,7 @@
 encode_predictors <- function(
   df,
   mode = c("site", "survey"),
-  deploymentID = deploymentID,
+  locationID = locationID,
   .season = .season,
   date = date,
   site_lvl = site_lvl,
@@ -67,7 +67,7 @@ encode_predictors <- function(
   I <- length(site_lvl)
   K <- length(season_lvl)
   if (!is.null(surveys)) {
-    J_max <- max(surveys$.survey_idx)
+    J_max <- max(as.integer(surveys$.survey_idx))
   }
 
   empty_array <- if (mode == "site") {
@@ -102,7 +102,7 @@ encode_predictors <- function(
   } else {
     # classify
     df_pred <- df |>
-      dplyr::select(-c({{ deploymentID }}, {{ .season }}))
+      dplyr::select(-c({{ locationID }}, {{ .season }}))
     if (mode == "survey") {
       df_pred <- df_pred |>
         dplyr::select(-{{ date }})
@@ -213,7 +213,7 @@ encode_predictors <- function(
             dplyr::all_of(pred_cols),
             ~ summary_fns[[dplyr::cur_column()]](.)
           ),
-          .by = c({{ deploymentID }}, .survey)
+          .by = c({{ locationID }}, .survey)
         )
 
       # join survey indices
@@ -230,13 +230,13 @@ encode_predictors <- function(
         site_means <- df_num |>
           dplyr::summarise(
             dplyr::across(dplyr::all_of(num_cols), mean),
-            .by = {{ deploymentID }}
+            .by = {{ locationID }}
           )
         scale_params <- scaling_parameters(site_means, num_cols)
         df <- df |>
           dplyr::mutate(
             dplyr::across(
-              all_of(num_cols),
+              dplyr::all_of(num_cols),
               ~ (. - scale_params[[dplyr::cur_column()]][1]) /
                 scale_params[[dplyr::cur_column()]][2]
             )
@@ -254,7 +254,7 @@ encode_predictors <- function(
         df <- df |>
           dplyr::mutate(
             dplyr::across(
-              all_of(num_cols),
+              dplyr::all_of(num_cols),
               ~ (. - scale_params[[dplyr::cur_column()]][1]) /
                 scale_params[[dplyr::cur_column()]][2]
             )
@@ -269,13 +269,13 @@ encode_predictors <- function(
         if (P) {
           df |>
             dplyr::select(
-              {{ deploymentID }},
+              {{ locationID }},
               {{ .season }},
               dplyr::all_of(cols)
             ) |>
             tidyr::complete(
-              {{ deploymentID }},
-              {{ .season }},
+              {{ locationID }} := factor(site_lvl, site_lvl),
+              {{ .season }} := factor(season_lvl, season_lvl),
               fill = as.list(purrr::set_names(
                 ifelse(cols %in% num_cols, 0L, 1L),
                 cols
@@ -286,8 +286,8 @@ encode_predictors <- function(
               names_to = "p",
               values_to = "x"
             ) |>
-            dplyr::mutate(p = factor(p, levels = num_cols)) |>
-            dplyr::arrange(p, {{ .season }}, {{ deploymentID }}) |>
+            dplyr::mutate(p = factor(p, levels = cols)) |>
+            dplyr::arrange(p, {{ .season }}, {{ locationID }}) |>
             dplyr::pull(x) |>
             array(
               if (K == 1) c(I, P) else c(I, K, P),
@@ -307,13 +307,13 @@ encode_predictors <- function(
         if (P) {
           df |>
             dplyr::select(
-              {{ deploymentID }},
+              {{ locationID }},
               {{ .season }},
               .survey_idx,
               dplyr::all_of(cols)
             ) |>
             tidyr::complete(
-              {{ deploymentID }},
+              {{ locationID }},
               {{ .season }},
               .survey_idx,
               fill = as.list(purrr::set_names(
@@ -326,8 +326,8 @@ encode_predictors <- function(
               names_to = "p",
               values_to = "x"
             ) |>
-            dplyr::mutate(p = factor(p, levels = num_cols)) |>
-            dplyr::arrange(p, .survey_idx, {{ .season }}, {{ deploymentID }}) |>
+            dplyr::mutate(p = factor(p, levels = cols)) |>
+            dplyr::arrange(p, .survey_idx, {{ .season }}, {{ locationID }}) |>
             dplyr::pull(x) |>
             array(
               if (K == 1) c(I, J_max, P) else c(I, K, J_max, P),
