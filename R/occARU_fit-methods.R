@@ -17,7 +17,7 @@
 #
 # }
 
-#' Posterior predictive checks using rootograms for \code{occARU_fit} objects
+#' Posterior predictive checks using rootograms for `occARU_fit` objects
 #'
 #' Perform visual posterior predictive checks using rootograms using the
 #' \pkg{bayesplot} package.
@@ -33,7 +33,7 @@
 #' @return A ggplot object with posterior predictive rootograms faceted by
 #'   species which can be modified using the \pkg{ggplot2} package.
 #' @importFrom bayesplot pp_check
-#' @export
+#' @exportS3Method bayesplot::pp_check
 pp_check.occARU_fit <- function(
   object,
   level = c("Q", "y"),

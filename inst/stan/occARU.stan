@@ -54,21 +54,19 @@ data {
   int<lower=0> D;  // Monte Carlo draws for LOO
 
   // prior hyperparameters
-  vector<lower=0>[2] psi_bar_beta,  // mean occ. (prob. scale)
-                     mu_bar_gamma,  // mean det. (rate scale)
-                     psi_theta_gamma,  // occ. var. partition scale
-                     mu_theta_gamma,  // det. var. partition scale
-                     iota_ell_inv_gamma,  // spat. GP l-scale
-                     kappa_ell_inv_gamma,  // temp. GP l-scale
-                     kappa_ell_periodic_inv_gamma,  // periodic temp. GP l-scale
-                     K_phi_dirichlet,  // temp. GPs var. partitions
-                     phi_inv_gamma;  // negbin overdispersion
-  vector<lower=0>[3] psi_W_t,  // occ. log odds var.
-                     mu_W_t;  // log det. var.
-  real<lower=0> alpha_O_L_LKJ, psi_beta_O_L_LKJ,
-                mu_beta_O_L_LKJ, gamma_O_L_LKJ,
-                iota_O_L_LKJ, kappa_O_L_LKJ,
-                epsilon_O_L_LKJ;
+  vector<lower=0>[2] psi_bar_beta,  // mean occupancy (probability scale)
+                     mu_bar_gamma,  // mean detetection (rate scale)
+                     psi_theta_gamma,  // occupancy variance partition scale
+                     mu_theta_gamma,  // detection variance partition scale
+                     iota_ell_inv_gamma,  // site GP length scale
+                     kappa_ell_inv_gamma,  // survey GP length scale
+                     kappa_ell_periodic_inv_gamma,  // periodic GP length scale
+                     K_phi_dirichlet,  // survey GP variance partitions
+                     phi_inv_gamma;  // negative binomial overdispersion
+  vector<lower=0>[3] psi_W_t,  // occupancy log odds variance
+                     mu_W_t;  // log detection rate variance
+  real<lower=0> alpha_O_L_LKJ, psi_beta_O_L_LKJ, mu_beta_O_L_LKJ, gamma_O_L_LKJ,
+                iota_O_L_LKJ, kappa_O_L_LKJ, epsilon_O_L_LKJ;
 }
 
 transformed data {
@@ -335,18 +333,16 @@ transformed parameters {
     // intercepts
     int idx = 1;
     if (MS) {
-      alpha_s_bar = diag_pre_multiply([ psi_tau[idx], mu_tau[idx] ]',
-                                      alpha_O_L)
-                    * append_col(alpha_s_bar_z[1], alpha_s_bar_z[2])';
+      alpha_s_bar = alpha_O_L * append_col(psi_tau[idx] * alpha_s_bar_z[1],
+                                           mu_tau[idx] * alpha_s_bar_z[2])';
       for (d in 1:2) {
         alpha[d] += rep_matrix(alpha_s_bar[d], R);
       }
       idx += 1;
     }
     if (MR) {
-      alpha_r_bar = diag_post_multiply(append_col(alpha_r_bar_z[1],
-                                                  alpha_r_bar_z[2]),
-                                       [ psi_tau[idx], mu_tau[idx] ]);
+      alpha_r_bar = append_col(psi_tau[idx] * alpha_r_bar_z[1],
+                               mu_tau[idx] * alpha_r_bar_z[2]);
       idx += 1;
       if (MS) {
         for (d in 1:2) {

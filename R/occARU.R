@@ -200,7 +200,7 @@ occARU <- function(
   # scalar argument checks
   if (!rlang::is_integerish(loo_draws) || loo_draws < 0) {
     cli::cli_abort("{.arg loo_draws} must be a non-negative integer.")
-  } else if (!(site_effects || overdispersion == "olre")) {
+  } else if (!(site_effects || overdispersion == "olre") && loo_draws != 100L) {
     cli::cli_warn(
       "{.arg loo_draws} only used when site effects or OLREs are included."
     )

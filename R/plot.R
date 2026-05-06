@@ -180,11 +180,9 @@ plot_coefficients <- function(
       p <- ggplot2::ggplot(draws) +
         ggplot2::aes(
           xdist = !!param,
-          y = if (facet_by == "predictor") {
-            forcats::fct_rev(species)
-          } else {
-            predictor
-          }
+          y = forcats::fct_rev(
+            if (facet_by == "predictor") species else predictor
+          )
         ) +
         ggplot2::facet_wrap(
           ~ if (facet_by == "predictor") {
