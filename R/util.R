@@ -405,8 +405,8 @@ check_dates <- function(
 #'   }
 #' @noRd
 coords_to_utm <- function(df, latitude, longitude) {
-  lats <- dplyr::pull(deployments, {{ latitude }})
-  lons <- dplyr::pull(deployments, {{ longitude }})
+  lats <- dplyr::pull(df, {{ latitude }})
+  lons <- dplyr::pull(df, {{ longitude }})
 
   mean_lon <- mean(lons)
   mean_lat <- mean(lats)
