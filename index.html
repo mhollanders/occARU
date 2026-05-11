@@ -158,7 +158,7 @@
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">loo</span><span class="op">(</span><span class="st">"log_lik2"</span><span class="op">)</span>  <span class="co"># log_lik2 uses Monte Carlo integration of random effects</span></span>
 <span></span>
 <span><span class="co"># posterior predictive checking with rootograms of site-by-species counts</span></span>
-<span><span class="fu">pp_check</span><span class="op">(</span><span class="va">fit</span>, level <span class="op">=</span> <span class="st">"Q"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/pp_check.occARU_fit.html">pp_check</a></span><span class="op">(</span><span class="va">fit</span>, level <span class="op">=</span> <span class="st">"Q"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># check prior sensitivity using power-scaling</span></span>
 <span><span class="fu">priorsense</span><span class="fu">::</span><span class="fu"><a href="https://n-kall.github.io/priorsense/reference/powerscale_plots.html" class="external-link">powerscale_plot_dens</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"log_lik"</span>, <span class="st">"lprior"</span>, <span class="st">"psi_bar"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
