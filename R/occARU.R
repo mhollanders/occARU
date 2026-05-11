@@ -64,7 +64,8 @@
 #' @param pathfinder_args Named list of additional arguments passed to
 #'   [cmdstanr::CmdStanModel]`$pathfinder()` when `init = "pathfinder"`.
 #'   Overrides defaults (`refresh = 0`, `sig_figs = 14`, `init = 0.1`,
-#'   `num_paths = chains`, `num_threads = chains`). Default: `list()`.
+#'   `num_paths = chains`, `num_threads = chains`, `psis_resample = FALSE`).
+#'   Default: `list()`.
 #' @param threads Positive integer. Number of threads for within-chain
 #'   parallelisation via `reduce_sum()`. Default: `1` (no parallelisation).
 #'   The total number of threads used is `threads * chains`, so for optimal
@@ -319,7 +320,8 @@ occARU <- function(
       refresh = 0,
       num_paths = chains,
       num_threads = chains,
-      sig_figs = 14
+      sig_figs = 14,
+      psis_resample = FALSE
     )
     init <- rlang::exec(
       mod$pathfinder,
