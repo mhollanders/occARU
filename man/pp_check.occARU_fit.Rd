@@ -2,6 +2,7 @@
 % Please edit documentation in R/occARU_fit-methods.R
 \name{pp_check.occARU_fit}
 \alias{pp_check.occARU_fit}
+\alias{pp_check}
 \title{Posterior predictive checks using rootograms for \code{occARU_fit} objects}
 \usage{
 \method{pp_check}{occARU_fit}(object, level = c("Q", "y"), ndraws = NULL, ...)

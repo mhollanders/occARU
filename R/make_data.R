@@ -763,7 +763,11 @@ make_daily_grid <- function(
       {{ failureStart }},
       {{ failureEnd }}
     )
-    failures <- align_factor(failures, {{ locationID }}, site_lvl)
+    failures <- align_factor(
+      failures,
+      {{ locationID }},
+      dplyr::pull(deployments, {{ locationID }}) |> levels()
+    )
     check_cols_class(failures, "Date", {{ failureStart }}, {{ failureEnd }})
     check_dates(
       failures,
