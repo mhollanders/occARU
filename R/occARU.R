@@ -244,7 +244,7 @@ occARU <- function(
   # compile model
   mod <- cmdstanr::cmdstan_model(
     stan_file %||% system.file("stan/occARU.stan", package = "occARU"),
-    cpp_options = list(stan_threads = TRUE)
+    cpp_options = list(stan_threads = TRUE, stan_no_range_checks = TRUE)
   )
 
   # GP labels

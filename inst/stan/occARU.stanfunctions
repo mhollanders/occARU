@@ -97,19 +97,11 @@ tuple(matrix, array[] matrix, matrix, array[] matrix)
       log_mu_j += epsilon[i, idx];
     }
     log_mu[i, idx] = log_mu_j;  // store
-    if (P3) {
-      matrix[J_ii, P3] X3_i = X3[i, idx];
-      for (s in 1:S) {
-        Omega_i[2, s] += NB ?
-          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
-          : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
-      }
-    } else {
-      for (s in 1:S) {
-        Omega_i[2, s] += NB ?
-          neg_binomial_2_log_lpmf(y_i[:, s] | log_mu_j[:, s], phi[s])
-          : poisson_log_lpmf(y_i[:, s] | log_mu_j[:, s]);
-      }
+    matrix[J_ii, P3] X3_i = X3[i, idx];
+    for (s in 1:S) {
+      Omega_i[2, s] += NB ?
+        neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
+        : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
     }
     for (s in 1:S) {
       if (Q[i, s]) {
@@ -191,19 +183,11 @@ real occARU_lpmf(data array[,,] int y, data array[,] int Q,
     if (OLRE) {
       log_mu_j += epsilon[i, idx];
     }
-    if (P3) {
-      matrix[J_ii, P3] X3_i = X3[i, idx];
-      for (s in 1:S) {
-        Omega[s] += NB ?
-          neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
-          : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
-      }
-    } else {
-      for (s in 1:S) {
-        Omega[s] += NB ?
-          neg_binomial_2_log_lpmf(y_i[:, s] | log_mu_j[:, s], phi[s])
-          : poisson_log_lpmf(y_i[:, s] | log_mu_j[:, s]);
-      }
+    matrix[J_ii, P3] X3_i = X3[i, idx];
+    for (s in 1:S) {
+      Omega[s] += NB ?
+        neg_binomial_2_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s], phi[s])
+        : poisson_log_glm_lpmf(y_i[:, s] | X3_i, log_mu_j[:, s], gamma[:, s]);
     }
     for (s in 1:S) {
       log_lik += Q[i, s] ?

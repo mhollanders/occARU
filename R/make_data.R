@@ -263,11 +263,11 @@ make_data <- function(
       .survey_idx = factor(dplyr::dense_rank(.survey)),
       .by = .season
     )
-  J <- surveys |>
+  J_k <- surveys |>
     dplyr::count(.season) |>
     dplyr::pull(n)
-  J_max <- max(J)
-  if (any(J == 1L)) {
+  J <- max(J_k)
+  if (any(J_k == 1L)) {
     cli::cli_abort(
       "occARU requires more than one survey. Is {.arg survey_length} too long?"
     )
@@ -280,44 +280,55 @@ make_data <- function(
       by = c(".season", ".survey")
     ) |>
     tidyr::complete(
-      .season,
-      .survey_idx,
       {{ locationID }},
+      .survey_idx,
+      .season,
       fill = list(.Delta = 0)
     ) |>
     dplyr::pull(.Delta) |>
     array(
-      c(I, J_max, K),
+      c(K, J, I),
       dimnames = list(
-        site_lvl,
+        season_lvl,
         if (K == 1) as.character(surveys$.survey) else NULL,
-        season_lvl
+        site_lvl
       )
     )
 
-  # produce tau
-  if (K > 1) {
-    tau <- deployments |>
-      dplyr::arrange({{ locationID }}, .season) |>
-      dplyr::mutate(
-        tau = difftime(
-          {{ deploymentStart }},
-          dplyr::lag({{ deploymentEnd }}),
-          units = "weeks"
-        ) |>
-          as.numeric(),
-        .by = {{ locationID }}
+  # produce season intervals
+  tau <- deployments |>
+    dplyr::arrange({{ locationID }}, .season) |>
+    dplyr::mutate(
+      tau = difftime(
+        {{ deploymentStart }},
+        dplyr::lag({{ deploymentEnd }}),
+        units = "weeks"
       ) |>
-      tidyr::drop_na() |>
-      tidyr::complete(
-        {{ locationID }},
-        .season = season_lvl[-1],
-        fill = list(tau = 0)
-      ) |>
-      dplyr::pull(tau) |>
-      matrix(K - 1, I, dimnames = list(season_lvl[-1], site_lvl))
-    dyn <- any(colSums(tau) > 0)
-  }
+        as.numeric(),
+      .by = {{ locationID }}
+    ) |>
+    tidyr::drop_na() |>
+    tidyr::complete(
+      {{ locationID }},
+      .season = factor(season_lvl[-1], season_lvl[-1])
+    ) |>
+    tidyr::fill(.region, .direction = "downup", .by = {{ locationID }}) |>
+    dplyr::mutate(
+      tau_mean = mean(tau, na.rm = T),
+      .by = c(.season, .region)
+    ) |>
+    dplyr::mutate(
+      first = dplyr::first(.season[!is.na(tau)]),
+      last = dplyr::last(.season[!is.na(tau)]),
+      tau = dplyr::case_when(
+        is.na(tau) & dplyr::between(.season, first, last) ~ tau_mean,
+        is.na(tau) ~ 0,
+        .default = tau
+      ),
+      .by = {{ locationID }}
+    ) |>
+    dplyr::pull(tau) |>
+    matrix(K - 1, I, dimnames = list(season_lvl[-1], site_lvl))
 
   # observations
   observations <- make_observations(
@@ -396,7 +407,7 @@ make_data <- function(
     ) |>
     dplyr::pull(.y) |>
     array(
-      c(I, J_max, K, S),
+      c(I, J, K, S),
       dimnames = list(
         site_lvl,
         if (K == 1) as.character(surveys$.survey) else NULL,
@@ -498,16 +509,19 @@ make_data <- function(
   # return
   data <- structure(
     c(
-      list(I = I, J = J_max, R = R, K = K),
-      if (K > 1) {
-        list(tau = tau / 52, dyn = dyn, J_i = J)
-      },
       list(
+        I = I,
+        J = J,
+        S = S,
+        R = R,
+        K = K,
+        tau = tau / 52,
+        J_k = J_k,
         S = S,
         Delta = Delta[,, 1:K],
         region = as.integer(deployments$.region),
         XY = XY,
-        y = y, # y[,, 1:K, ],
+        y = y,
         P = P,
         P_cat = P_cat,
         P_ord = P_ord,
@@ -567,7 +581,7 @@ print.occARU_data <- function(x, ...) {
     if (x$K > 1) {
       c(
         "Seasons (K)" = "{x$K}",
-        "Surveys (J)" = "{paste(x$J_i, collapse = ', ')}"
+        "Surveys (J)" = "{paste(x$J_k, collapse = ', ')}"
       )
     } else {
       c("Surveys (J)" = "{x$J}")
@@ -698,7 +712,12 @@ make_deployments <- function(
         "{.arg season} has one level. Proceeding with single season model."
       )
     } else {
-      check_deployment_times(deployments)
+      check_deployment_times(
+        deployments,
+        {{ locationID }},
+        {{ deploymentStart }},
+        {{ deploymentEnd }}
+      )
     }
   }
 
@@ -899,7 +918,8 @@ make_coordinates <- function(
     )
     utm_crs <- attr(deployments, "utm_crs")
   } else {
-    XY <- matrix(0, I, 2, dimnames = list(site_lvl, c("X", "Y")))
+    site_lvl <- dplyr::pull(deployments, {{ locationID }}) |> levels()
+    XY <- matrix(0, length(site_lvl), 2, dimnames = list(site_lvl, c("X", "Y")))
     utm_crs <- NA_character_
   }
   attr(XY, "utm_crs") <- utm_crs
