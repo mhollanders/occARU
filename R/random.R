@@ -144,7 +144,8 @@ make_random <- function(random, K) {
     ~ list(
       random = ifelse(identical(., "mvn"), 1L, 0L),
       kernel = 0L,
-      species_length_scales = 0L
+      species_length_scales = 0L,
+      period = 0L
     )
   )
 }
