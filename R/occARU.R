@@ -320,6 +320,7 @@ occARU <- function(
       refresh = 0,
       num_paths = chains,
       num_threads = chains,
+      max_lbfgs_iters = 200,
       sig_figs = 14,
       psis_resample = FALSE
     )

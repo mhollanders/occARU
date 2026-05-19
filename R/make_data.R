@@ -517,7 +517,6 @@ make_data <- function(
         K = K,
         tau = tau / 52,
         J_k = J_k,
-        S = S,
         Delta = Delta[,, 1:K],
         region = as.integer(deployments$.region),
         XY = XY,
