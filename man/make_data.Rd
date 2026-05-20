@@ -76,9 +76,9 @@ If the column is not present in \code{deployments}, all observations are treated
 as a single region. Default: \code{region}.}
 
 \item{season}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column
-specifying season. The column must be a factor to ensure correct ordering.
-If the column is not present in \code{deployments}, all observations are treated
-as a single season. Default: \code{season}.}
+specifying season in \code{deployments}. The column must be a factor to ensure
+correct ordering. If the column is not present, a single season is assumed.
+Default: \code{season}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Column name for observation timestamps in \code{observations}. Default:
@@ -163,15 +163,15 @@ arguments which are added by \code{\link[=occARU]{occARU()}}. The list contains:
 \describe{
 \item{\code{I}}{Number of sites (ARUs).}
 \item{\code{R}}{Number of regions (groups of sites).}
-\item{\code{J}}{Number of survey periods.}
-\item{\code{K}}{Number of seasons (if multiseason).}
+\item{\code{J}}{Number of survey periods (maximum).}
+\item{\code{K}}{Number of seasons.}
+\item{\code{S}}{Number of species.}
 \item{\code{tau}}{Interval length in years between end of previous deploymment
 and start of current deployment (if multiseason).}
 \item{\code{dyn}}{Indicator for dynamic occupancy, when at least one site was
 deployed over multiple seasons.}
-\item{\code{S}}{Number of species.}
-\item{\code{Delta}}{\verb{[I, J(, K)]} array of recording effort (0-1).}
-\item{\code{y}}{\verb{[I, J(, K), S]} array of detection counts.}
+\item{\code{Delta}}{\verb{[K, J, I]} array of recording effort (0-1).}
+\item{\code{y}}{\verb{[K, I, J, S]} array of detection counts.}
 \item{\code{XY}}{\verb{[I, 2]} matrix of UTM coordinates in km, or zeros if
 coordinates not supplied.}
 \item{\code{P}}{Integer vector of length 3: number of continuous predictors
@@ -180,31 +180,31 @@ for occupancy, and site and survey detection.}
 predictors for each component.}
 \item{\code{P_ord}}{Integer vector of length 3: number of ordinal predictors
 for each component.}
-\item{\code{X1}}{\verb{[I(, K), P[1]]} occupancy continuous design array.}
-\item{\code{X_cat1}}{\verb{[I(, K), P_cat[1]]} occupancy categorical integer
+\item{\code{X1}}{\verb{[K, I, P[1]]} occupancy continuous design array.}
+\item{\code{X_cat1}}{\verb{[K, I, P_cat[1]]} occupancy categorical integer
 array.}
-\item{\code{X_ord1}}{\verb{[I(, K), P_ord[1]]} occupancy ordinal integer array.}
-\item{\code{X2}}{\verb{[I(, K), P[2]]} site-level detection continuous design
+\item{\code{X_ord1}}{\verb{[K, I, P_ord[1]]} occupancy ordinal integer array.}
+\item{\code{X2}}{\verb{[K, I, P[2]]} site-level detection continuous design
 array.}
-\item{\code{X_cat2}}{\verb{[I(, K), P_cat[2]]} site-level detection categorical
+\item{\code{X_cat2}}{\verb{[K, I, P_cat[2]]} site-level detection categorical
 integer array.}
-\item{\code{X_ord2}}{\verb{[I(, K), P_ord[2]]} site-level detection ordinal integer
+\item{\code{X_ord2}}{\verb{[K, I, P_ord[2]]} site-level detection ordinal integer
 array.}
-\item{\code{X3}}{\verb{[I(, K), J, P[3]]} site-by-survey level detection continuous
+\item{\code{X3}}{\verb{[K, I, J, P[3]]} site-by-survey level detection continuous
 array.}
-\item{\code{X_cat3}}{\verb{[I(, K), J, P_cat[3]]} site-by-survey categorical
+\item{\code{X_cat3}}{\verb{[K, I, J, P_cat[3]]} site-by-survey categorical
 integer array.}
-\item{\code{X_ord3}}{\verb{[I(, K), J, P_ord[3]]} site-by-survey survey ordinal
+\item{\code{X_ord3}}{\verb{[K, I, J, P_ord[3]]} site-by-survey survey ordinal
 integer array.}
 }
 The object also carries the following attributes, accessible via
 \code{\link[=attr]{attr()}}:
 \describe{
 \item{\code{sites}}{Character vector of site identifiers.}
+\item{\code{regions}}{Character vector of region identifiers.}
 \item{\code{surveys}}{tibble of start dates and indices for each survey
 period per season.}
 \item{\code{seasons}}{Character vector of season identifiers.}
-\item{\code{regions}}{Character vector of region identifiers.}
 \item{\code{species}}{Character vector species names.}
 \item{\code{utm_crs}}{Character. PROJ string of the UTM coordinate reference
 system used to transform site coordinates, or \code{NULL} if no coordinates
@@ -214,9 +214,9 @@ standardise continuous predictors, or \code{NULL} if
 \code{scale_predictors = FALSE}.}
 \item{\code{levels}}{Named list of category levels for categorical and ordinal
 predictors.}
+\item{\code{reference_dates}}{First deploymentStart per season.}
 \item{\code{survey_length}}{}
 \item{\code{thin_minutes}}{}
-\item{\code{reference_dates}}{}
 \item{\code{day_start}}{}
 }
 }
@@ -229,6 +229,5 @@ to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
 \code{\link[=occARU]{occARU()}}, \code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
-The model is described in detail in
-\code{vignette("model", package = "occARU")}.
+The model is described in detail in \code{vignette("model")}.
 }

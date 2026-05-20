@@ -26,11 +26,11 @@
 #' @param species `character`. Vector of species to plot. If `NULL` (default),
 #'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
 #' @param unconditional `logical`. If `TRUE`, plot the unconditional regression
-#'   coefficients, e.g., \eqn{\boldsymbol{\beta} + \boldsymbol{X^+_2}
-#'   \boldsymbol{\iota}}, which attribute variance shared between the fixed
-#'   effects and random site or survey effects back to the covariates. If
-#'   `FALSE` (default), plot the conditional coefficients
-#'   \eqn{\boldsymbol{\beta}}.
+#'   coefficients, e.g., \eqn{\boldsymbol{\beta} +
+#'   (\boldsymbol{X}^\prime \boldsymbol{X})^{-1} \boldsymbol{X}^\prime
+#'   \boldsymbol{\iota}}, which attribute variance shared between the fixed and
+#'   random effects back to the covariates. If `FALSE` (default), plot the
+#'   conditional coefficients \eqn{\boldsymbol{\beta}}.
 #' @param ordinal_categories `logical`. If `FALSE` (default), plots coefficients
 #'   associated with maximum category (full effect). If `TRUE`, plots realised
 #'   coefficient associated with each ordered category, where the first
@@ -884,7 +884,7 @@ plot_partitions <- function(
           sapply(\(x) {
             if (!is.null(x)) {
               paste0(
-                "survey:",
+                "survey: ",
                 rep(x, ifelse(MS, 2, 1)),
                 rep(suffix, each = length(x))
               )
@@ -1073,12 +1073,12 @@ plot_realised <- function(
 
   if (MS && K > 1) {
     if (by_region) {
-      p + facet_grid(region ~ species)
+      p + ggplot2::facet_grid(region ~ species)
     } else {
-      p + facet_wrap(~species)
+      p + ggplot2::facet_wrap(~species)
     }
   } else if (by_region) {
-    p + facet_wrap(~region)
+    p + ggplot2::facet_wrap(~region)
   } else {
     p
   }
@@ -1727,8 +1727,7 @@ plot_surveys <- function(
     ) |>
     dplyr::left_join(
       survey_lvl,
-      ,
-      by = join_by(k == .season, j == .survey_idx)
+      by = dplyr::join_by(k == .season, j == .survey_idx)
     ) |>
     dplyr::rename(season = k, species = s, survey = .survey) |>
     dplyr::select(-j) |>

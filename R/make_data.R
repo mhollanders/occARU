@@ -40,9 +40,9 @@
 #'   If the column is not present in `deployments`, all observations are treated
 #'   as a single region. Default: `region`.
 #' @param season <[`data-masking`][rlang::args_data_masking]> Optional column
-#'   specifying season. The column must be a factor to ensure correct ordering.
-#'   If the column is not present in `deployments`, all observations are treated
-#'   as a single season. Default: `season`.
+#'   specifying season in `deployments`. The column must be a factor to ensure
+#'   correct ordering. If the column is not present, a single season is assumed.
+#'   Default: `season`.
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
 #'   Column name for observation timestamps in `observations`. Default:
 #'   `eventStart`.
@@ -111,15 +111,15 @@
 #'   \describe{
 #'     \item{`I`}{Number of sites (ARUs).}
 #'     \item{`R`}{Number of regions (groups of sites).}
-#'     \item{`J`}{Number of survey periods.}
-#'     \item{`K`}{Number of seasons (if multiseason).}
+#'     \item{`J`}{Number of survey periods (maximum).}
+#'     \item{`K`}{Number of seasons.}
+#'     \item{`S`}{Number of species.}
 #'     \item{`tau`}{Interval length in years between end of previous deploymment
 #'       and start of current deployment (if multiseason).}
 #'     \item{`dyn`}{Indicator for dynamic occupancy, when at least one site was
 #'       deployed over multiple seasons.}
-#'     \item{`S`}{Number of species.}
-#'     \item{`Delta`}{`[I, J(, K)]` array of recording effort (0-1).}
-#'     \item{`y`}{`[I, J(, K), S]` array of detection counts.}
+#'     \item{`Delta`}{`[K, J, I]` array of recording effort (0-1).}
+#'     \item{`y`}{`[K, I, J, S]` array of detection counts.}
 #'     \item{`XY`}{`[I, 2]` matrix of UTM coordinates in km, or zeros if
 #'       coordinates not supplied.}
 #'     \item{`P`}{Integer vector of length 3: number of continuous predictors
@@ -128,31 +128,31 @@
 #'       predictors for each component.}
 #'     \item{`P_ord`}{Integer vector of length 3: number of ordinal predictors
 #'       for each component.}
-#'     \item{`X1`}{`[I(, K), P[1]]` occupancy continuous design array.}
-#'     \item{`X_cat1`}{`[I(, K), P_cat[1]]` occupancy categorical integer
+#'     \item{`X1`}{`[K, I, P[1]]` occupancy continuous design array.}
+#'     \item{`X_cat1`}{`[K, I, P_cat[1]]` occupancy categorical integer
 #'       array.}
-#'     \item{`X_ord1`}{`[I(, K), P_ord[1]]` occupancy ordinal integer array.}
-#'     \item{`X2`}{`[I(, K), P[2]]` site-level detection continuous design
+#'     \item{`X_ord1`}{`[K, I, P_ord[1]]` occupancy ordinal integer array.}
+#'     \item{`X2`}{`[K, I, P[2]]` site-level detection continuous design
 #'       array.}
-#'     \item{`X_cat2`}{`[I(, K), P_cat[2]]` site-level detection categorical
+#'     \item{`X_cat2`}{`[K, I, P_cat[2]]` site-level detection categorical
 #'       integer array.}
-#'     \item{`X_ord2`}{`[I(, K), P_ord[2]]` site-level detection ordinal integer
+#'     \item{`X_ord2`}{`[K, I, P_ord[2]]` site-level detection ordinal integer
 #'       array.}
-#'     \item{`X3`}{`[I(, K), J, P[3]]` site-by-survey level detection continuous
+#'     \item{`X3`}{`[K, I, J, P[3]]` site-by-survey level detection continuous
 #'       array.}
-#'     \item{`X_cat3`}{`[I(, K), J, P_cat[3]]` site-by-survey categorical
+#'     \item{`X_cat3`}{`[K, I, J, P_cat[3]]` site-by-survey categorical
 #'       integer array.}
-#'     \item{`X_ord3`}{`[I(, K), J, P_ord[3]]` site-by-survey survey ordinal
+#'     \item{`X_ord3`}{`[K, I, J, P_ord[3]]` site-by-survey survey ordinal
 #'       integer array.}
 #'   }
 #'   The object also carries the following attributes, accessible via
 #'   [attr()]:
 #'   \describe{
 #'     \item{`sites`}{Character vector of site identifiers.}
+#'     \item{`regions`}{Character vector of region identifiers.}
 #'     \item{`surveys`}{tibble of start dates and indices for each survey
 #'       period per season.}
 #'     \item{`seasons`}{Character vector of season identifiers.}
-#'     \item{`regions`}{Character vector of region identifiers.}
 #'     \item{`species`}{Character vector species names.}
 #'     \item{`utm_crs`}{Character. PROJ string of the UTM coordinate reference
 #'       system used to transform site coordinates, or `NULL` if no coordinates
@@ -162,16 +162,15 @@
 #'       `scale_predictors = FALSE`.}
 #'     \item{`levels`}{Named list of category levels for categorical and ordinal
 #'       predictors.}
+#'     \item{`reference_dates`}{First deploymentStart per season.}
 #'     \item{`survey_length`}{}
 #'     \item{`thin_minutes`}{}
-#'     \item{`reference_dates`}{}
 #'     \item{`day_start`}{}
 #'   }
 #' @importFrom rlang :=
 #'
 #' @seealso [occARU()], [thin_observations()], [find_failures()]
-#'   The model is described in detail in
-#'   `vignette("model", package = "occARU")`.
+#'   The model is described in detail in `vignette("model")`.
 #' @export
 make_data <- function(
   deployments,
@@ -233,7 +232,7 @@ make_data <- function(
       season = as.numeric(difftime(
         reference,
         dplyr::lag(reference, default = reference[1]),
-        unit = "weeks"
+        units = "weeks"
       )) /
         52
     ) |>
@@ -374,7 +373,11 @@ make_data <- function(
       ),
     by = dplyr::join_by(
       {{ locationID }},
-      between({{ eventStart }}, {{ deploymentStart }}, {{ deploymentEnd }})
+      dplyr::between(
+        {{ eventStart }},
+        {{ deploymentStart }},
+        {{ deploymentEnd }}
+      )
     )
   )
 
@@ -578,9 +581,9 @@ make_data <- function(
     ),
     class = "occARU_data",
     sites = site_lvl,
+    regions = region_lvl,
     surveys = surveys,
     seasons = season_lvl,
-    regions = region_lvl,
     species = species_lvl,
     utm_crs = attr(XY, "utm_crs"),
     scaling = if (scale_predictors) {

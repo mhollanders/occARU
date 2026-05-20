@@ -9,7 +9,7 @@
 #' @param prior An `occARU_priors` object produced by [set_priors()]. If
 #'   omitted, default priors are used.
 #' @param stan_file `character`. Path to a custom Stan file. If `NULL`
-#'   (default), uses the built-in occARU models. Intended for advanced users who
+#'   (default), uses the built-in occARU model. Intended for advanced users who
 #'   have modified the Stan programs; note that custom models will likely
 #'   require corresponding changes to the output of [make_data()].
 #' @param random A named `list` specifying random effect structures for site and
@@ -20,7 +20,7 @@
 #'     and survey effects. Also the default for season effects on both detection
 #'     and occupancy and occupancy site effects in dynamic models.
 #'   * `"mvn"`, which fits an unstructured (multispecies) normal.
-#'   * `"none"`,which omits random effects entirely.
+#'   * `"none"`, which omits random effects entirely.
 #' @param overdispersion `character`. Overdispersion model for the observation
 #'   process. One of `"none"` (Poisson, default), `"nb"` (negative binomial),
 #'   or `"olre"` (multispecies observation-level random effects).
@@ -28,8 +28,8 @@
 #'   One of `"dirichlet"` (default) or `"logistic-normal"`.
 #' @param ppc `character`. Posterior predictive checks to compute. One of `"Q"`
 #'   (default), `"y"`, `"both"`, or `"none"`. `"y"` returns the full
-#'   `[I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
-#'   counts `[I, S]` (`Qrep`). For large datasets, `"Q"` or `"none"` can
+#'   `[K, I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
+#'   counts `[K, I, S]` (`Qrep`). For large datasets, `"Q"` or `"none"` can
 #'   substantially reduce memory usage and sampling time.
 #' @param latent `logical`. If `TRUE` (default), latent occupancy states `z`
 #'   are recovered for each species using the forward-backward sampling
@@ -57,16 +57,16 @@
 #'   }
 #' @param pathfinder_args Named list of additional arguments passed to
 #'   [cmdstanr::CmdStanModel]`$pathfinder()` when `init = "pathfinder"`.
-#'   Overrides defaults (`refresh = 0`, `sig_figs = 14`, `init = 0.1`,
-#'   `num_paths = chains`, `num_threads = chains`, `psis_resample = FALSE`).
-#'   Default: `list()`.
+#'   Overrides occARU-specific defaults (`refresh = 0`, `init = 0.1`,
+#'   `sig_figs = 14`, `num_threads = chains`, `num_paths = chains`,
+#'   `max_lbfgs_iters = 200`, `psis_resample = FALSE`).
 #' @param threads Positive integer. Number of threads for within-chain
 #'   parallelisation via `reduce_sum()`. Default: `1` (no parallelisation).
 #'   The total number of threads used is `threads * chains`, so for optimal
 #'   performance set `threads = floor(available_cores / chains)`. For example,
 #'   8 cores with 4 chains gives `threads = 2`.
 #' @param grainsize Positive integer. Chunk size for within-chain
-#'   parallelisation via `reduce_sum()` when `threads > 1`. For sites nested in
+#'   parallelisation via `reduce_sum()` when `threads > 1`. For multiple
 #'   regions, chunks are number of regions; otherwise it is number of sites.
 #'   Default: `1`, which lets Stan automatically determine the optimal chunk
 #'   size. Increase if you have many sites or regions and want to reduce
@@ -328,10 +328,10 @@ occARU <- function(
       data = stan_data,
       refresh = 0,
       init = 0.1,
+      sig_figs = 14,
       num_threads = chains,
       num_paths = chains,
       max_lbfgs_iters = 200,
-      sig_figs = 14,
       psis_resample = FALSE
     )
     init <- rlang::exec(

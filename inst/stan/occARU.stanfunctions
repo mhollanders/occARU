@@ -593,7 +593,7 @@ real partial_regions_occARU_lpmf(
     log_lik += std_normal_lpdf(iota_bar_z[1, sites]);
     matrix[MS * I, S] iota_s;
     if (MS) {
-      iota_s = iota_s_z[1] * iota_S_U;
+      iota_s = iota_s_z[1, sites] * iota_S_U;
       log_lik += std_normal_lpdf(to_vector(iota_s_z[1, sites]));
     }
     if (kernel[1]) {
@@ -624,7 +624,7 @@ real partial_regions_occARU_lpmf(
     log_lik += std_normal_lpdf(psi_iota_bar_z[1, sites]);
     matrix[MS * I, S] psi_iota_s;
     if (MS) {
-      psi_iota_s = psi_iota_s_z[1] * psi_iota_S_U;
+      psi_iota_s = psi_iota_s_z[1, sites] * psi_iota_S_U;
       log_lik += std_normal_lpdf(to_vector(psi_iota_s_z[1, sites]));
     }
     if (kernel[4]) {

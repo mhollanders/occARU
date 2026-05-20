@@ -6,15 +6,16 @@
 [![R-CMD-check](https://github.com/mhollanders/occARU/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mhollanders/occARU/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-occARU fits Bayesian (multispecies) occupancy models with count observation 
-models to autonomous recording unit (ARU) data like those derived from camera 
-traps and passive acoustic monitoring. The approach differs from standard 
-occupancy models in that the focus is on quantifying detection rates, rather 
-than treating detection as a nuisance parameter to correct for. The 
+occARU fits Bayesian multispecies occupancy models with count 
+observation models to autonomous recording unit (ARU) data like those derived 
+from camera traps and passive acoustic monitoring. The approach differs from 
+standard occupancy models in that the focus is on quantifying detection rates, 
+rather than treating detection as a nuisance parameter to correct for. The 
 [occARU model](https://mhollanders.github.io/occARU/articles/model.html) 
 implements hierarchical species-level random effects with spatial and temporal 
-Gaussian processes, variance decomposition via  global-local shrinkage priors, 
-and is built on [Stan](https://mc-stan.org/) via 
+Gaussian processes, variance decomposition via global-local shrinkage priors, 
+automatically implements single season or dynamic models structures, and is 
+built on [Stan](https://mc-stan.org/) via 
 [cmdstanr](https://mc-stan.org/cmdstanr/).
 
 ## Why occARU?
@@ -91,6 +92,7 @@ priors <- set_priors(
 #> ── occARU priors ───────────────────────────────────────────────────────────
 #> psi_bar: Beta(1, 2)
 #> mu_bar: Gamma(1, 1)
+#> q_bar: Gamma(1, 3)
 #> psi_W: Student-t+(3, 0, 1)
 #> mu_W: Student-t+(3, 0, 1)
 #> psi_theta: Gamma(1, 1)
@@ -123,9 +125,9 @@ plot_surveys(fit, species = c("Species 1", "Species 2"))
 ![](man/figures/surveys.png)
 
 Key design choices in occARU are multispecies random site and survey effects
-implemented as hierarchical Gaussian processes. Interspecific correlations are 
-estimated for responses to predictors and random effects to explore species 
-interactions.
+implemented as hierarchical multivariate Gaussian processes. Interspecific 
+correlations are estimated for responses to predictors and random effects to 
+explore species interactions.
 
 ```r
 # variance partitions

@@ -28,7 +28,7 @@ occARU(
 omitted, default priors are used.}
 
 \item{stan_file}{\code{character}. Path to a custom Stan file. If \code{NULL}
-(default), uses the built-in occARU models. Intended for advanced users who
+(default), uses the built-in occARU model. Intended for advanced users who
 have modified the Stan programs; note that custom models will likely
 require corresponding changes to the output of \code{\link[=make_data]{make_data()}}.}
 
@@ -41,7 +41,7 @@ season effects on detection (\code{season}) and site (\code{site_occ}) and seaso
 and survey effects. Also the default for season effects on both detection
 and occupancy and occupancy site effects in dynamic models.
 \item \code{"mvn"}, which fits an unstructured (multispecies) normal.
-\item \code{"none"},which omits random effects entirely.
+\item \code{"none"}, which omits random effects entirely.
 }}
 
 \item{overdispersion}{\code{character}. Overdispersion model for the observation
@@ -53,8 +53,8 @@ One of \code{"dirichlet"} (default) or \code{"logistic-normal"}.}
 
 \item{ppc}{\code{character}. Posterior predictive checks to compute. One of \code{"Q"}
 (default), \code{"y"}, \code{"both"}, or \code{"none"}. \code{"y"} returns the full
-\verb{[I, J, S]} prediction array (\code{yrep}); \code{"Q"} returns only aggregated
-counts \verb{[I, S]} (\code{Qrep}). For large datasets, \code{"Q"} or \code{"none"} can
+\verb{[K, I, J, S]} prediction array (\code{yrep}); \code{"Q"} returns only aggregated
+counts \verb{[K, I, S]} (\code{Qrep}). For large datasets, \code{"Q"} or \code{"none"} can
 substantially reduce memory usage and sampling time.}
 
 \item{latent}{\code{logical}. If \code{TRUE} (default), latent occupancy states \code{z}
@@ -85,9 +85,9 @@ convergence.}
 
 \item{pathfinder_args}{Named list of additional arguments passed to
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()} when \code{init = "pathfinder"}.
-Overrides defaults (\code{refresh = 0}, \code{sig_figs = 14}, \code{init = 0.1},
-\code{num_paths = chains}, \code{num_threads = chains}, \code{psis_resample = FALSE}).
-Default: \code{list()}.}
+Overrides occARU-specific defaults (\code{refresh = 0}, \code{init = 0.1},
+\code{sig_figs = 14}, \code{num_threads = chains}, \code{num_paths = chains},
+\code{max_lbfgs_iters = 200}, \code{psis_resample = FALSE}).}
 
 \item{threads}{Positive integer. Number of threads for within-chain
 parallelisation via \code{reduce_sum()}. Default: \code{1} (no parallelisation).
@@ -96,7 +96,7 @@ performance set \code{threads = floor(available_cores / chains)}. For example,
 8 cores with 4 chains gives \code{threads = 2}.}
 
 \item{grainsize}{Positive integer. Chunk size for within-chain
-parallelisation via \code{reduce_sum()} when \code{threads > 1}. For sites nested in
+parallelisation via \code{reduce_sum()} when \code{threads > 1}. For multiple
 regions, chunks are number of regions; otherwise it is number of sites.
 Default: \code{1}, which lets Stan automatically determine the optimal chunk
 size. Increase if you have many sites or regions and want to reduce

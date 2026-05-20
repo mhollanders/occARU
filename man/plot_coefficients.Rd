@@ -40,11 +40,11 @@ Only used if \code{level} is \code{"species"}.}
 all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
 \item{unconditional}{\code{logical}. If \code{TRUE}, plot the unconditional regression
-coefficients, e.g., \eqn{\boldsymbol{\beta} + \boldsymbol{X^+_2}
-\boldsymbol{\iota}}, which attribute variance shared between the fixed
-effects and random site or survey effects back to the covariates. If
-\code{FALSE} (default), plot the conditional coefficients
-\eqn{\boldsymbol{\beta}}.}
+coefficients, e.g., \eqn{\boldsymbol{\beta} +
+(\boldsymbol{X}^\prime \boldsymbol{X})^{-1} \boldsymbol{X}^\prime
+\boldsymbol{\iota}}, which attribute variance shared between the fixed and
+random effects back to the covariates. If \code{FALSE} (default), plot the
+conditional coefficients \eqn{\boldsymbol{\beta}}.}
 
 \item{ordinal_categories}{\code{logical}. If \code{FALSE} (default), plots coefficients
 associated with maximum category (full effect). If \code{TRUE}, plots realised

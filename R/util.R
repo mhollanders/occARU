@@ -133,12 +133,12 @@ check_deployment_times <- function(
 
   last_first <- deployments |>
     dplyr::summarise(
-      last = max({{ deploymentEnd }}),
-      first = min({{ deploymentStart }}),
+      .last = max({{ deploymentEnd }}),
+      .first = min({{ deploymentStart }}),
       .by = c({{ locationID }}, {{ .season }})
     ) |>
     dplyr::mutate(
-      prev_last = dplyr::lag(last),
+      prev_last = dplyr::lag(.last),
       .by = {{ locationID }}
     )
 

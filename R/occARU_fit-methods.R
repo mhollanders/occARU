@@ -92,7 +92,9 @@ pp_check.occARU_fit <- function(
   ) |>
     dplyr::select(-dplyr::any_of(c("k", "i", "j", "s")))
   y <- draws$y
-  yrep <- as_draws_matrix(if (level == "Q") draws$Qrep else draws$yrep)
+  yrep <- posterior::as_draws_matrix(
+    if (level == "Q") draws$Qrep else draws$yrep
+  )
   group <- draws[[group]]
 
   # subsample

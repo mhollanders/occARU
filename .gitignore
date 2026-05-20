@@ -15,6 +15,5 @@ inst/stan/*
 !inst/stan/kernels.stanfunctions
 !inst/stan/predict.stanfunctions
 docs
-R/make_data2.R
 R/simulate_occARU.R
 
