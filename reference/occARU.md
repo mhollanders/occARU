@@ -15,7 +15,6 @@ occARU(
   prior = set_priors(verbose = FALSE),
   stan_file = NULL,
   random = list(site = gp(), survey = gp()),
-  project = list(site = TRUE, survey = TRUE),
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   ppc = c("Q", "y", "both", "none"),
@@ -45,7 +44,7 @@ occARU(
 - stan_file:
 
   `character`. Path to a custom Stan file. If `NULL` (default), uses the
-  built-in occARU models. Intended for advanced users who have modified
+  built-in occARU model. Intended for advanced users who have modified
   the Stan programs; note that custom models will likely require
   corresponding changes to the output of
   [`make_data()`](https://mhollanders.github.io/occARU/reference/make_data.md).
@@ -57,25 +56,15 @@ occARU(
   season effects on detection (`season`) and site (`site_occ`) and
   season (`season_occ`) effects on occupancy. Must be one of:
 
-  - [`gp()`](https://mhollanders.github.io/occARU/reference/gp.md)
-    (default for site, survey, and season effects on detection), which
-    fits a (multispecies) Gaussian process. See
-    [`gp()`](https://mhollanders.github.io/occARU/reference/gp.md) for
-    details.
+  - [`gp()`](https://mhollanders.github.io/occARU/reference/gp.md),
+    which fits a (multispecies) Gaussian process. Default for site and
+    survey effects. Also the default for season effects on both
+    detection and occupancy and occupancy site effects in dynamic
+    models.
 
   - `"mvn"`, which fits an unstructured (multispecies) normal.
 
-  - `"none"` (default for site and season effects on occupancy), which
-    omits random effects entirely.
-
-- project:
-
-  A named `list` of logicals specifying whether to project random
-  effects when predictors are included. Entries must be one of `site` or
-  `survey`. If `TRUE` (default for both), orthogonally projects random
-  effects. For survey effects, the design matrices are averaged across
-  sites. For site effects in multiseason models, the design matrices are
-  averaged across seasons.
+  - `"none"`, which omits random effects entirely.
 
 - overdispersion:
 
@@ -92,9 +81,9 @@ occARU(
 
   `character`. Posterior predictive checks to compute. One of `"Q"`
   (default), `"y"`, `"both"`, or `"none"`. `"y"` returns the full
-  `[I, J, S]` prediction array (`yrep`); `"Q"` returns only aggregated
-  counts `[I, S]` (`Qrep`). For large datasets, `"Q"` or `"none"` can
-  substantially reduce memory usage and sampling time.
+  `[K, I, J, S]` prediction array (`yrep`); `"Q"` returns only
+  aggregated counts `[K, I, S]` (`Qrep`). For large datasets, `"Q"` or
+  `"none"` can substantially reduce memory usage and sampling time.
 
 - latent:
 
@@ -143,10 +132,10 @@ occARU(
 
   Named list of additional arguments passed to
   [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$pathfinder()`
-  when `init = "pathfinder"`. Overrides defaults (`refresh = 0`,
-  `sig_figs = 14`, `init = 0.1`, `num_paths = chains`,
-  `num_threads = chains`). Default:
-  [`list()`](https://rdrr.io/r/base/list.html).
+  when `init = "pathfinder"`. Overrides occARU-specific defaults
+  (`refresh = 0`, `init = 0.1`, `sig_figs = 14`, `num_threads = chains`,
+  `num_paths = chains`, `max_lbfgs_iters = 200`,
+  `psis_resample = FALSE`).
 
 - threads:
 
@@ -159,8 +148,8 @@ occARU(
 - grainsize:
 
   Positive integer. Chunk size for within-chain parallelisation via
-  `reduce_sum()` when `threads > 1`. For sites nested in regions, chunks
-  are number of regions; otherwise it is number of sites. Default: `1`,
+  `reduce_sum()` when `threads > 1`. For multiple regions, chunks are
+  number of regions; otherwise it is number of sites. Default: `1`,
   which lets Stan automatically determine the optimal chunk size.
   Increase if you have many sites or regions and want to reduce
   parallelisation overhead. See the [Stan User's

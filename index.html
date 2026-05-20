@@ -56,7 +56,7 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>occARU fits Bayesian (multispecies) occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. The approach differs from standard occupancy models in that the focus is on quantifying detection rates, rather than treating detection as a nuisance parameter to correct for. The <a href="https://mhollanders.github.io/occARU/articles/model.html">occARU model</a> implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
+<p>occARU fits Bayesian multispecies occupancy models with count observation models to autonomous recording unit (ARU) data like those derived from camera traps and passive acoustic monitoring. The approach differs from standard occupancy models in that the focus is on quantifying detection rates, rather than treating detection as a nuisance parameter to correct for. The <a href="https://mhollanders.github.io/occARU/articles/model.html">occARU model</a> implements hierarchical species-level random effects with spatial and temporal Gaussian processes, variance decomposition via global-local shrinkage priors, automatically implements single season or dynamic models structures, and is built on <a href="https://mc-stan.org/" class="external-link">Stan</a> via <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>.</p>
 <div class="section level2">
 <h2 id="why-occaru">Why occARU?<a class="anchor" aria-label="anchor" href="#why-occaru"></a>
 </h2>
@@ -95,21 +95,22 @@
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; ── occARU data ─────────────────────────────────────────────────────</span></span>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; Sites (I): 30</span></span>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; Surveys (J): 114</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; Species (S): 6</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; Detections: 11463</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; Site coordinates: yes</span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt; Deployment span: 2019-11-06 to 2024-03-06</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt; Survey length: 14 days</span></span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co">#&gt; Thinning: 30 minutes</span></span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co">#&gt; Occupancy site predictors: 0</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; Detection site predictors: 5</span></span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co">#&gt;   Categorical: 1</span></span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co">#&gt; Survey predictors: 4</span></span>
-<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
-<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co">#&gt;   Categorical: 0</span></span>
-<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span></code></pre></div>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; Deployment span: 2019-11-06 to 2024-03-06</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; Regions (R): 3</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co">#&gt; Species (S): 6</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="co">#&gt; Detections: 11463</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="co">#&gt; Site coordinates: yes</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="co">#&gt; Survey length: 14 days</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="co">#&gt; Thinning: 30 minutes</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="co">#&gt; Occupancy predictors: 0</span></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co">#&gt; Detection site predictors: 5</span></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="co">#&gt;   Categorical: 1</span></span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a><span class="co">#&gt; Survey predictors: 4</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a><span class="co">#&gt;   Continuous: 3</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a><span class="co">#&gt;   Categorical: 0</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a><span class="co">#&gt;   Ordinal: 1</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="id_2-fit-a-model">2. Fit a model<a class="anchor" aria-label="anchor" href="#id_2-fit-a-model"></a>
@@ -123,6 +124,7 @@
 <span><span class="co">#&gt; ── occARU priors ───────────────────────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; psi_bar: Beta(1, 2)</span></span>
 <span><span class="co">#&gt; mu_bar: Gamma(1, 1)</span></span>
+<span><span class="co">#&gt; q_bar: Gamma(1, 3)</span></span>
 <span><span class="co">#&gt; psi_W: Student-t+(3, 0, 1)</span></span>
 <span><span class="co">#&gt; mu_W: Student-t+(3, 0, 1)</span></span>
 <span><span class="co">#&gt; psi_theta: Gamma(1, 1)</span></span>
@@ -143,7 +145,7 @@
 <code class="sourceCode R"><span><span class="co"># temporal detection trends</span></span>
 <span><span class="fu"><a href="reference/plot_surveys.html">plot_surveys</a></span><span class="op">(</span><span class="va">fit</span>, species <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Species 1"</span>, <span class="st">"Species 2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/surveys.png"></p>
-<p>Key design choices in occARU are hierarchical multispecies spatial and temporal Gaussian processes, implemented with orthogonal projection to retain fixed effects. Interspecific correlations are estimated for responses to predictors and random effects to explore species interactions.</p>
+<p>Key design choices in occARU are multispecies random site and survey effects implemented as hierarchical multivariate Gaussian processes. Interspecific correlations are estimated for responses to predictors and random effects to explore species interactions.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># variance partitions</span></span>
 <span><span class="fu"><a href="reference/plot_partitions.html">plot_partitions</a></span><span class="op">(</span><span class="va">fit</span>, scales <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>

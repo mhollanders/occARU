@@ -52,7 +52,7 @@ occupancy or detection submodels.</p>
 <span>  level <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"species"</span>, <span class="st">"mean"</span><span class="op">)</span>,</span>
 <span>  facet_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"species"</span>, <span class="st">"predictor"</span><span class="op">)</span>,</span>
 <span>  species <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  restricted <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  unconditional <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ordinal_categories <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -97,17 +97,13 @@ Only used if <code>level</code> is <code>"species"</code>.</p></dd>
 all species are plotted. Must be one of <code>attr(occARU_data, "species")</code>.</p></dd>
 
 
-<dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
-<dd><p><code>logical</code>. If <code>TRUE</code> (default), plots coefficients with
-orthogonal projection of the detection random site or survey effects, e.g.,
-\(\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})\), where
-\(\boldsymbol{I} - \boldsymbol{P_{X_2}}\) is the orthogonal complement of
-the column space of the design matrix. If <code>FALSE</code>, recovers coefficients
-without orthogonal projection, e.g., \(\boldsymbol{\beta} -
-  \boldsymbol{X_2}^+ \boldsymbol{\iota}\), where \(\boldsymbol{X_2}^+\) is
-the pseudo-inverse of the design matrix. Only used for site predictors if
-<code>submodel = "detection"</code>, or if survey random effects were projected with
-<code>project = list(survey = TRUE)</code> in <code><a href="occARU.html">occARU()</a></code>.</p></dd>
+<dt id="arg-unconditional">unconditional<a class="anchor" aria-label="anchor" href="#arg-unconditional"></a></dt>
+<dd><p><code>logical</code>. If <code>TRUE</code>, plot the unconditional regression
+coefficients, e.g., \(\boldsymbol{\beta} +
+(\boldsymbol{X}^\prime \boldsymbol{X})^{-1} \boldsymbol{X}^\prime
+\boldsymbol{\iota}\), which attribute variance shared between the fixed and
+random effects back to the covariates. If <code>FALSE</code> (default), plot the
+conditional coefficients \(\boldsymbol{\beta}\).</p></dd>
 
 
 <dt id="arg-ordinal-categories">ordinal_categories<a class="anchor" aria-label="anchor" href="#arg-ordinal-categories"></a></dt>

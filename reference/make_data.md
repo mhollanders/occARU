@@ -110,10 +110,9 @@ make_data(
 - season:
 
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
-  Optional column specifying season. The column must be a factor to
-  ensure correct ordering. If the column is not present in
-  `deployments`, all observations are treated as a single season.
-  Default: `season`.
+  Optional column specifying season in `deployments`. The column must be
+  a factor to ensure correct ordering. If the column is not present, a
+  single season is assumed. Default: `season`.
 
 - eventStart:
 
@@ -241,11 +240,15 @@ The list contains:
 
 - `J`:
 
-  Number of survey periods.
+  Number of survey periods (maximum).
 
 - `K`:
 
-  Number of seasons (if multiseason).
+  Number of seasons.
+
+- `S`:
+
+  Number of species.
 
 - `tau`:
 
@@ -257,17 +260,13 @@ The list contains:
   Indicator for dynamic occupancy, when at least one site was deployed
   over multiple seasons.
 
-- `S`:
-
-  Number of species.
-
 - `Delta`:
 
-  `[I, J(, K)]` array of recording effort (0-1).
+  `[K, J, I]` array of recording effort (0-1).
 
 - `y`:
 
-  `[I, J(, K), S]` array of detection counts.
+  `[K, I, J, S]` array of detection counts.
 
 - `XY`:
 
@@ -291,39 +290,39 @@ The list contains:
 
 - `X1`:
 
-  `[I(, K), P[1]]` occupancy continuous design array.
+  `[K, I, P[1]]` occupancy continuous design array.
 
 - `X_cat1`:
 
-  `[I(, K), P_cat[1]]` occupancy categorical integer array.
+  `[K, I, P_cat[1]]` occupancy categorical integer array.
 
 - `X_ord1`:
 
-  `[I(, K), P_ord[1]]` occupancy ordinal integer array.
+  `[K, I, P_ord[1]]` occupancy ordinal integer array.
 
 - `X2`:
 
-  `[I(, K), P[2]]` site-level detection continuous design array.
+  `[K, I, P[2]]` site-level detection continuous design array.
 
 - `X_cat2`:
 
-  `[I(, K), P_cat[2]]` site-level detection categorical integer array.
+  `[K, I, P_cat[2]]` site-level detection categorical integer array.
 
 - `X_ord2`:
 
-  `[I(, K), P_ord[2]]` site-level detection ordinal integer array.
+  `[K, I, P_ord[2]]` site-level detection ordinal integer array.
 
 - `X3`:
 
-  `[I(, K), J, P[3]]` site-by-survey level detection continuous array.
+  `[K, I, J, P[3]]` site-by-survey level detection continuous array.
 
 - `X_cat3`:
 
-  `[I(, K), J, P_cat[3]]` site-by-survey categorical integer array.
+  `[K, I, J, P_cat[3]]` site-by-survey categorical integer array.
 
 - `X_ord3`:
 
-  `[I(, K), J, P_ord[3]]` site-by-survey survey ordinal integer array.
+  `[K, I, J, P_ord[3]]` site-by-survey survey ordinal integer array.
 
 The object also carries the following attributes, accessible via
 [`attr()`](https://rdrr.io/r/base/attr.html):
@@ -332,6 +331,10 @@ The object also carries the following attributes, accessible via
 
   Character vector of site identifiers.
 
+- `regions`:
+
+  Character vector of region identifiers.
+
 - `surveys`:
 
   tibble of start dates and indices for each survey period per season.
@@ -339,10 +342,6 @@ The object also carries the following attributes, accessible via
 - `seasons`:
 
   Character vector of season identifiers.
-
-- `regions`:
-
-  Character vector of region identifiers.
 
 - `species`:
 
@@ -362,11 +361,13 @@ The object also carries the following attributes, accessible via
 
   Named list of category levels for categorical and ordinal predictors.
 
+- `reference_dates`:
+
+  First deploymentStart per season.
+
 - `survey_length`:
 
 - `thin_minutes`:
-
-- `reference_dates`:
 
 - `day_start`:
 
@@ -376,4 +377,4 @@ The object also carries the following attributes, accessible via
 [`thin_observations()`](https://mhollanders.github.io/occARU/reference/thin_observations.md),
 [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
 The model is described in detail in
-[`vignette("model", package = "occARU")`](https://mhollanders.github.io/occARU/articles/model.md).
+[`vignette("model")`](https://mhollanders.github.io/occARU/articles/model.md).

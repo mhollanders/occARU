@@ -6,7 +6,7 @@ choice of kernel and whether to estimate species-level length-scales.
 ## Usage
 
 ``` r
-make_random(random, K)
+make_random(random, K, dyn)
 ```
 
 ## Arguments
@@ -18,3 +18,7 @@ make_random(random, K)
 - K:
 
   Number of seasons
+
+- dyn:
+
+  Indicator of dynamic occupancy

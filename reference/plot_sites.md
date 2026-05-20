@@ -14,10 +14,10 @@ plot_sites(
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ndraws = NULL,
   seed = NULL,
   ...
@@ -59,18 +59,6 @@ plot_sites(
   `logical`. If `TRUE` (default), includes predictors in the site
   effects, if included. If `FALSE`, only plots the random effects.
 
-- restricted:
-
-  `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`,
-  plots random site effects with orthogonal projection, i.e.,
-  \\(\boldsymbol{I} - \boldsymbol{P\_{X_2}}) \boldsymbol{\iota}\\, where
-  \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
-  complement of the column space of the site design matrix. If `FALSE`,
-  plots random effects without orthogonal projection, i.e.,
-  \\\boldsymbol{\iota}\\ only. Has no effect when `include_predictors`
-  is `TRUE` as the linear predictor is unaffected by orthogonal
-  projection.
-
 - species:
 
   `character`. Vector of species to plot. If `NULL` (default), all
@@ -85,6 +73,11 @@ plot_sites(
 
   `character`. Vector of regions to plot. If `NULL` (default), all
   regions are plotted. Must be one of `attr(occARU_data, "regions")`.
+
+- seasons:
+
+  `character`. Vector of seasons to plot. If `NULL` (default), all
+  seasons are plotted. Must be one of `attr(occARU_data, "seasons")`.
 
 - ndraws:
 

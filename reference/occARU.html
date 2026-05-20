@@ -55,7 +55,6 @@ single or multiseason model is required.</p>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="set_priors.html">set_priors</a></span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>  stan_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  random <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>site <span class="op">=</span> <span class="fu"><a href="gp.html">gp</a></span><span class="op">(</span><span class="op">)</span>, survey <span class="op">=</span> <span class="fu"><a href="gp.html">gp</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  project <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>site <span class="op">=</span> <span class="cn">TRUE</span>, survey <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  overdispersion <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"nb"</span>, <span class="st">"olre"</span><span class="op">)</span>,</span>
 <span>  variance_decomposition <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dirichlet"</span>, <span class="st">"logistic-normal"</span><span class="op">)</span>,</span>
 <span>  ppc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Q"</span>, <span class="st">"y"</span>, <span class="st">"both"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
@@ -84,7 +83,7 @@ omitted, default priors are used.</p></dd>
 
 <dt id="arg-stan-file">stan_file<a class="anchor" aria-label="anchor" href="#arg-stan-file"></a></dt>
 <dd><p><code>character</code>. Path to a custom Stan file. If <code>NULL</code>
-(default), uses the built-in occARU models. Intended for advanced users who
+(default), uses the built-in occARU model. Intended for advanced users who
 have modified the Stan programs; note that custom models will likely
 require corresponding changes to the output of <code><a href="make_data.html">make_data()</a></code>.</p></dd>
 
@@ -93,21 +92,12 @@ require corresponding changes to the output of <code><a href="make_data.html">ma
 <dd><p>A named <code>list</code> specifying random effect structures for site and
 survey effects on detection. For multiseason models, optionally accepts
 season effects on detection (<code>season</code>) and site (<code>site_occ</code>) and season
-(<code>season_occ</code>) effects on occupancy. Must be one of:</p><ul><li><p><code><a href="gp.html">gp()</a></code> (default for site, survey, and season effects on detection), which
-fits a (multispecies) Gaussian process. See <code><a href="gp.html">gp()</a></code> for details.</p></li>
+(<code>season_occ</code>) effects on occupancy. Must be one of:</p><ul><li><p><code><a href="gp.html">gp()</a></code>, which fits a (multispecies) Gaussian process. Default for site
+and survey effects. Also the default for season effects on both detection
+and occupancy and occupancy site effects in dynamic models.</p></li>
 <li><p><code>"mvn"</code>, which fits an unstructured (multispecies) normal.</p></li>
-<li><p><code>"none"</code> (default for site and season effects on occupancy), which omits
-random effects entirely.</p></li>
+<li><p><code>"none"</code>, which omits random effects entirely.</p></li>
 </ul></dd>
-
-
-<dt id="arg-project">project<a class="anchor" aria-label="anchor" href="#arg-project"></a></dt>
-<dd><p>A named <code>list</code> of logicals specifying whether to project
-random effects when predictors are included. Entries must be one of <code>site</code>
-or <code>survey</code>. If <code>TRUE</code> (default for both), orthogonally projects random
-effects. For survey effects, the design matrices are averaged across sites.
-For site effects in multiseason models, the design matrices are averaged
-across seasons.</p></dd>
 
 
 <dt id="arg-overdispersion">overdispersion<a class="anchor" aria-label="anchor" href="#arg-overdispersion"></a></dt>
@@ -124,8 +114,8 @@ One of <code>"dirichlet"</code> (default) or <code>"logistic-normal"</code>.</p>
 <dt id="arg-ppc">ppc<a class="anchor" aria-label="anchor" href="#arg-ppc"></a></dt>
 <dd><p><code>character</code>. Posterior predictive checks to compute. One of <code>"Q"</code>
 (default), <code>"y"</code>, <code>"both"</code>, or <code>"none"</code>. <code>"y"</code> returns the full
-<code>[I, J, S]</code> prediction array (<code>yrep</code>); <code>"Q"</code> returns only aggregated
-counts <code>[I, S]</code> (<code>Qrep</code>). For large datasets, <code>"Q"</code> or <code>"none"</code> can
+<code>[K, I, J, S]</code> prediction array (<code>yrep</code>); <code>"Q"</code> returns only aggregated
+counts <code>[K, I, S]</code> (<code>Qrep</code>). For large datasets, <code>"Q"</code> or <code>"none"</code> can
 substantially reduce memory usage and sampling time.</p></dd>
 
 
@@ -169,8 +159,9 @@ convergence.</p></dd>
 <dt id="arg-pathfinder-args">pathfinder_args<a class="anchor" aria-label="anchor" href="#arg-pathfinder-args"></a></dt>
 <dd><p>Named list of additional arguments passed to
 <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$pathfinder()</code> when <code>init = "pathfinder"</code>.
-Overrides defaults (<code>refresh = 0</code>, <code>sig_figs = 14</code>, <code>init = 0.1</code>,
-<code>num_paths = chains</code>, <code>num_threads = chains</code>). Default: <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>.</p></dd>
+Overrides occARU-specific defaults (<code>refresh = 0</code>, <code>init = 0.1</code>,
+<code>sig_figs = 14</code>, <code>num_threads = chains</code>, <code>num_paths = chains</code>,
+<code>max_lbfgs_iters = 200</code>, <code>psis_resample = FALSE</code>).</p></dd>
 
 
 <dt id="arg-threads">threads<a class="anchor" aria-label="anchor" href="#arg-threads"></a></dt>
@@ -183,7 +174,7 @@ performance set <code>threads = floor(available_cores / chains)</code>. For exam
 
 <dt id="arg-grainsize">grainsize<a class="anchor" aria-label="anchor" href="#arg-grainsize"></a></dt>
 <dd><p>Positive integer. Chunk size for within-chain
-parallelisation via <code>reduce_sum()</code> when <code>threads &gt; 1</code>. For sites nested in
+parallelisation via <code>reduce_sum()</code> when <code>threads &gt; 1</code>. For multiple
 regions, chunks are number of regions; otherwise it is number of sites.
 Default: <code>1</code>, which lets Stan automatically determine the optimal chunk
 size. Increase if you have many sites or regions and want to reduce

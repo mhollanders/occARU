@@ -148,9 +148,9 @@ as a single region. Default: <code>region</code>.</p></dd>
 
 <dt id="arg-season">season<a class="anchor" aria-label="anchor" href="#arg-season"></a></dt>
 <dd><p>&lt;<code><a href="https://rlang.r-lib.org/reference/args_data_masking.html" class="external-link">data-masking</a></code>&gt; Optional column
-specifying season. The column must be a factor to ensure correct ordering.
-If the column is not present in <code>deployments</code>, all observations are treated
-as a single season. Default: <code>season</code>.</p></dd>
+specifying season in <code>deployments</code>. The column must be a factor to ensure
+correct ordering. If the column is not present, a single season is assumed.
+Default: <code>season</code>.</p></dd>
 
 
 <dt id="arg-eventstart">eventStart<a class="anchor" aria-label="anchor" href="#arg-eventstart"></a></dt>
@@ -270,10 +270,13 @@ arguments which are added by <code><a href="occARU.html">occARU()</a></code>. Th
 <dd><p>Number of regions (groups of sites).</p></dd>
 
 <dt><code>J</code></dt>
-<dd><p>Number of survey periods.</p></dd>
+<dd><p>Number of survey periods (maximum).</p></dd>
 
 <dt><code>K</code></dt>
-<dd><p>Number of seasons (if multiseason).</p></dd>
+<dd><p>Number of seasons.</p></dd>
+
+<dt><code>S</code></dt>
+<dd><p>Number of species.</p></dd>
 
 <dt><code>tau</code></dt>
 <dd><p>Interval length in years between end of previous deploymment
@@ -283,14 +286,11 @@ and start of current deployment (if multiseason).</p></dd>
 <dd><p>Indicator for dynamic occupancy, when at least one site was
 deployed over multiple seasons.</p></dd>
 
-<dt><code>S</code></dt>
-<dd><p>Number of species.</p></dd>
-
 <dt><code>Delta</code></dt>
-<dd><p><code>[I, J(, K)]</code> array of recording effort (0-1).</p></dd>
+<dd><p><code>[K, J, I]</code> array of recording effort (0-1).</p></dd>
 
 <dt><code>y</code></dt>
-<dd><p><code>[I, J(, K), S]</code> array of detection counts.</p></dd>
+<dd><p><code>[K, I, J, S]</code> array of detection counts.</p></dd>
 
 <dt><code>XY</code></dt>
 <dd><p><code>[I, 2]</code> matrix of UTM coordinates in km, or zeros if
@@ -309,37 +309,37 @@ predictors for each component.</p></dd>
 for each component.</p></dd>
 
 <dt><code>X1</code></dt>
-<dd><p><code>[I(, K), P[1]]</code> occupancy continuous design array.</p></dd>
+<dd><p><code>[K, I, P[1]]</code> occupancy continuous design array.</p></dd>
 
 <dt><code>X_cat1</code></dt>
-<dd><p><code>[I(, K), P_cat[1]]</code> occupancy categorical integer
+<dd><p><code>[K, I, P_cat[1]]</code> occupancy categorical integer
 array.</p></dd>
 
 <dt><code>X_ord1</code></dt>
-<dd><p><code>[I(, K), P_ord[1]]</code> occupancy ordinal integer array.</p></dd>
+<dd><p><code>[K, I, P_ord[1]]</code> occupancy ordinal integer array.</p></dd>
 
 <dt><code>X2</code></dt>
-<dd><p><code>[I(, K), P[2]]</code> site-level detection continuous design
+<dd><p><code>[K, I, P[2]]</code> site-level detection continuous design
 array.</p></dd>
 
 <dt><code>X_cat2</code></dt>
-<dd><p><code>[I(, K), P_cat[2]]</code> site-level detection categorical
+<dd><p><code>[K, I, P_cat[2]]</code> site-level detection categorical
 integer array.</p></dd>
 
 <dt><code>X_ord2</code></dt>
-<dd><p><code>[I(, K), P_ord[2]]</code> site-level detection ordinal integer
+<dd><p><code>[K, I, P_ord[2]]</code> site-level detection ordinal integer
 array.</p></dd>
 
 <dt><code>X3</code></dt>
-<dd><p><code>[I(, K), J, P[3]]</code> site-by-survey level detection continuous
+<dd><p><code>[K, I, J, P[3]]</code> site-by-survey level detection continuous
 array.</p></dd>
 
 <dt><code>X_cat3</code></dt>
-<dd><p><code>[I(, K), J, P_cat[3]]</code> site-by-survey categorical
+<dd><p><code>[K, I, J, P_cat[3]]</code> site-by-survey categorical
 integer array.</p></dd>
 
 <dt><code>X_ord3</code></dt>
-<dd><p><code>[I(, K), J, P_ord[3]]</code> site-by-survey survey ordinal
+<dd><p><code>[K, I, J, P_ord[3]]</code> site-by-survey survey ordinal
 integer array.</p></dd>
 
 
@@ -347,15 +347,15 @@ integer array.</p></dd>
 <code><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr()</a></code>:</p><dl><dt><code>sites</code></dt>
 <dd><p>Character vector of site identifiers.</p></dd>
 
+<dt><code>regions</code></dt>
+<dd><p>Character vector of region identifiers.</p></dd>
+
 <dt><code>surveys</code></dt>
 <dd><p>tibble of start dates and indices for each survey
 period per season.</p></dd>
 
 <dt><code>seasons</code></dt>
 <dd><p>Character vector of season identifiers.</p></dd>
-
-<dt><code>regions</code></dt>
-<dd><p>Character vector of region identifiers.</p></dd>
 
 <dt><code>species</code></dt>
 <dd><p>Character vector species names.</p></dd>
@@ -374,13 +374,13 @@ standardise continuous predictors, or <code>NULL</code> if
 <dd><p>Named list of category levels for categorical and ordinal
 predictors.</p></dd>
 
+<dt><code>reference_dates</code></dt>
+<dd><p>First deploymentStart per season.</p></dd>
+
 <dt><code>survey_length</code></dt>
 <dd></dd>
 
 <dt><code>thin_minutes</code></dt>
-<dd></dd>
-
-<dt><code>reference_dates</code></dt>
 <dd></dd>
 
 <dt><code>day_start</code></dt>
@@ -391,8 +391,7 @@ predictors.</p></dd>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="occARU.html">occARU()</a></code>, <code><a href="thin_observations.html">thin_observations()</a></code>, <code><a href="find_failures.html">find_failures()</a></code>
-The model is described in detail in
-<code><a href="../articles/model.html">vignette("model", package = "occARU")</a></code>.</p></div>
+The model is described in detail in <code><a href="../articles/model.html">vignette("model")</a></code>.</p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

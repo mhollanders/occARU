@@ -21,6 +21,8 @@ set_priors(
   kappa_ell_periodic = c(1, 1),
   K_phi = c(1, 1),
   nu_ell = c(1, 1),
+  psi_iota_ell = c(1, 1),
+  psi_nu_ell = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -28,6 +30,9 @@ set_priors(
   gamma_O_L = 1,
   iota_O_L = 1,
   kappa_O_L = 1,
+  nu_O_L = 1,
+  psi_iota_O_L = 1,
+  psi_nu_O_L = 1,
   epsilon_O_L = 1,
   verbose = TRUE
 )
@@ -78,7 +83,8 @@ set_priors(
 - iota_ell:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
-  beta) prior on the spatial GP length scale(s). Default: `c(1, 1)`.
+  beta) prior on the detection spatial GP length scale. Default:
+  `c(1, 1)`.
 
 - kappa_ell:
 
@@ -100,7 +106,20 @@ set_priors(
 - nu_ell:
 
   Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
-  beta) prior on the seasonal GP length scale. Default: `c(1, 1)`.
+  beta) prior on the detection season GP length scale. Default:
+  `c(1, 1)`.
+
+- psi_iota_ell:
+
+  Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
+  beta) prior on the occupancy spatial GP length scale. Default:
+  `c(1, 1)`.
+
+- psi_nu_ell:
+
+  Numeric vector of length 2. `c(alpha, beta)` for an InvGamma(alpha,
+  beta) prior on the occupancy season GP length scale. Default:
+  `c(1, 1)`.
 
 - phi:
 
@@ -138,12 +157,27 @@ set_priors(
 - iota_O_L:
 
   Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
-  species-specific site effects. Default: `1`.
+  species-specific site effects on detection. Default: `1`.
 
 - kappa_O_L:
 
   Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
   species-specific survey effects. Default: `1`.
+
+- nu_O_L:
+
+  Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
+  species-specific season effects on detection. Default: `1`.
+
+- psi_iota_O_L:
+
+  Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
+  species-specific season effects on detection. Default: `1`.
+
+- psi_nu_O_L:
+
+  Positive scalar. LKJ prior on the \\\[S, S\]\\ correlation matrix of
+  species-specific season effects on occupancy. Default: `1`.
 
 - epsilon_O_L:
 

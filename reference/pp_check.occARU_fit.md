@@ -7,7 +7,13 @@ bayesplot package.
 
 ``` r
 # S3 method for class 'occARU_fit'
-pp_check(object, level = c("Q", "y"), ndraws = NULL, ...)
+pp_check(
+  object,
+  level = c("Q", "y"),
+  group = c("species", "region", "season"),
+  ndraws = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -22,6 +28,11 @@ pp_check(object, level = c("Q", "y"), ndraws = NULL, ...)
   Character. One of `"Q"` or `"y"`. If `"Q"` (default), uses the
   aggregated counts per site and species as data. If `"y"`, uses the raw
   (survey-level) counts as input.
+
+- group:
+
+  Character. Whether to group by `"species"` (default), `"region"`, or
+  `"season"`.
 
 - ndraws:
 

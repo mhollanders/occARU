@@ -1,7 +1,7 @@
 # Plot realised occupancy proportions
 
-Plots species-level proportions of occupied sites, \\\frac{\sum\_{i =
-1}^I z\_{is}}{I}\\, potentially by region.
+Plots species-level proportions of occupied sites by season,
+\\\frac{\sum\_{i = 1}^I z\_{kis}}{I}\\, potentially by region.
 
 ## Usage
 
@@ -12,6 +12,7 @@ plot_realised(
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ...
 )
 ```
@@ -42,6 +43,11 @@ plot_realised(
 
   `character`. Vector of regions to use. If `NULL` (default), all
   regions are used. Must be one of `attr(occARU_data, "regions")`.
+
+- seasons:
+
+  `character`. Vector of seasons to use. If `NULL` (default), all
+  seasons are used. Must be one of `attr(occARU_data, "seasons")`.
 
 - ...:
 

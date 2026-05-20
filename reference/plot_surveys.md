@@ -12,10 +12,10 @@ plot_surveys(
   fit,
   species = NULL,
   surveys = NULL,
+  seasons = NULL,
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   ndraws = NULL,
   seed = NULL,
   palette = "YlGn",
@@ -40,6 +40,11 @@ plot_surveys(
   `character`. Vector of survey dates to plot. If `NULL` (default), all
   surveys are plotted. Must be one of `attr(occARU_data, "surveys")`.
 
+- seasons:
+
+  `character`. Vector of seasons to plot. If `NULL` (default), all
+  seasons are plotted. Must be one of `attr(occARU_data, "seasons")`.
+
 - intercepts:
 
   `logical`. If `TRUE` (default), species-level baseline log detection
@@ -57,19 +62,6 @@ plot_surveys(
 
   `logical`. If `TRUE` (default), includes predictors in the survey
   effects, if included. If `FALSE`, only plots the random effects.
-
-- restricted:
-
-  `logical`. If `TRUE` (default), when `include_predictors` is `FALSE`
-  and the model was fit `project = list(survey = TRUE)`, plots random
-  survey effects with orthogonal projection, i.e., \\(\boldsymbol{I} -
-  \boldsymbol{P\_{X_3}}) \boldsymbol{\kappa}\\, where \\\boldsymbol{I} -
-  \boldsymbol{P\_{X_3}}\\ is the orthogonal complement of the column
-  space of the site-averaged survey design matrix. If `FALSE`, plots
-  random effects without orthogonal projection, i.e.,
-  \\\boldsymbol{\kappa}\\ only. Has no effect when `include_predictors`
-  is `TRUE` as the linear predictor is unaffected by orthogonal
-  projection.
 
 - ndraws:
 

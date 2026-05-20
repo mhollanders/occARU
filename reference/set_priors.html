@@ -57,6 +57,8 @@ occARU(). Any unspecified priors use the defaults listed below."></head><body>
 <span>  kappa_ell_periodic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
 <span>  K_phi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
 <span>  nu_ell <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  psi_iota_ell <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  psi_nu_ell <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
 <span>  phi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">0.3</span><span class="op">)</span>,</span>
 <span>  alpha_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  psi_beta_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -64,6 +66,9 @@ occARU(). Any unspecified priors use the defaults listed below."></head><body>
 <span>  gamma_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  iota_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  kappa_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  nu_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  psi_iota_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  psi_nu_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  epsilon_O_L <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -115,8 +120,8 @@ parameter. Default: <code>c(1, 1)</code>.</p></dd>
 
 <dt id="arg-iota-ell">iota_ell<a class="anchor" aria-label="anchor" href="#arg-iota-ell"></a></dt>
 <dd><p>Numeric vector of length 2. <code>c(alpha, beta)</code> for an
-InvGamma(alpha, beta) prior on the spatial GP length scale(s). Default:
-<code>c(1, 1)</code>.</p></dd>
+InvGamma(alpha, beta) prior on the detection spatial GP length scale.
+Default: <code>c(1, 1)</code>.</p></dd>
 
 
 <dt id="arg-kappa-ell">kappa_ell<a class="anchor" aria-label="anchor" href="#arg-kappa-ell"></a></dt>
@@ -139,8 +144,20 @@ Matern and periodic kernels. Default: <code>c(1, 1)</code>.</p></dd>
 
 <dt id="arg-nu-ell">nu_ell<a class="anchor" aria-label="anchor" href="#arg-nu-ell"></a></dt>
 <dd><p>Numeric vector of length 2. <code>c(alpha, beta)</code> for an
-InvGamma(alpha, beta) prior on the seasonal GP length scale. Default:
-<code>c(1, 1)</code>.</p></dd>
+InvGamma(alpha, beta) prior on the detection season GP length scale.
+Default: <code>c(1, 1)</code>.</p></dd>
+
+
+<dt id="arg-psi-iota-ell">psi_iota_ell<a class="anchor" aria-label="anchor" href="#arg-psi-iota-ell"></a></dt>
+<dd><p>Numeric vector of length 2. <code>c(alpha, beta)</code> for an
+InvGamma(alpha, beta) prior on the occupancy spatial GP length scale.
+Default: <code>c(1, 1)</code>.</p></dd>
+
+
+<dt id="arg-psi-nu-ell">psi_nu_ell<a class="anchor" aria-label="anchor" href="#arg-psi-nu-ell"></a></dt>
+<dd><p>Numeric vector of length 2. <code>c(alpha, beta)</code> for an
+InvGamma(alpha, beta) prior on the occupancy season GP length scale.
+Default: <code>c(1, 1)</code>.</p></dd>
 
 
 <dt id="arg-phi">phi<a class="anchor" aria-label="anchor" href="#arg-phi"></a></dt>
@@ -176,12 +193,28 @@ predictors are supplied. Default: <code>1</code>.</p></dd>
 
 <dt id="arg-iota-o-l">iota_O_L<a class="anchor" aria-label="anchor" href="#arg-iota-o-l"></a></dt>
 <dd><p>Positive scalar. LKJ prior on the \([S, S]\) correlation
-matrix of species-specific site effects. Default: <code>1</code>.</p></dd>
+matrix of species-specific site effects on detection. Default: <code>1</code>.</p></dd>
 
 
 <dt id="arg-kappa-o-l">kappa_O_L<a class="anchor" aria-label="anchor" href="#arg-kappa-o-l"></a></dt>
 <dd><p>Positive scalar. LKJ prior on the \([S, S]\) correlation
 matrix of species-specific survey effects. Default: <code>1</code>.</p></dd>
+
+
+<dt id="arg-nu-o-l">nu_O_L<a class="anchor" aria-label="anchor" href="#arg-nu-o-l"></a></dt>
+<dd><p>Positive scalar. LKJ prior on the \([S, S]\) correlation
+matrix of species-specific season effects on detection. Default: <code>1</code>.</p></dd>
+
+
+<dt id="arg-psi-iota-o-l">psi_iota_O_L<a class="anchor" aria-label="anchor" href="#arg-psi-iota-o-l"></a></dt>
+<dd><p>Positive scalar. LKJ prior on the \([S, S]\)
+correlation matrix of species-specific season effects on detection.
+Default: <code>1</code>.</p></dd>
+
+
+<dt id="arg-psi-nu-o-l">psi_nu_O_L<a class="anchor" aria-label="anchor" href="#arg-psi-nu-o-l"></a></dt>
+<dd><p>Positive scalar. LKJ prior on the \([S, S]\) correlation
+matrix of species-specific season effects on occupancy. Default: <code>1</code>.</p></dd>
 
 
 <dt id="arg-epsilon-o-l">epsilon_O_L<a class="anchor" aria-label="anchor" href="#arg-epsilon-o-l"></a></dt>

@@ -14,7 +14,7 @@ plot_coefficients(
   level = c("species", "mean"),
   facet_by = c("species", "predictor"),
   species = NULL,
-  restricted = TRUE,
+  unconditional = FALSE,
   ordinal_categories = FALSE,
   ...
 )
@@ -62,20 +62,14 @@ plot_coefficients(
   `character`. Vector of species to plot. If `NULL` (default), all
   species are plotted. Must be one of `attr(occARU_data, "species")`.
 
-- restricted:
+- unconditional:
 
-  `logical`. If `TRUE` (default), plots coefficients with orthogonal
-  projection of the detection random site or survey effects, e.g.,
-  \\\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P\_{X_2}})\\, where
-  \\\boldsymbol{I} - \boldsymbol{P\_{X_2}}\\ is the orthogonal
-  complement of the column space of the design matrix. If `FALSE`,
-  recovers coefficients without orthogonal projection, e.g.,
-  \\\boldsymbol{\beta} - \boldsymbol{X_2}^+ \boldsymbol{\iota}\\, where
-  \\\boldsymbol{X_2}^+\\ is the pseudo-inverse of the design matrix.
-  Only used for site predictors if `submodel = "detection"`, or if
-  survey random effects were projected with
-  `project = list(survey = TRUE)` in
-  [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md).
+  `logical`. If `TRUE`, plot the unconditional regression coefficients,
+  e.g., \\\boldsymbol{\beta} + (\boldsymbol{X}^\prime
+  \boldsymbol{X})^{-1} \boldsymbol{X}^\prime \boldsymbol{\iota}\\, which
+  attribute variance shared between the fixed and random effects back to
+  the covariates. If `FALSE` (default), plot the conditional
+  coefficients \\\boldsymbol{\beta}\\.
 
 - ordinal_categories:
 

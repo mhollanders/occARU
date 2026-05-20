@@ -51,10 +51,10 @@ averaged over sites (if included via <code><a href="make_data.html">make_data()<
 <span>  <span class="va">fit</span>,</span>
 <span>  species <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  surveys <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seasons <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  intercepts <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  back_transform <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  include_predictors <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  restricted <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ndraws <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  palette <span class="op">=</span> <span class="st">"YlGn"</span>,</span>
@@ -81,6 +81,11 @@ all species are plotted. Must be one of <code>attr(occARU_data, "species")</code
 <code>attr(occARU_data, "surveys")</code>.</p></dd>
 
 
+<dt id="arg-seasons">seasons<a class="anchor" aria-label="anchor" href="#arg-seasons"></a></dt>
+<dd><p><code>character</code>. Vector of seasons to plot. If <code>NULL</code> (default),
+all seasons are plotted. Must be one of <code>attr(occARU_data, "seasons")</code>.</p></dd>
+
+
 <dt id="arg-intercepts">intercepts<a class="anchor" aria-label="anchor" href="#arg-intercepts"></a></dt>
 <dd><p><code>logical</code>. If <code>TRUE</code> (default), species-level baseline log
 detection rates are added to the survey effects. If <code>FALSE</code>, only the
@@ -97,18 +102,6 @@ via <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()<
 <dd><p><code>logical</code>. If <code>TRUE</code> (default), includes predictors
 in the survey effects, if included. If <code>FALSE</code>, only plots the random
 effects.</p></dd>
-
-
-<dt id="arg-restricted">restricted<a class="anchor" aria-label="anchor" href="#arg-restricted"></a></dt>
-<dd><p><code>logical</code>. If <code>TRUE</code> (default), when <code>include_predictors</code>
-is <code>FALSE</code> and the model was fit <code>project = list(survey = TRUE)</code>, plots
-random survey effects with orthogonal projection, i.e.,
-\((\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}\), where
-\(\boldsymbol{I} - \boldsymbol{P_{X_3}}\) is the orthogonal complement of
-the column space of the site-averaged survey design matrix. If <code>FALSE</code>,
-plots random effects without orthogonal projection, i.e.,
-\(\boldsymbol{\kappa}\) only. Has no effect when <code>include_predictors</code>
-is <code>TRUE</code> as the linear predictor is unaffected by orthogonal projection.</p></dd>
 
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
