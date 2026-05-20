@@ -16,17 +16,11 @@
 #'   survey effects on detection. For multiseason models, optionally accepts
 #'   season effects on detection (`season`) and site (`site_occ`) and season
 #'   (`season_occ`) effects on occupancy. Must be one of:
-#'   * `gp()` (default for site, survey, and season effects on detection), which
-#'     fits a (multispecies) Gaussian process. See [gp()] for details.
+#'   * [gp()], which fits a (multispecies) Gaussian process. Default for site
+#'     and survey effects. Also the default for season effects on both detection
+#'     and occupancy and occupancy site effects in dynamic models.
 #'   * `"mvn"`, which fits an unstructured (multispecies) normal.
-#'   * `"none"` (default for site and season effects on occupancy), which omits
-#'     random effects entirely.
-#' @param project A named `list` of logicals specifying whether to project
-#'   random effects when predictors are included. Entries must be one of `site`
-#'   or `survey`. If `TRUE` (default for both), orthogonally projects random
-#'   effects. For survey effects, the design matrices are averaged across sites.
-#'   For site effects in multiseason models, the design matrices are averaged
-#'   across seasons.
+#'   * `"none"`,which omits random effects entirely.
 #' @param overdispersion `character`. Overdispersion model for the observation
 #'   process. One of `"none"` (Poisson, default), `"nb"` (negative binomial),
 #'   or `"olre"` (multispecies observation-level random effects).
@@ -101,7 +95,6 @@ occARU <- function(
   prior = set_priors(verbose = FALSE),
   stan_file = NULL,
   random = list(site = gp(), survey = gp()),
-  project = list(site = TRUE, survey = TRUE),
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   ppc = c("Q", "y", "both", "none"),
@@ -135,22 +128,53 @@ occARU <- function(
     )
   }
 
+  # dynamic indicator
+  dyn <- any(data$tau > 0)
+
+  # check random site effects
+  if (all(data$XY == 0)) {
+    spatial <- intersect(c("site", "site_occ"), names(random))
+    spatial_misuse <- names(purrr::keep(random[spatial], ~ inherits(., "gp")))
+    if (length(spatial_misuse)) {
+      cli::cli_warn(
+        'No site coordinates found in {.arg data}. Setting {.arg random = "mvn"}
+        for element{?s} {.val {spatial_misuse}}. Supply {.arg latitude} and
+        {.arg longitude} in {.fun make_data} to enable the spatial GP{?s}.'
+      )
+      random$site <- "mvn"
+      if (data$K > 1) {
+        random$site_occ <- "mvn"
+      }
+    }
+  }
+
+  # check random survey effects
+  if (data$J == 1) {
+    if (!identical(random$survey, "none")) {
+      random$survey <- "none"
+      cli::cli_warn(
+        "Random survey effects are omitted for single survey models."
+      )
+    }
+  }
+
   # prepare random effects
-  random <- make_random(random, data$K)
+  random <- make_random(random, data$K, dyn)
 
   # spatial checks
   if (all(data$XY == 0)) {
     spatial <- intersect(c("site", "site_occ"), names(random))
-    spatial_misuse <- names(purrr::map_lgl(
-      random[spatial],
-      ~ inherits(., "gp")
-    ))
+    spatial_misuse <- names(purrr::keep(random[spatial], ~ inherits(., "gp")))
     if (length(spatial_misuse)) {
-      cli::cli_abort(
-        'No site coordinates found in {.arg data}. Set {.arg random = "mvn"}
-        for element{?s} {.val {spatial_misuse}} or supply {.arg latitude} and
+      cli::cli_warn(
+        'No site coordinates found in {.arg data}. Setting {.arg random = "mvn"}
+        for element{?s} {.val {spatial_misuse}}. Supply {.arg latitude} and
         {.arg longitude} in {.fun make_data} to enable the spatial GP{?s}.'
       )
+      random$site$kernel <- 0
+      if (data$K > 1) {
+        random$site_occ$kernel <- 0
+      }
     }
   }
 
@@ -176,21 +200,6 @@ occARU <- function(
       "{.arg species_length_scales = TRUE} is not applicable in single \\
       species models."
     )
-  }
-
-  # check projection and turn to 0 without predictors
-  if (any(!is.logical(unlist(project)))) {
-    cli::cli_abort("All entries in {.arg project} must be {.code logical}.")
-  } else {
-    project_defaults <- list(site = TRUE, survey = TRUE)
-    project <- utils::modifyList(project_defaults, project)
-    P_sum <- data$P + data$P_cat + data$P_ord
-    if (!(random$site$random && P_sum[2]) && project$site) {
-      project$site <- FALSE
-    }
-    if (!(random$survey$random && P_sum[3]) && project$survey) {
-      project$survey <- FALSE
-    }
   }
 
   # match arguments
@@ -226,7 +235,6 @@ occARU <- function(
     unclass(data),
     list(
       random = purrr::map_int(random, ~ .$random),
-      project = as.integer(unlist(project)),
       SS = purrr::map_int(random, ~ .$species_length_scales),
       kernel = purrr::map_int(random, ~ .$kernel),
       period = random$survey$period,
@@ -235,6 +243,7 @@ occARU <- function(
       latent = as.integer(latent),
       PPC_y = as.integer(ppc %in% c("both", "y")),
       PPC_Q = as.integer(ppc %in% c("both", "Q")),
+      dyn = as.integer(dyn),
       grainsize = if (threads > 1L) as.integer(grainsize) else 0L,
       D = as.integer(loo_draws)
     ),
@@ -256,23 +265,24 @@ occARU <- function(
         paste(c(role, kernel_label(x$kernel)), collapse = ", "),
         ")"
       )
-    } else if (x$random) {
-      paste0("MVN", if (!is.null(role)) paste0(" (", role, ")"))
     } else {
-      paste0("None", if (!is.null(role)) paste0(" (", role, ")"))
+      paste0(
+        if (x$random) "MVN" else "None",
+        if (!is.null(role)) paste0(" (", role, ")")
+      )
     }
   }
 
   # log model components
   cli::cli_inform(c(
     "Components: ",
-    " " = "Site effects: {if (data$K == 1) {fmt_effect(random$site)}}\\
+    " " = "Site effects: {fmt_effect(random$site, if (data$K > 1) 'detection')}\\
           {if (data$K > 1) paste0(', ', fmt_effect(random$site_occ, 'occupancy'))}",
     " " = "Survey effects: {fmt_effect(random$survey)}\\
           {if (inherits(random$survey, 'gp') && random$survey$periodic) ', periodic kernel: yes' else ''}",
     if (data$K > 1) {
       c(
-        " " = "Seasonal effects: {fmt_effect(random$season, 'detection')}, \\
+        " " = "Season effects: {fmt_effect(random$season, 'detection')}, \\
            {fmt_effect(random$season_occ, 'occupancy')}"
       )
     },
@@ -316,10 +326,10 @@ occARU <- function(
     cli::cli_inform(c("i" = "Running pathfinder for initialisation..."))
     pathfinder_defaults <- list(
       data = stan_data,
-      init = 0.1,
       refresh = 0,
-      num_paths = chains,
+      init = 0.1,
       num_threads = chains,
+      num_paths = chains,
       max_lbfgs_iters = 200,
       sig_figs = 14,
       psis_resample = FALSE

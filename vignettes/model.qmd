@@ -36,10 +36,8 @@ $$
   y_{ijs} \mid z_{is} = 1 &\sim \mathrm{Poisson} \left( \mu_{ijs} \right) \\
   \mu_{ijs} &= \exp \Bigl( {\alpha_\mu}_{[s]} +
     {\boldsymbol{X_2}}_{[i]} {\boldsymbol{\beta_\mu}}_{[s]} +
-    {\boldsymbol{X_3}}_{[ij]} \boldsymbol{\gamma}_{[s]} \\
-    & \quad \quad \quad \  + \left(\boldsymbol{I} - {\boldsymbol{P_{X_2}}}_{[i]} \right) \iota_{is} +
-    \left(\boldsymbol{I} - {\boldsymbol{P_{X_3}}}_{[j]} \right) \kappa_{js} \\
-    & \quad \quad \quad \ + \log \Delta_{ij}\Bigr).
+    {\boldsymbol{X_3}}_{[ij]} \boldsymbol{\gamma}_{[s]} 
+    + \iota_{is} +\kappa_{js} + \log \Delta_{ij}\Bigr).
 \end{aligned}
 $$ {#eq-y}
 
@@ -90,9 +88,12 @@ where $p$ is the period in survey units (e.g., 52 for an annual cycle with weekl
 
 Site and survey random effects can be fully disabled or fitted without GPs, collapsing to multivariate normals, with the arguments `spatial = c("gp", "mvn", "none")` and `temporal = c("gp", "mvn", "none")` in `fit_model()`. Identifiability of the matrix normal scales is ensured by fixing the marginal scale of the GP kernels to 1.
 
-### Orthogonal projection of random effects
+### Confounding of fixed and random effects
 
-When predictors are included alongside spatial or temporal random effects, the fixed and random effects can be confounded because the random effects absorb part of the variance that the fixed effects are trying to explain [@hodges2010]. One remedy is to construct the random effects to be orthogonal to the column space of the design matrix. Taking the spatial random effects as an example, instead of sampling $\boldsymbol{\iota}$, occARU samples $\left(\boldsymbol{I} - \boldsymbol{P_{X_2}} \right) \boldsymbol{\iota}$, where $\boldsymbol{P_{X_2}} := \boldsymbol{X_2} \left(\boldsymbol{X_2^\prime} \boldsymbol{X_2} \right)^{-1} \boldsymbol{X_2^\prime}$ and $\boldsymbol{I} - \boldsymbol{P_{X_2}}$ is the orthogonal complement of the column space of the site-level design matrix $\boldsymbol{X_2}$. Using so-called restricted random effects essentially constrain random effects to the residual of the design matrix and thus prioritise inference on the fixed effects.
+When predictors are included alongside spatial or temporal random effects, the fixed and random effects can be confounded because the random effects absorb part of the variance that the fixed effects are trying to explain [@hodges2010]. In practice, fixed effect coefficients are often "lost" while the random effects capture most of the variance. A potential remedy is to compute the "unconditional" coefficients from the "conditional" coefficients (conditioned on the presence of the random effect) by adding back the variance absorbed by the random effect to the fixed effects, 
+
+
+One remedy is to construct the random effects to be orthogonal to the column space of the design matrix. Taking the spatial random effects as an example, instead of sampling $\boldsymbol{\iota}$, occARU samples $\left(\boldsymbol{I} - \boldsymbol{P_{X_2}} \right) \boldsymbol{\iota}$, where $\boldsymbol{P_{X_2}} := \boldsymbol{X_2} \left(\boldsymbol{X_2^\prime} \boldsymbol{X_2} \right)^{-1} \boldsymbol{X_2^\prime}$ and $\boldsymbol{I} - \boldsymbol{P_{X_2}}$ is the orthogonal complement of the column space of the site-level design matrix $\boldsymbol{X_2}$. Using so-called restricted random effects essentially constrain random effects to the residual of the design matrix and thus prioritise inference on the fixed effects.
 
 occARU uses orthogonal projection for site effects and optionally survey effects, by setting the argument `project_kappa = TRUE` (default) in `fit_model()`, which is also more efficient for HMC. Because $\boldsymbol{X_3}$ varies by both site and survey, the site-averaged matrix is used to produce the orthogonal projection. This assumes that survey predictors will be correlated across sites; if these predictors vary considerably between sites, the confounding will be limited and orthogonal projection is unnecessary.
 

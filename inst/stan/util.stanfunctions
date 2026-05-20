@@ -31,11 +31,11 @@ tuple(array[,] int, array[] int) region_indices(data array[] int region) {
  * @return  First and last season [I, 2]
  */
 array[,] int first_last(data array[,] int J_i) {
-  int I = size(J_i), K = size(J_i[1]);
+  int K = size(J_i), I = size(J_i[1]);
   array[I, 2] int f_l;
   for (i in 1:I) {
     for (k in 1:K) {
-      if (J_i[i, k]) {
+      if (J_i[k, i]) {
         f_l[i] = rep_array(k, 2);
         break;
       }
@@ -44,7 +44,7 @@ array[,] int first_last(data array[,] int J_i) {
     if (K_i) {
       array[K_i] int idx = linspaced_int_array(K_i, f + 1, K);
       for (k in reverse(idx)) {
-        if (J_i[i, k]) {
+        if (J_i[k, i]) {
           f_l[i, 2] = k;
           break;
         }
@@ -55,12 +55,11 @@ array[,] int first_last(data array[,] int J_i) {
 }
 
 /**
- * Increment spatial effects to random site effects, potentially by region and
- * species
+ * Increment spatial effects to random site effects, potentially by region.
  *
  * @param I_r    Number of sites [R]
  * @param L      GP kernels (lower triangular) [R, S, I_max, I_max]
- * @param iota   Site effects [I(, S)]
+ * @param iota   Site effects [I, S]
  *
  * @return  L * iota
  */
@@ -98,51 +97,25 @@ vector increment_spatial(data array[] int I_r, array[] matrix L, vector iota) {
 }
 
 /**
- * Fill a matrix with a vector or an array of matrices with a matrix or a
- * vector. Used for single and multispecies and single and multiseason models.
+ * Fill an array of matrices with a matrix
  *
- * @param j_idx         Survey indices [I(, K), J]
- * @param J_i           Number of surveys [I(, K)]
- * @param epsilon_long  "Long" format of OLREs [J_sum(, S)]
+ * @param j_idx         Survey indices [K, I, J]
+ * @param J_i           Number of surveys [K, I]
+ * @param epsilon_long  "Long" format of OLREs [J_sum, S]
  *
- * @return              Matrix or array of matrices of OLREs [J, I] or [I, J, S]
+ * @return  Array of matrices of OLREs [K, I, J, S]
  */
-matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
-                    vector epsilon_long) {
-  int I = size(j_idx), J = size(j_idx[1]);
-  matrix[J, I] epsilon;
-  int idx = 0;
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    epsilon[j_idx[i, :J_ii], i] = epsilon_long[idx + 1:idx + J_ii];
-    idx += J_ii;
-  }
-  return epsilon;
-}
-
-array[] matrix fill_epsilon(data array[,] int j_idx, data array[] int J_i,
+array[,] matrix fill_epsilon(data array[,,] int j_idx, data array[,] int J_i,
                             matrix epsilon_long) {
-  int I = size(j_idx), J = size(j_idx[1]), S = cols(epsilon_long);
-  array[I] matrix[J, S] epsilon;
+  int K = size(j_idx), I = size(j_idx[1]), J = size(j_idx[1, 1]),
+      S = cols(epsilon_long);
+  array[K, I] matrix[J, S] epsilon;
   int idx = 0;
-  for (i in 1:I) {
-    int J_ii = J_i[i];
-    epsilon[i, j_idx[i, :J_ii]] = epsilon_long[idx + 1:idx + J_ii];
-    idx += J_ii;
-  }
-  return epsilon;
-}
-
-array[] matrix fill_epsilon(data array[,,] int j_idx, data array[,] int J_i,
-                            vector epsilon_long) {
-  int I = size(j_idx), K = size(j_idx[1]), J = size(j_idx[1, 1]);
-  array[I] matrix[J, K] epsilon;
-  int idx = 0;
-  for (i in 1:I) {
-    for (k in 1:K) {
-      int J_ii = J_i[i, k];
-      epsilon[i, j_idx[i, k, :J_ii], k] = epsilon_long[idx + 1:idx + J_ii];
-      idx += J_ii;
+  for (k in 1:K) {
+    for (i in 1:I) {
+      int J_ki = J_i[k, i];
+      epsilon[k, i, j_idx[k, i, :J_ki]] = epsilon_long[idx + 1:idx + J_ki];
+      idx += J_ki;
     }
   }
   return epsilon;
@@ -229,41 +202,47 @@ vector sum_to_zero_simplex_jacobian(vector u) {
  * Get indices of active surveys (where Delta > 0) and number of surveys.
  * Overload for single- and multiseason deployments.
  *
- * @param Delta  Survey effort [I, J(, K)]
+ * @param Delta  Survey effort [I, J, K]
  *
- * @return j_idx  Indices of active surveys [I(, K), J]
- * @return J_i    Number of surveys [I(, K)]
+ * @return indices  Indices of active surveys [K, I, J]
+ * @return J_i      Number of surveys [K, I]
  */
-tuple(array[,] int, array[] int) survey_indices(data matrix Delta) {
-  int I = rows(Delta), J = cols(Delta);
-  array[I, J] int indices = rep_array(0, I, J);
-  array[I] int J_i = zeros_int_array(I);
-  for (i in 1:I) {
-    for (j in 1:J) {
-      if (Delta[i, j] > 0) {
-        J_i[i] += 1;
-        indices[i, J_i[i]] = j;
+tuple(array[,,] int, array[,] int) survey_indices(data array[] matrix Delta) {
+  int K = size(Delta), J = rows(Delta[1]), I = cols(Delta[1]);
+  array[K, I, J] int indices = rep_array(0, K, I, J);
+  array[K, I] int J_i = rep_array(0, K, I);
+  for (k in 1:K) {
+    for (i in 1:I) {
+      for (j in 1:J) {
+        if (Delta[k, j, i] > 0) {
+          J_i[k, i] += 1;
+          indices[k, i, J_i[k, i]] = j;
+        }
       }
     }
   }
   return (indices, J_i);
 }
 
-tuple(array[,,] int, array[,] int) survey_indices(data array[] matrix Delta) {
-  int I = size(Delta), J = rows(Delta[1]), K = cols(Delta[1]);
-  array[I, K, J] int indices = rep_array(0, I, K, J);
-  array[I, K] int J_i = rep_array(0, I, K);
-  for (i in 1:I) {
-    for (k in 1:K) {
-      int n = 1;
-      for (j in 1:J) {
-        if (Delta[i, j, k] > 0) {
-          indices[i, k, n] = j;
-          J_i[i, k] += 1;
-          n += 1;
-        }
+/**
+ * Get indices of active sites and number of sites per season
+ *
+ * @param J_i  Number of surveys [K, I]
+ *
+ * @return indices  Indices of active sites [K, I]
+ * @return I_k      Number of active sites [K]
+ */
+tuple(array[,] int, array[] int) site_indices(data array[,] int J_i) {
+  int K = size(J_i), I = size(J_i[1]);
+  array[K, I] int indices = rep_array(0, K, I);
+  array[K] int I_k = zeros_int_array(K);
+  for (k in 1:K) {
+    for (i in 1:I) {
+      if (J_i[k, i]) {
+        I_k[k] += 1;
+        indices[k, I_k[k]] = i;
       }
     }
   }
-  return (indices, J_i);
+  return (indices, I_k);
 }

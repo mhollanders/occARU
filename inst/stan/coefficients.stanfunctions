@@ -145,22 +145,3 @@ matrix increment_ordinal(data array[,] int X, array[] matrix beta) {
   }
   return mu;
 }
-
-/**
- * Produce "unconditional" coefficients when random effects are orthogonally
- * projected, using the "conditional" coefficients, unrestricted random effects,
- * and the pseudo-inverse of the design matrix. Overloaded for vectors and
- * matrices.
- *
- * @param X_plus  Moore-Penrose or pseudo-inverse
- * @param beta    Coefficients [P(, S)]
- * @param theta   Unrestricted random effects [I(, S)]
- *
- * @return  beta - (X'X)^-1 X' theta
- */
-vector uncondition(data matrix X_plus, vector beta, vector theta) {
-  return beta - X_plus * theta;
-}
-matrix uncondition(data matrix X_plus, matrix beta, matrix theta) {
-  return beta - X_plus * theta;
-}

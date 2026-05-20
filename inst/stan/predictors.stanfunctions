@@ -1,82 +1,59 @@
 /**
- * Average site design matrix over seasons, checking whether sites were
- * surveyed.
+ * Average site-level design matrix over surveyed seasons within sites.
  *
- * @param X      Design matrix [I, K, P]
- * @param J_i    Number of surveys [I, K]
+ * @param X      Design matrix [K, I, P]
+ * @param i_idx  Site indices [K, I]
+ * @param I_k    Number of active sites [K]
  *
  * @return  Averaged design matrix [I, P]
  */
-matrix average_site_design_matrix(data array[] matrix X,
-                                  data array[,] int J_i) {
-  int I = size(X), K = rows(X[1]), P = cols(X[1]);
+matrix average_design_matrix(data array[] matrix X, data array[,] int i_idx,
+                             data array[] int I_k) {
+  int K = size(X), I = rows(X[1]), P = cols(X[1]);
+  array[I] int K_i = zeros_int_array(I);
   matrix[I, P] X_mean = rep_matrix(0, I, P);
-  for (i in 1:I) {
-    int K_i = 0;
-    for (k in 1:K) {
-      if (J_i[i, k]) {
-        X_mean[i] += X[i, k];
-        K_i += 1;
-      }
+  for (k in 1:K) {
+    for (i in i_idx[k, :I_k[k]]) {
+      X_mean[i] += X[k, i];
+      K_i[i] += 1;
     }
-    X_mean[i] /= K_i;
+  }
+  for (i in 1:I) {
+    X_mean[i] /= K_i[i];
   }
   return X_mean;
 }
 
 /**
- * Average survey design matrix over sites, checking whether sites were
- * surveyed. Overloaded for both single- and multiseason deployments.
+ * Average survey-level design matrix over sites and seasons.
  *
- * @param X      Design matrix [I(, K), J, P]
- * @param j_idx  Survey indices [I(, K), J]
+ * @param X      Design matrix [I, K, J, P]
+ * @param i_idx  Site indices [K, I]
+ * @param I_k    Number of sites [K]
+ * @param j_idx  Survey indices [K, I, J]
+ * @param J_i    Number of surveys [K, I]
  *
- * @return  Average design matrix [(K, )J, P]
+ * @return  Averaged design matrix [J_sum, P]
  */
-matrix average_survey_design_matrix(data array[] matrix X,
-                                    data array[,] int j_idx) {
-  int I = size(X), J = rows(X[1]), P = cols(X[1]);
-  matrix[J, P] X_mean = rep_matrix(0, J, P);
-  for (j in 1:J) {
-    int I_j = 0;
-    for (i in 1:I) {
-      for (jj in j_idx[i]) {
-        if (jj == 0) {
-          break;
-        } else if (jj == j) {
-          X_mean[j] += X[i, j];
-          I_j += 1;
-          break;
-        }
-      }
-    }
-    if (I_j) {
-      X_mean[j] /= I_j;
-    }
-  }
-  return X_mean;
-}
-
-array[] matrix average_survey_design_matrix(data array[,] matrix X,
-                                            data array[,,] int j_idx) {
-  int I = size(X), K = size(X[1]), J = rows(X[1, 1]), P = cols(X[1, 1]);
+array[] matrix
+  average_design_matrix(data array[,] matrix X, data array[,] int i_idx,
+                        data array[] int I_k, data array[,,] int j_idx,
+                        data array[,] int J_i) {
+  int K = size(X), I = size(X[1]), J = rows(X[1, 1]), P = cols(X[1, 1]);
   array[K] matrix[J, P] X_mean = rep_array(rep_matrix(0, J, P), K);
+  array[K, J] int N = rep_array(0, K, J);
   for (k in 1:K) {
-    for (j in 1:J) {
-      int I_j = 0;
-      for (i in 1:I) {
-        for (jj in j_idx[i, k]) {
-          if (jj == 0) {
-            break;
-          } else if (jj == j) {
-            X_mean[k, j] += X[i, k, j];
-            I_j += 1;
-            break;
-          }
-        }
+    for (i in i_idx[k, :I_k[k]]) {
+      int J_ik = J_i[k, i];
+      array[J_ik] int idx = j_idx[k, i, :J_ik];
+      X_mean[k, idx] += X[k, i, idx];
+      for (j in idx) {
+        N[k, j] += 1;
       }
-      if (I_j) {
-        X_mean[k, j] /= I_j;
+    }
+    for (j in 1:J) {
+      if (N[k, j] > 1) {
+        X_mean[k, j] /= N[k, j];
       }
     }
   }
@@ -85,76 +62,46 @@ array[] matrix average_survey_design_matrix(data array[,] matrix X,
 
 /**
  * Augment continuous design matrix with one-hot coded categorical predictors
- * and ordinal predictors. Overloaded for site- and site-by-survey design
- * matrices/arrays, and single and multiseason deployments. The single season
- * site-by-survey and multiseason site-by-season scenarios use the same
- * function.
+ * and ordinal predictors. Overloaded for site and survey-level predictors.
  *
- * @param X      Continuous predictors [I(, K, J), P]
- * @param X_cat  Categorical predictors [I(, K, J), P]
- * @param X_ord  Ordinal predictors [I(, K, J), P]
+ * @param X      Continuous predictors [K, I, P] or [K, I, J, P]
+ * @param X_cat  Categorical predictors [K, I(, J), P]
+ * @param X_ord  Ordinal predictors [K, I(, J), P]
  * @param C      Number of levels for categorical predictors [P_cat]
  * @param O      Number of levels for ordinal predictors [P_ord]
  *
  * @return  Augmented design marix
  */
-matrix augment_design_matrix(data matrix X, data array[,] int X_cat,
-                             data array[,] int X_ord, data array[] int C,
-                             data array[] int O) {
-  int I = rows(X), P = cols(X), P_cat = size(C), P_ord = size(O),
-      P_sum = P + P_cat + P_ord, C_sum = sum(C),
-      P_aug = P + C_sum - P_cat + P_ord;
-  matrix[I, P_aug] X_aug;
-  if (P) {
-    X_aug[:, :P] = X;
-  }
-  if (P_cat) {
-    int idx = P;
-    for (p in 1:P_cat) {
-      int C_p = C[p], C_pm1 = C_p - 1;
-      for (i in 1:I) {
-        X_aug[i, idx + 1:idx + C_pm1] =
-          one_hot_row_vector(C_p, X_cat[i, p])[:C_pm1];
-      }
-      idx += C_pm1;
-    }
-  }
-  if (P_ord ) {
-    X_aug[:, P_aug - P_ord + 1:] = to_matrix(X_ord);
-  }
-  return X_aug;
-}
-
 array[] matrix augment_design_matrix(data array[] matrix X,
                                      data array[,,] int X_cat,
                                      data array[,,] int X_ord,
                                      data array[] int C, data array[] int O) {
-  int I = size(X), J = rows(X[1]), P = cols(X[1]), P_cat = size(C),
+  int K = size(X), I = rows(X[1]), P = cols(X[1]), P_cat = size(C),
       P_ord = size(O), P_sum = P + P_cat + P_ord, C_sum = sum(C),
       P_aug = P + C_sum - P_cat + P_ord;
-  array[I] matrix[J, P_aug] X_aug;
+  array[K] matrix[I, P_aug] X_aug;
   if (P_sum) {
     if (P) {
-      for (i in 1:I) {
-        X_aug[i, :, :P] = X[i];
+      for (k in 1:K) {
+        X_aug[k, :, :P] = X[k];
       }
     }
     if (P_cat) {
       int idx = P;
       for (p in 1:P_cat) {
         int C_p = C[p], C_pm1 = C_p - 1;
-        for (i in 1:I) {
-          for (j in 1:J) {
-            X_aug[i, j, idx + 1:idx + C_pm1] =
-              one_hot_row_vector(C_p, X_cat[i, j, p])[:C_pm1];
+        for (k in 1:K) {
+          for (i in 1:I) {
+            X_aug[k, i, idx + 1:idx + C_pm1] =
+              one_hot_row_vector(C_p, X_cat[k, i, p])[:C_pm1];
           }
         }
         idx += C_pm1;
       }
     }
     if (P_ord ) {
-      for (i in 1:I) {
-        X_aug[i, :, P_aug - P_ord + 1:] = to_matrix(X_ord[i]);
+      for (k in 1:K) {
+        X_aug[k, :, P_aug - P_ord + 1:] = to_matrix(X_ord[k]);
       }
     }
   }
@@ -164,14 +111,14 @@ array[] matrix augment_design_matrix(data array[] matrix X,
 array[,] matrix augment_design_matrix(
   data array[,] matrix X, data array[,,,] int X_cat, data array[,,,] int X_ord,
   data array[] int C, data array[] int O) {
-  int I = size(X), K = size(X[1]), J = rows(X[1, 1]), P = cols(X[1, 1]),
+  int K = size(X), I = size(X[1]), J = rows(X[1, 1]), P = cols(X[1, 1]),
       P_cat = size(C), P_ord = size(O), P_sum = P + P_cat + P_ord,
       C_sum = sum(C), P_aug = P + C_sum - P_cat + P_ord;
-  array[I, K] matrix[J, P_aug] X_aug;
+  array[K, I] matrix[J, P_aug] X_aug;
   if (P) {
-    for (i in 1:I) {
-      for (k in 1:K) {
-        X_aug[i, k, :, :P] = X[i, k];
+    for (k in 1:K) {
+      for (i in 1:I) {
+        X_aug[k, i, :, :P] = X[k, i];
       }
     }
   }
@@ -179,11 +126,11 @@ array[,] matrix augment_design_matrix(
     int idx = P;
     for (p in 1:P_cat) {
       int C_p = C[p], C_pm1 = C_p - 1;
-      for (i in 1:I) {
-        for (k in 1:K) {
+      for (k in 1:K) {
+        for (i in 1:I) {
           for (j in 1:J) {
-            X_aug[i, k, j, idx + 1:idx + C_pm1] =
-              one_hot_row_vector(C_p, X_cat[i, k, j, p])[:C_pm1];
+            X_aug[k, i, j, idx + 1:idx + C_pm1] =
+              one_hot_row_vector(C_p, X_cat[k, i, j, p])[:C_pm1];
           }
         }
       }
@@ -191,9 +138,9 @@ array[,] matrix augment_design_matrix(
     }
   }
   if (P_ord ) {
-    for (i in 1:I) {
-      for (k in 1:K) {
-        X_aug[i, k, :, P_aug - P_ord + 1:] = to_matrix(X_ord[i, k]);
+    for (k in 1:K) {
+      for (i in 1:I) {
+        X_aug[k, i, :, P_aug - P_ord + 1:] = to_matrix(X_ord[k, i]);
       }
     }
   }
@@ -202,66 +149,36 @@ array[,] matrix augment_design_matrix(
 
 /**
  * Get number of levels for all categorical or ordinal predictors and compute
- * maximum and total levels. Overloaded for single and multiseason deployments.
+ * maximum and total levels. Overloaded for site and survey predictors
  *
- * @param X1  Occupancy predictors [I, P]
- * @param X2  Detection site predictors [I, P]
- * @param X3  Detection survey predictors [I, P]
+ * @param X1  Occupancy predictors [K, I, P]
+ * @param X2  Detection site predictors [K, I, P]
+ * @param X3  Detection survey predictors [K, I, J, P]
  *
  * @return  Number of levels per predictor [3, max(P)]
  */
-tuple(array[,] int, array[] int, array[] int)
-  levels(data array[,] int X1, data array[,] int X2, data array[,,] int X3) {
-  array[3] int P;
-  P[1] = size(X1[1]);
-  P[2] = size(X2[1]);
-  P[3] = size(X3[1, 1]);
-  int P_max = max(P), I = size(X1);
-  array[3, P_max] int levels = rep_array(0, 3, P_max);
-  for (p in 1:P[1]) {
-    levels[1, p] = max(X1[:, p]);
-  }
-  for (p in 1:P[2]) {
-    levels[2, p] = max(X2[:, p]);
-  }
-  for (p in 1:P[3]) {
-    for (i in 1:I) {
-      levels[3, p] = max(levels[3, p], max(X3[i, :, p]));
-    }
-  }
-  array[3] int max_levels = zeros_int_array(3),
-               sum_levels = zeros_int_array(3);
-  for (d in 1:3) {
-    if (P[d]) {
-      max_levels[d] = max(levels[d]);
-      sum_levels[d] = sum(levels[d]);
-    }
-  }
-  return (levels, max_levels, sum_levels);
-}
-
 tuple(array[,] int, array[] int, array[] int)
   levels(data array[,,] int X1, data array[,,] int X2, data array[,,,] int X3) {
   array[3] int P;
   P[1] = size(X1[1, 1]);
   P[2] = size(X2[1, 1]);
   P[3] = size(X3[1, 1, 1]);
-  int P_max = max(P), I = size(X1), K = size(X1[1]);
+  int P_max = max(P), K = size(X1), I = size(X1[1]);
   array[3, P_max] int levels = rep_array(0, 3, P_max);
   for (p in 1:P[1]) {
     for (k in 1:K) {
-      levels[1, p] = max(levels[1, p], max(X1[:, k, p]));
+      levels[1, p] = max(levels[1, p], max(X1[k, :, p]));
     }
   }
   for (p in 1:P[2]) {
     for (k in 1:K) {
-      levels[2, p] = max(levels[2, p], max(X2[:, k, p]));
+      levels[2, p] = max(levels[2, p], max(X2[k, :, p]));
     }
   }
   for (p in 1:P[3]) {
-    for (i in 1:I) {
-      for (k in 1:K) {
-        levels[3, p] = max(levels[3, p], max(X3[i, k, :, p]));
+    for (k in 1:K) {
+      for (i in 1:I) {
+        levels[3, p] = max(levels[3, p], max(X3[k, i, :, p]));
       }
     }
   }
@@ -276,27 +193,9 @@ tuple(array[,] int, array[] int, array[] int)
   return (levels, max_levels, sum_levels);
 }
 
-
-/**
- * Orthogonalise a vector or matrix with respect to a design matrix, i.e.
- * remove the component of theta in the column space of X.
- *
- * @param X       Design matrix [I, P]
- * @param X_plus  Pseudo-inverse of design matrix [P, I]
- * @param theta   Vector or matrix to orthogonalise [I(, J)]
- *
- * @return        (I - X * X_plus) * theta [I(, J)]
- */
-vector orthogonalise(data matrix X, data matrix X_plus, vector theta) {
-  return theta - X * (X_plus * theta);
-}
-matrix orthogonalise(data matrix X, data matrix X_plus, matrix theta) {
-  return theta - X * (X_plus * theta);
-}
-
 /**
  * Moore–Penrose or pseudo-inverse, with observations in rows and predictors
- * in columns
+ * in columns.
  *
  * @param X  Design matrix X [I, P]
  *

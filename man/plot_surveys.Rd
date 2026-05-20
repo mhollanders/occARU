@@ -8,10 +8,10 @@ plot_surveys(
   fit,
   species = NULL,
   surveys = NULL,
+  seasons = NULL,
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   ndraws = NULL,
   seed = NULL,
   palette = "YlGn",
@@ -28,6 +28,9 @@ all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 (default), all surveys are plotted. Must be one of
 \code{attr(occARU_data, "surveys")}.}
 
+\item{seasons}{\code{character}. Vector of seasons to plot. If \code{NULL} (default),
+all seasons are plotted. Must be one of \code{attr(occARU_data, "seasons")}.}
+
 \item{intercepts}{\code{logical}. If \code{TRUE} (default), species-level baseline log
 detection rates are added to the survey effects. If \code{FALSE}, only the
 temporal deviations are plotted on the log scale.}
@@ -40,16 +43,6 @@ via \code{exp()}. If \code{FALSE}, values are left on the log scale.}
 in the survey effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
-\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors}
-is \code{FALSE} and the model was fit \code{project = list(survey = TRUE)}, plots
-random survey effects with orthogonal projection, i.e.,
-\eqn{(\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
-the column space of the site-averaged survey design matrix. If \code{FALSE},
-plots random effects without orthogonal projection, i.e.,
-\eqn{\boldsymbol{\kappa}} only. Has no effect when \code{include_predictors}
-is \code{TRUE} as the linear predictor is unaffected by orthogonal projection.}
-
 \item{ndraws}{Positive integer. Number of draws to use for plotting, passed
 to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}
 
@@ -57,7 +50,7 @@ to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \co
 \code{ndraws} is not \code{NULL}. Default: random integer.}
 
 \item{palette}{\code{character}. Colour palette to be passed to
-\code{\link[ggplot2:scale_brewer]{ggplot2::scale_fill_brewer()}}. Default: \code{"YlGn"}.}
+\code{\link[ggplot2:scale_fill_brewer]{ggplot2::scale_fill_brewer()}}. Default: \code{"YlGn"}.}
 
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_lineribbon]{ggdist::stat_lineribbon()}}
 such as \code{.width} and \code{point_interval}.}

@@ -25,16 +25,12 @@
 #'   Only used if `level` is `"species"`.
 #' @param species `character`. Vector of species to plot. If `NULL` (default),
 #'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
-#' @param restricted `logical`. If `TRUE` (default), plots coefficients with
-#'   orthogonal projection of the detection random site or survey effects, e.g.,
-#'   \eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
-#'   the column space of the design matrix. If `FALSE`, recovers coefficients
-#'   without orthogonal projection, e.g., \eqn{\boldsymbol{\beta} -
-#'   \boldsymbol{X_2}^+ \boldsymbol{\iota}}, where \eqn{\boldsymbol{X_2}^+} is
-#'   the pseudo-inverse of the design matrix. Only used for site predictors if
-#'   `submodel = "detection"`, or if survey random effects were projected with
-#'   `project = list(survey = TRUE)` in `occARU()`.
+#' @param unconditional `logical`. If `TRUE`, plot the unconditional regression
+#'   coefficients, e.g., \eqn{\boldsymbol{\beta} + \boldsymbol{X^+_2}
+#'   \boldsymbol{\iota}}, which attribute variance shared between the fixed
+#'   effects and random site or survey effects back to the covariates. If
+#'   `FALSE` (default), plot the conditional coefficients
+#'   \eqn{\boldsymbol{\beta}}.
 #' @param ordinal_categories `logical`. If `FALSE` (default), plots coefficients
 #'   associated with maximum category (full effect). If `TRUE`, plots realised
 #'   coefficient associated with each ordered category, where the first
@@ -57,7 +53,7 @@ plot_coefficients <- function(
   level = c("species", "mean"),
   facet_by = c("species", "predictor"),
   species = NULL,
-  restricted = TRUE,
+  unconditional = FALSE,
   ordinal_categories = FALSE,
   ...
 ) {
@@ -99,29 +95,33 @@ plot_coefficients <- function(
   P <- occARU_data$P[idx]
   P_cat <- occARU_data$P_cat[idx]
   P_ord <- occARU_data$P_ord[idx]
+  P_sum <- sum(P, P_cat, P_ord)
   where <- if (!survey) paste("for", submodel) else ""
-  if (!sum(P, P_cat, P_ord)) {
+  if (!P_sum) {
     cli::cli_abort(
       "No {component} predictors were found {where} in {.arg fit}."
     )
   }
 
-  # get restricted indicator
-  res <- TRUE
-  if (!restricted) {
-    if (submodel == "occupancy") {
+  # check unconditional indicator
+  if (unconditional) {
+    if (submodel == "occupancy" && !stan_data$random[4]) {
       cli::cli_abort(
-        '{.arg restricted = FALSE} is only applicable when
-        {.arg submodel = "detection"}.'
+        "{.arg unconditional = TRUE} is only available when random site effects
+        were included on occupancy."
       )
-    } else if (survey && !stan_data$project[2]) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is only applicable when random survey
-        effects were orthogonally projected. Requires
-        {.arg project = list(survey = TRUE)} in {.fun occARU}."
-      )
-    } else {
-      res <- FALSE
+    } else if (submodel == "detection") {
+      if (survey && !stan_data$random[2]) {
+        cli::cli_abort(
+          "{.arg unconditional = TRUE} is only available when random survey effects
+          were included."
+        )
+      } else if (!survey && !stan_data$random[1]) {
+        cli::cli_abort(
+          "{.arg unconditional = TRUE} is only available when random site effects
+          were included on detection."
+        )
+      }
     }
     if (type == "categorical") {
       cli::cli_abort(
@@ -135,24 +135,18 @@ plot_coefficients <- function(
   survey <- submodel == "detection" && component == "survey"
   prefix <- if (submodel == "occupancy") {
     "psi_"
-  } else if (survey) {
-    NULL
-  } else {
+  } else if (!survey) {
     "mu_"
   }
   coef <- ifelse(survey, "gamma", "beta")
-  suffix <- if (!res) "2" else NULL
+  suffix <- if (unconditional) "2"
 
   # get species indices
-  if (level == "species") {
-    species_idx <- indices(species, species_lvl)
-  } else {
-    if (!is.null(species)) {
-      cli::cli_warn(
-        "{.arg facet_by} and {.arg species} are ignored when
-        {.arg level = {level}}."
-      )
-    }
+  species_idx <- indices(species, species_lvl)
+  if (level == "mean" && !is.null(species)) {
+    cli::cli_warn(
+      "{.arg species} is ignored when {.arg level = {level}}."
+    )
   }
 
   # continuous
@@ -167,37 +161,57 @@ plot_coefficients <- function(
           "X2"
         }
       ]]
-      X_lbl <- if (survey) dimnames(X)[[3]] else colnames(X)
-      param <- rlang::sym(paste0(prefix, coef, suffix))
-      draws <- tidybayes::spread_rvars(fit, (!!param)[p, s]) |>
+      X_lbl <- dimnames(X)[[if (survey) 4 else 3]]
+      param <- paste0(prefix, coef)
+      beta_bar <- rlang::sym(paste0(param, "_bar", suffix))
+      beta <- rlang::sym(paste0(param, suffix))
+      draws <- tidybayes::spread_rvars(fit, (!!beta_bar)[p], (!!beta)[p, s]) |>
         dplyr::filter(s %in% species_idx) |>
         dplyr::mutate(
           s = factor(species_lvl[s], levels = species_lvl[species_idx]),
           p = factor(p, labels = X_lbl)
         ) |>
-        dplyr::rename(species = s, predictor = p)
+        dplyr::rename(species = s, predictor = p) |>
+        dplyr::relocate(predictor, species, .before = !!beta_bar)
+      if (level == "mean") {
+        draws <- dplyr::distinct(draws, !!(beta_bar), .keep_all = TRUE) |>
+          dplyr::select(-c(!!(beta), species))
+      }
 
+      draws <- dplyr::distinct(
+        draws,
+        !!(if (level == "mean") beta_bar else beta),
+        .keep_all = TRUE
+      )
       p <- ggplot2::ggplot(draws) +
-        ggplot2::aes(
-          xdist = !!param,
-          y = forcats::fct_rev(
-            if (facet_by == "predictor") species else predictor
-          )
-        ) +
-        ggplot2::facet_wrap(
-          ~ if (facet_by == "predictor") {
-            predictor
-          } else {
-            species
-          },
-          scales = if (facet_by == "predictor") "free_x" else "fixed"
-        ) +
         my_vline() +
         ggdist::stat_pointinterval(...) +
         ggplot2::labs(
           x = "Coefficient",
           y = if (facet_by == "predictor") "Species" else "Predictor"
         )
+      if (level == "mean") {
+        p <- p +
+          ggplot2::aes(xdist = !!beta_bar, y = forcats::fct_rev(predictor))
+      } else {
+        p <- p +
+          ggplot2::aes(
+            xdist = !!beta,
+            y = if (facet_by == "predictor") {
+              forcats::fct_rev(species)
+            } else {
+              forcats::fct_rev(predictor)
+            }
+          ) +
+          ggplot2::facet_wrap(
+            ~ if (facet_by == "predictor") {
+              predictor
+            } else {
+              species
+            },
+            scales = if (facet_by == "predictor") "free_x" else "fixed"
+          )
+      }
     } else {
       cli::cli_abort(
         "No {type} {component} predictors were found {where} in {.arg fit}."
@@ -226,8 +240,14 @@ plot_coefficients <- function(
           tidyr::unnest_longer(levels, values_to = "category") |>
           dplyr::mutate(c = dplyr::row_number(), .by = predictor)
 
-        param <- rlang::sym(paste0(prefix, coef, "_cat"))
-        draws <- tidybayes::spread_rvars(fit, (!!param)[p, c, s]) |>
+        param <- paste0(prefix, coef, "_cat")
+        beta_bar <- rlang::sym(paste0(param, "_bar", suffix))
+        beta <- rlang::sym(paste0(param, suffix))
+        draws <- tidybayes::spread_rvars(
+          fit,
+          (!!beta_bar)[c, p],
+          (!!beta)[p, c, s]
+        ) |>
           dplyr::filter(s %in% species_idx) |>
           dplyr::right_join(lvls_df, by = dplyr::join_by(p, c)) |>
           dplyr::mutate(
@@ -238,31 +258,44 @@ plot_coefficients <- function(
             predictor = factor(predictor, levels = names(lvls$cat))
           ) |>
           dplyr::mutate(
-            category = factor(category, levels = lvls$ord[[predictor[1]]]),
+            category = factor(category, levels = lvls$cat[[predictor[1]]]),
             .by = predictor
           ) |>
-          dplyr::select(-c(p, s, c)) |>
+          dplyr::select(-c(p, c, s)) |>
           dplyr::relocate(
             species,
             predictor,
             category,
-            .before = !!param
+            .before = !!beta_bar
           )
+        if (level == "mean") {
+          draws <- dplyr::distinct(draws, !!(beta_bar), .keep_all = TRUE) |>
+            dplyr::select(-c(!!(beta), species))
+        }
 
         p <- ggplot2::ggplot(draws) +
-          ggplot2::aes(xdist = !!param, y = forcats::fct_rev(category)) +
-          ggh4x::facet_grid2(
-            if (facet_by == "predictor") {
-              predictor ~ species
-            } else {
-              species ~ predictor
-            },
-            scales = "free_y",
-            independent = "y"
+          ggplot2::aes(
+            xdist = !!(if (level == "mean") beta_bar else beta),
+            y = forcats::fct_rev(category)
           ) +
           my_vline() +
           ggdist::stat_pointinterval(...) +
           ggplot2::labs(x = "Coefficient", y = "Category")
+        if (level == "mean") {
+          p <- p +
+            ggplot2::facet_wrap(~predictor, scales = "free_y")
+        } else {
+          p <- p +
+            ggh4x::facet_grid2(
+              if (facet_by == "predictor") {
+                predictor ~ species
+              } else {
+                species ~ predictor
+              },
+              scales = "free_y",
+              independent = "y"
+            )
+        }
       } else {
         cli::cli_abort(
           "No {type} {component} predictors were found {where} in {.arg fit}."
@@ -280,11 +313,14 @@ plot_coefficients <- function(
           dplyr::slice(-1, .by = predictor) |>
           dplyr::mutate(o = dplyr::row_number(), .by = predictor)
 
-        cs <- rlang::sym(paste0(prefix, coef, "_ord_cs"))
-        param <- rlang::sym(paste0(prefix, coef, "_ord", suffix))
+        param <- paste0(prefix, coef, "_ord")
+        beta_bar <- rlang::sym(paste0(param, "_bar", suffix))
+        beta <- rlang::sym(paste0(param, suffix))
+        cs <- rlang::sym(paste0(param, "_cs"))
         draws <- tidybayes::spread_rvars(
           fit,
-          (!!param)[p, s],
+          (!!beta_bar)[p],
+          (!!beta)[p, s],
           (!!cs)[o, p]
         ) |>
           dplyr::filter(s %in% species_idx) |>
@@ -305,51 +341,73 @@ plot_coefficients <- function(
             species,
             predictor,
             category,
-            .before = !!param
+            .before = !!beta_bar
           )
+        if (level == "mean") {
+          draws <- dplyr::distinct(draws, !!cs, .keep_all = TRUE) |>
+            dplyr::select(-c(!!beta, species))
+        }
 
         if (ordinal_categories) {
           p <- ggplot2::ggplot(draws) +
             ggplot2::aes(
-              xdist = !!param * !!cs,
+              xdist = !!(if (level == "mean") beta_bar else beta) * !!cs,
               y = forcats::fct_rev(category)
-            ) +
-            ggh4x::facet_grid2(
-              if (facet_by == "predictor") {
-                predictor ~ species
-              } else {
-                species ~ predictor
-              },
-              scales = "free_y",
-              independent = "y"
             ) +
             my_vline() +
             ggdist::stat_pointinterval(...) +
             ggplot2::labs(x = "Coefficient", y = "Category")
+          if (level == "mean") {
+            p <- p +
+              ggplot2::facet_wrap(~predictor, scales = "free_y")
+          } else {
+            p <- p +
+              ggh4x::facet_grid2(
+                if (facet_by == "predictor") {
+                  predictor ~ species
+                } else {
+                  species ~ predictor
+                },
+                scales = "free_y",
+                independent = "y"
+              )
+          }
         } else {
+          draws <- dplyr::distinct(
+            draws,
+            !!(if (level == "mean") beta_bar else beta),
+            .keep_all = TRUE
+          ) |>
+            dplyr::select(-!!cs)
           p <- ggplot2::ggplot(draws) +
-            ggplot2::aes(
-              xdist = !!param,
-              y = if (facet_by == "predictor") {
-                forcats::fct_rev(species)
-              } else {
-                forcats::fct_rev(predictor)
-              }
-            ) +
-            ggplot2::facet_wrap(
-              ~ if (facet_by == "predictor") {
-                predictor
-              } else {
-                species
-              },
-              scales = if (facet_by == "predictor") "free_x" else "fixed"
-            ) +
             my_vline() +
             ggdist::stat_pointinterval(...) +
             ggplot2::labs(
               x = "Coefficient",
               y = if (facet_by == "predictor") "Species" else "Predictor"
             )
+          if (level == "mean") {
+            p <- p +
+              ggplot2::aes(xdist = !!beta_bar, y = forcats::fct_rev(predictor))
+          } else {
+            p <- p +
+              ggplot2::aes(
+                xdist = !!beta,
+                y = if (facet_by == "predictor") {
+                  forcats::fct_rev(species)
+                } else {
+                  forcats::fct_rev(predictor)
+                }
+              ) +
+              ggplot2::facet_wrap(
+                ~ if (facet_by == "predictor") {
+                  predictor
+                } else {
+                  species
+                },
+                scales = if (facet_by == "predictor") "free_x" else "fixed"
+              )
+          }
         }
       } else {
         cli::cli_abort(
@@ -413,19 +471,49 @@ plot_correlations <- function(
   draws <- tidyr::expand_grid(s = species_idx, ss = species_idx)
   if (submodel == "occupancy") {
     P <- occARU_data$P[1] + occARU_data$P_cat[1] + occARU_data$P_ord[1]
-    if (P) {
-      draws <- dplyr::left_join(
-        draws,
-        tidybayes::spread_rvars(fit, psi_beta_O[s, ss])
-      )
+    if (stan_data$K == 1) {
+      if (P) {
+        draws <- dplyr::left_join(
+          draws,
+          tidybayes::spread_rvars(fit, psi_beta_O[s, ss])
+        )
+      } else {
+        cli::cli_abort("No predictors were found for occupancy in {.arg fit}.")
+      }
     } else {
-      cli::cli_abort("No predictors were found for occupancy in {.arg fit}.")
+      random <- stan_data$random
+      if (P + sum(random[4:5])) {
+        if (P) {
+          draws <- dplyr::left_join(
+            draws,
+            tidybayes::spread_rvars(fit, psi_beta_O[s, ss])
+          )
+        }
+        if (random[4]) {
+          draws <- dplyr::left_join(
+            draws,
+            tidybayes::spread_rvars(fit, psi_iota_O[s, ss]),
+            by = dplyr::join_by(s, ss)
+          )
+        }
+        if (random[5]) {
+          draws <- dplyr::left_join(
+            draws,
+            tidybayes::spread_rvars(fit, psi_nu_O[s, ss]),
+            by = dplyr::join_by(s, ss)
+          )
+        }
+      } else {
+        cli::cli_abort(
+          "No predictors or random effects were found for occupancy in {.arg fit}."
+        )
+      }
     }
   } else {
     P <- occARU_data$P[2:3] + occARU_data$P_cat[2:3] + occARU_data$P_ord[2:3]
     random <- stan_data$random
     OLRE <- stan_data$OD == 1
-    if (sum(P) + sum(random) + OLRE) {
+    if (sum(P) + sum(random[1:3]) + OLRE) {
       if (P[1]) {
         draws <- dplyr::left_join(
           draws,
@@ -447,10 +535,17 @@ plot_correlations <- function(
           by = dplyr::join_by(s, ss)
         )
       }
-      if (random[1]) {
+      if (random[2]) {
         draws <- dplyr::left_join(
           draws,
           tidybayes::spread_rvars(fit, kappa_O[s, ss]),
+          by = dplyr::join_by(s, ss)
+        )
+      }
+      if (random[3]) {
+        draws <- dplyr::left_join(
+          draws,
+          tidybayes::spread_rvars(fit, nu_O[s, ss]),
           by = dplyr::join_by(s, ss)
         )
       }
@@ -480,7 +575,17 @@ plot_correlations <- function(
       .variable = factor(
         .variable,
         levels = paste0(
-          c("psi_beta", "mu_beta", "gamma", "iota", "kappa", "epsilon"),
+          c(
+            "psi_beta",
+            "mu_beta",
+            "gamma",
+            "iota",
+            "kappa",
+            "nu",
+            "psi_iota",
+            "psi_nu",
+            "epsilon"
+          ),
           "_O"
         ),
         labels = c(
@@ -489,6 +594,9 @@ plot_correlations <- function(
           "Survey Predictors",
           "Site Effects",
           "Survey Effects",
+          "Season Effects",
+          "Site Effects",
+          "Season Effects",
           "OLRE"
         )
       )
@@ -563,15 +671,20 @@ plot_intercepts <- function(
       "{.arg by_region = TRUE} only applicable with multiple regions."
     )
   }
+  dyn <- stan_data$dyn
 
   # get indices
   species_idx <- indices(species, species_lvl)
   region_idx <- indices(regions, region_lvl)
 
-  # extract intercepts, transform, and label
-  draws <- tidybayes::spread_rvars(fit, alpha[d, r, s]) |>
-    dplyr::filter(r %in% region_idx, s %in% species_idx) |>
+  # extract intercepts and join initial occupancy intercept
+  draws <- tidybayes::spread_rvars(fit, alpha_bar[d], alpha[d, r, s]) |>
+    dplyr::filter(r %in% region_idx, s %in% species_idx)
+
+  # transform, and label
+  draws <- draws |>
     dplyr::mutate(
+      intercept = dplyr::if_else(dyn & d == 1, alpha_bar + alpha, alpha),
       intercept = if (back_transform) {
         dplyr::if_else(d == 1, inv_logit(alpha), exp(alpha))
       } else {
@@ -591,6 +704,7 @@ plot_intercepts <- function(
       s = factor(s, labels = species_lvl[species_idx])
     ) |>
     dplyr::rename(submodel = d, region = r, species = s)
+
   if (!by_region) {
     draws <- dplyr::summarise(
       draws |> dplyr::select(-region),
@@ -691,8 +805,8 @@ plot_partitions <- function(
 
   # partitions and labels
   suffix <- if (MS) paste0(" (", c("mean", "species"), ")")
-  psi_V <- MS + (1 + MS) * (MR + P_sum[1])
-  mu_V <- MS + (1 + MS) * (MR + sum(P_sum[2:3]) + sum(random) + OLRE)
+  psi_V <- MS + (1 + MS) * (MR + P_sum[1] + sum(random[4:5]))
+  mu_V <- MS + (1 + MS) * (MR + sum(P_sum[2:3]) + sum(random[1:3]) + OLRE)
   if (psi_V == 1 && mu_V == 1) {
     cli::cli_abort(
       "The model was fit without any predictors or random effects and contains
@@ -706,9 +820,9 @@ plot_partitions <- function(
       }
       if (P_sum[1]) {
         X_lbl <- c(
-          colnames(stan_data$X1),
-          colnames(stan_data$X1_cat),
-          colnames(stan_data$X1_ord)
+          dimnames(stan_data$X1)[[3]],
+          dimnames(stan_data$X1_cat)[[3]],
+          dimnames(stan_data$X1_ord)[[3]]
         )
         V_lbl <- c(
           V_lbl,
@@ -717,6 +831,12 @@ plot_partitions <- function(
             rep(suffix, each = length(X_lbl))
           )
         )
+      }
+      if (random[4]) {
+        V_lbl <- c(V_lbl, paste0("random: site", suffix))
+      }
+      if (random[5]) {
+        V_lbl <- c(V_lbl, paste0("random: season", suffix))
       }
       psi_phi <- tidybayes::spread_rvars(fit, psi_phi[v], psi_W) |>
         dplyr::mutate(
@@ -739,14 +859,14 @@ plot_partitions <- function(
       }
       if (P_sum[2]) {
         X_lbl <- list(
-          colnames(stan_data$X2),
-          colnames(stan_data$X_cat2),
-          colnames(stan_data$X_ord2)
+          dimnames(stan_data$X2)[[3]],
+          dimnames(stan_data$X_cat2)[[3]],
+          dimnames(stan_data$X_ord2)[[3]]
         ) |>
           sapply(\(x) {
             if (!is.null(x)) {
               paste0(
-                "site:",
+                "site: ",
                 rep(x, ifelse(MS, 2, 1)),
                 rep(suffix, each = length(x))
               )
@@ -757,9 +877,9 @@ plot_partitions <- function(
       }
       if (P_sum[3]) {
         X_lbl <- list(
-          dimnames(stan_data$X3)[[3]],
-          dimnames(stan_data$X_cat3)[[3]],
-          dimnames(stan_data$X_ord3)[[3]]
+          dimnames(stan_data$X3)[[4]],
+          dimnames(stan_data$X_cat3)[[4]],
+          dimnames(stan_data$X_ord3)[[4]]
         ) |>
           sapply(\(x) {
             if (!is.null(x)) {
@@ -778,6 +898,9 @@ plot_partitions <- function(
       }
       if (random[2]) {
         V_lbl <- c(V_lbl, paste0("random: survey", suffix))
+      }
+      if (random[3]) {
+        V_lbl <- c(V_lbl, paste0("random: season", suffix))
       }
       if (OLRE) {
         V_lbl <- c(V_lbl, paste0("random: OLRE", suffix))
@@ -830,8 +953,8 @@ plot_partitions <- function(
 
 #' Plot realised occupancy proportions
 #'
-#' Plots species-level proportions of occupied sites,
-#' \eqn{\frac{\sum_{i = 1}^I z_{is}}{I}}, potentially by region.
+#' Plots species-level proportions of occupied sites by season,
+#' \eqn{\frac{\sum_{i = 1}^I z_{kis}}{I}}, potentially by region.
 #'
 #' @param fit A fitted model object from [occARU()].
 #' @param by_region `logical`. Whether to plot by region, if multiple regions
@@ -842,6 +965,8 @@ plot_partitions <- function(
 #'   sites are used. Must be one of `attr(occARU_data, "sites")`.
 #' @param regions `character`. Vector of regions to use. If `NULL` (default),
 #'   all regions are used. Must be one of `attr(occARU_data, "regions")`.
+#' @param seasons `character`. Vector of seasons to use. If `NULL` (default),
+#'   all seasons are used. Must be one of `attr(occARU_data, "seasons")`.
 #' @param ... Additional arguments passed to [ggdist::stat_pointinterval()].
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
@@ -860,6 +985,7 @@ plot_realised <- function(
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ...
 ) {
   if (!inherits(fit, "CmdStanFit")) {
@@ -888,38 +1014,70 @@ plot_realised <- function(
     )
   }
   region_idx <- indices(regions, region_lvl)
+  season_lvl <- attr(occARU_data, "seasons")
+  season_idx <- indices(seasons, season_lvl)
+  K <- length(season_idx)
 
   # extract draws, label, and summarise
-  draws <- tidybayes::spread_rvars(fit, z[i, s]) |>
+  draws <- tidybayes::spread_rvars(fit, z[k, i, s]) |>
     dplyr::mutate(r = stan_data$region[i]) |>
-    dplyr::filter(i %in% site_idx, s %in% species_idx, r %in% region_idx) |>
+    dplyr::filter(
+      k %in% season_idx,
+      i %in% site_idx,
+      s %in% species_idx,
+      r %in% region_idx
+    ) |>
     dplyr::mutate(
+      season = factor(season_lvl[k], labels = season_lvl[season_idx]),
+      site = factor(site_lvl[i], labels = site_lvl[site_idx]),
       region = factor(region_lvl[r], labels = region_lvl[region_idx]),
       species = factor(species_lvl[s], levels = species_lvl[species_idx])
     ) |>
+    dplyr::left_join(
+      apply(occARU_data$Delta, c(1, 3), \(x) sum(x) > 0) |>
+        as.data.frame.table() |>
+        purrr::set_names(c("season", "site", "surveyed")) |>
+        dplyr::mutate(
+          season = factor(season, levels = season_lvl),
+          site = factor(site, levels = site_lvl)
+        ),
+      by = c("season", "site")
+    ) |>
     dplyr::summarise(
-      realised = posterior::rvar_sum(z) / n(),
-      .by = c("species", if (by_region) "region")
+      realised = posterior::rvar_sum(z) / sum(surveyed),
+      .by = c("season", "species", if (by_region) "region")
+    ) |>
+    dplyr::filter(!is.na(median(realised))) |>
+    dplyr::left_join(
+      attr(occARU_data, "reference_dates"),
+      by = dplyr::join_by(season == .season)
     )
 
   # plot
   p <- ggplot2::ggplot(draws) +
     ggplot2::aes(
-      xdist = realised,
-      y = forcats::fct_rev(if (by_region && !MS) region else species)
+      x = if (K > 1) reference else species,
+      ydist = realised
     ) +
     ggdist::stat_pointinterval(...) +
-    ggplot2::scale_x_continuous(
+    ggplot2::scale_y_continuous(
       breaks = seq(0.2, 0.8, 0.2),
       limits = c(0, 1),
       expand = c(0, 0)
     ) +
     ggplot2::labs(
-      x = "Realised Occupancy",
-      y = if (by_region && !MS) "Region" else "Species"
+      x = if (K > 1) "Season" else "Species",
+      y = "Realised Occupancy"
     )
   attr(p, "plot_data") <- draws
-  if (by_region && MS) {
+
+  if (MS && K > 1) {
+    if (by_region) {
+      p + facet_grid(region ~ species)
+    } else {
+      p + facet_wrap(~species)
+    }
+  } else if (by_region) {
     p + facet_wrap(~region)
   } else {
     p
@@ -954,20 +1112,14 @@ plot_realised <- function(
 #' @param include_predictors `logical`. If `TRUE` (default), includes predictors
 #'   in the site effects, if included. If `FALSE`, only plots the random
 #'   effects.
-#' @param restricted `logical`. If `TRUE` (default), when `include_predictors` is
-#'   `FALSE`, plots random site effects with orthogonal projection, i.e.,
-#'   \eqn{(\boldsymbol{I} - \boldsymbol{P_{X_2}}) \boldsymbol{\iota}}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
-#'   the column space of the site design matrix. If `FALSE`, plots random
-#'   effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
-#'   Has no effect when `include_predictors` is `TRUE` as the linear predictor
-#'   is unaffected by orthogonal projection.
 #' @param species `character`. Vector of species to plot. If `NULL` (default),
 #'   all species are plotted. Must be one of `attr(occARU_data, "species")`.
 #' @param sites `character`. Vector of sites to plot. If `NULL` (default), all
 #'   sites are plotted. Must be one of `attr(occARU_data, "sites")`.
 #' @param regions `character`. Vector of regions to plot. If `NULL` (default),
 #'   all regions are plotted. Must be one of `attr(occARU_data, "regions")`.
+#' @param seasons `character`. Vector of seasons to plot. If `NULL` (default),
+#'   all seasons are plotted. Must be one of `attr(occARU_data, "seasons")`.
 #' @param ndraws Positive integerish. Number of draws to use for plotting,
 #'   passed to [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
@@ -991,10 +1143,10 @@ plot_sites <- function(
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ndraws = NULL,
   seed = NULL,
   ...
@@ -1009,17 +1161,18 @@ plot_sites <- function(
   site_lvl <- attr(occARU_data, "sites")
   species_lvl <- attr(occARU_data, "species")
   region_lvl <- attr(occARU_data, "regions")
+  season_lvl <- attr(occARU_data, "seasons")
   survey_length <- attr(occARU_data, "survey_length")
   P <- occARU_data$P[2]
   P_cat <- occARU_data$P_cat[2]
   P_ord <- occARU_data$P_ord[2]
   P_sum <- sum(c(P, P_cat, P_ord))
-  random <- stan_data$random[1]
+  random <- stan_data$random
   has_latent <- stan_data$latent == 1L
   transform <- back_transform && intercepts
   has_coords <- any(occARU_data$XY != 0)
   use_map <- map && has_coords
-  if (!random && !P_sum) {
+  if (!random[1] && !P_sum) {
     cli::cli_abort(
       "Model was fit without site predictors or random effects."
     )
@@ -1044,34 +1197,13 @@ plot_sites <- function(
   species_idx <- indices(species, species_lvl)
   site_idx <- indices(sites, site_lvl)
   region_idx <- indices(regions, region_lvl)
-
-  # determine projection
-  res <- TRUE
-  if (!restricted) {
-    if (P_sum && include_predictors) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is only applicable when predictors are in
-        the model but excluded from the plot. Set
-        {.arg include_predictors = FALSE}."
-      )
-    } else if (!P_sum) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is only applicable when predictors are
-        included."
-      )
-    } else if (!stan_data$project[1]) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is ignored when random site effects were
-        not orthogonally projected. Requires
-        {.arg project = list(site = TRUE)} in {.fun occARU}."
-      )
-    } else {
-      res <- FALSE
-    }
-  }
+  season_idx <- indices(seasons, season_lvl)
+  S <- length(species_idx)
+  MS <- S > 1
+  K <- length(season_idx)
 
   # initialise log_mu
-  draws <- tidyr::expand_grid(i = site_idx, s = species_idx) |>
+  draws <- tidyr::expand_grid(k = season_idx, i = site_idx, s = species_idx) |>
     dplyr::mutate(r = stan_data$region[i], .before = i) |>
     dplyr::filter(r %in% region_idx) |>
     dplyr::mutate(log_mu = 0)
@@ -1087,16 +1219,16 @@ plot_sites <- function(
           seed = seed
         ) |>
           dplyr::filter(s %in% species_idx),
-        predictor_matrix_to_tibble(stan_data$X2),
+        predictors_to_tibble(stan_data$X2),
         by = dplyr::join_by(p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           betaX = posterior::rvar_sum(mu_beta * x),
-          .by = c(i, s)
+          .by = c(k, i, s)
         )
 
-      draws <- dplyr::left_join(draws, betaX, by = dplyr::join_by(i, s)) |>
+      draws <- dplyr::left_join(draws, betaX, by = dplyr::join_by(k, i, s)) |>
         dplyr::mutate(log_mu = log_mu + betaX) |>
         dplyr::relocate(betaX, .before = log_mu)
     }
@@ -1109,19 +1241,19 @@ plot_sites <- function(
           seed = seed
         ) |>
           dplyr::filter(s %in% species_idx, !is.nan(median(mu_beta_cat))),
-        predictor_matrix_to_tibble(stan_data$X_cat2),
+        predictors_to_tibble(stan_data$X_cat2),
         by = dplyr::join_by(x, p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           betaX_cat = posterior::rvar_sum(mu_beta_cat),
-          .by = c(i, s)
+          .by = c(k, i, s)
         )
 
       draws <- dplyr::left_join(
         draws,
         betaX_cat,
-        by = dplyr::join_by(i, s)
+        by = dplyr::join_by(k, i, s)
       ) |>
         dplyr::mutate(log_mu = log_mu + betaX_cat) |>
         dplyr::relocate(betaX_cat, .before = log_mu)
@@ -1138,19 +1270,19 @@ plot_sites <- function(
             s %in% species_idx,
             !is.na(median(mu_beta_ord_realised))
           ),
-        predictor_matrix_to_tibble(stan_data$X_ord2 + 1),
+        predictors_to_tibble(stan_data$X_ord2 + 1),
         by = dplyr::join_by(x, p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           betaX_ord = posterior::rvar_sum(mu_beta_ord_realised),
-          .by = c(i, s)
+          .by = c(k, i, s)
         )
 
       draws <- dplyr::left_join(
         draws,
         betaX_ord,
-        by = dplyr::join_by(i, s)
+        by = dplyr::join_by(k, i, s)
       ) |>
         dplyr::mutate(log_mu = log_mu + betaX_ord) |>
         dplyr::relocate(betaX_ord, .before = log_mu)
@@ -1158,22 +1290,29 @@ plot_sites <- function(
   }
 
   # increment random site effects
-  if (random) {
-    param <- rlang::sym(paste0("iota", if (!res) "2"))
+  if (random[1]) {
     draws <- dplyr::left_join(
       draws,
-      tidybayes::spread_rvars(
-        fit,
-        (!!param)[i, s],
-        ndraws = ndraws,
-        seed = seed
-      ),
+      tidybayes::spread_rvars(fit, iota[i, s], ndraws = ndraws, seed = seed),
       by = dplyr::join_by(i, s)
     )
 
     draws <- draws |>
-      dplyr::mutate(log_mu = log_mu + !!param) |>
-      dplyr::relocate(!!param, .before = log_mu)
+      dplyr::mutate(log_mu = log_mu + iota) |>
+      dplyr::relocate(iota, .before = log_mu)
+  }
+
+  # increment random season effects
+  if (random[4]) {
+    draws <- dplyr::left_join(
+      draws,
+      tidybayes::spread_rvars(fit, nu[k, s], ndraws = ndraws, seed = seed),
+      by = dplyr::join_by(k, s)
+    )
+
+    draws <- draws |>
+      dplyr::mutate(log_mu = log_mu + nu) |>
+      dplyr::relocate(nu, .before = log_mu)
   }
 
   # join intercepts
@@ -1205,8 +1344,8 @@ plot_sites <- function(
   if (has_latent) {
     draws <- dplyr::left_join(
       draws,
-      tidybayes::spread_rvars(fit, z[i, s], ndraws = ndraws, seed = seed),
-      by = dplyr::join_by(i, s)
+      tidybayes::spread_rvars(fit, z[k, i, s], ndraws = ndraws, seed = seed),
+      by = dplyr::join_by(k, i, s)
     )
 
     draws <- draws |>
@@ -1220,16 +1359,16 @@ plot_sites <- function(
       draws,
       tidybayes::spread_rvars(
         fit,
-        logit_psi[i, s],
+        eta[k, i, s],
         ndraws = ndraws,
         seed = seed
       ),
-      by = dplyr::join_by(i, s)
+      by = dplyr::join_by(k, i, s)
     )
 
     draws <- draws |>
-      dplyr::relocate(logit_psi, .after = s) |>
-      dplyr::mutate(pred = log(inv_logit(logit_psi) * exp(log_mu)))
+      dplyr::relocate(eta, .after = s) |>
+      dplyr::mutate(pred = log(inv_logit(eta) * exp(log_mu)))
   }
 
   # add labels
@@ -1237,9 +1376,31 @@ plot_sites <- function(
     dplyr::mutate(
       s = factor(species_lvl[s], levels = species_lvl[species_idx]),
       i = factor(site_lvl[i], levels = site_lvl[site_idx]),
-      r = factor(region_lvl[r], labels = region_lvl[unique(r)]),
+      r = factor(region_lvl[r], labels = region_lvl[sort(unique(r))]),
+      k = factor(season_lvl[k], labels = season_lvl[season_idx])
     ) |>
-    dplyr::rename(species = s, site = i, region = r)
+    dplyr::rename(species = s, site = i, region = r, season = k)
+
+  # filter out unsurveyed sites
+  draws <- dplyr::right_join(
+    draws,
+    apply(occARU_data$Delta, c(1, 3), \(x) {
+      sum(x) > 0
+    }) |>
+      as.data.frame.table() |>
+      purrr::set_names(c("season", "site", "surveyed")) |>
+      dplyr::filter(
+        season %in% season_lvl[season_idx],
+        site %in% site_lvl[site_idx],
+        surveyed
+      ) |>
+      dplyr::select(-surveyed) |>
+      dplyr::mutate(
+        season = factor(season, levels = season_lvl[season_idx]),
+        site = factor(site, levels = site_lvl[site_idx])
+      ),
+    by = c("season", "site")
+  )
 
   # transform
   draws <- dplyr::mutate(draws, pred = if (transform) exp(log_mu) else log_mu)
@@ -1255,8 +1416,9 @@ plot_sites <- function(
   if (use_map) {
     draws <- dplyr::left_join(
       draws,
-      as.data.frame(occARU_data$XY) |>
-        tibble::rownames_to_column(var = "site"),
+      as.data.frame(occARU_data$XY[site_idx, ]) |>
+        tibble::rownames_to_column(var = "site") |>
+        dplyr::mutate(site = factor(site, levels = site_lvl[site_idx])),
       by = "site"
     )
     p <- ggplot2::ggplot(draws) +
@@ -1306,13 +1468,22 @@ plot_sites <- function(
         )
     }
   }
-  p <- p +
-    ggplot2::facet_wrap(
-      ~species,
-      scales = if (!use_map && transform) "free_x"
-    )
   attr(p, "plot_data") <- draws
-  p
+  if (K > 1) {
+    if (MS) {
+      p + ggplot2::facet_grid(species ~ season)
+    } else {
+      p + ggplot2::facet_wrap(~season, scales = if (!use_map) "free_y")
+    }
+  } else if (MS) {
+    p +
+      ggplot2::facet_wrap(
+        ~species,
+        scales = if (!use_map && transform) "free_x"
+      )
+  } else {
+    p
+  }
 }
 
 #' Plot temporal detection rates
@@ -1327,6 +1498,8 @@ plot_sites <- function(
 #' @param surveys `character`. Vector of survey dates to plot. If `NULL`
 #'   (default), all surveys are plotted. Must be one of
 #'   `attr(occARU_data, "surveys")`.
+#' @param seasons `character`. Vector of seasons to plot. If `NULL` (default),
+#'   all seasons are plotted. Must be one of `attr(occARU_data, "seasons")`.
 #' @param intercepts `logical`. If `TRUE` (default), species-level baseline log
 #'   detection rates are added to the survey effects. If `FALSE`, only the
 #'   temporal deviations are plotted on the log scale.
@@ -1336,15 +1509,6 @@ plot_sites <- function(
 #' @param include_predictors `logical`. If `TRUE` (default), includes predictors
 #'   in the survey effects, if included. If `FALSE`, only plots the random
 #'   effects.
-#' @param restricted `logical`. If `TRUE` (default), when `include_predictors`
-#'   is `FALSE` and the model was fit `project = list(survey = TRUE)`, plots
-#'   random survey effects with orthogonal projection, i.e.,
-#'   \eqn{(\boldsymbol{I} - \boldsymbol{P_{X_3}}) \boldsymbol{\kappa}}, where
-#'   \eqn{\boldsymbol{I} - \boldsymbol{P_{X_3}}} is the orthogonal complement of
-#'   the column space of the site-averaged survey design matrix. If `FALSE`,
-#'   plots random effects without orthogonal projection, i.e.,
-#'   \eqn{\boldsymbol{\kappa}} only. Has no effect when `include_predictors`
-#'   is `TRUE` as the linear predictor is unaffected by orthogonal projection.
 #' @param ndraws Positive integer. Number of draws to use for plotting, passed
 #'   to [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
@@ -1367,10 +1531,10 @@ plot_surveys <- function(
   fit,
   species = NULL,
   surveys = NULL,
+  seasons = NULL,
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   ndraws = NULL,
   seed = NULL,
   palette = "YlGn",
@@ -1383,16 +1547,17 @@ plot_surveys <- function(
   }
   stan_data <- attr(fit, "stan_data")
   occARU_data <- attr(fit, "occARU_data")
-  survey_lvl <- attr(occARU_data, "surveys")$.survey
+  survey_lvl <- attr(occARU_data, "surveys")
   species_lvl <- attr(occARU_data, "species")
+  season_lvl <- attr(occARU_data, "seasons")
   survey_length <- attr(occARU_data, "survey_length")
   transform <- back_transform && intercepts
   P <- occARU_data$P[3]
   P_cat <- occARU_data$P_cat[3]
   P_ord <- occARU_data$P_ord[3]
   P_sum <- sum(c(P, P_cat, P_ord))
-  random <- stan_data$random[2]
-  if (!random && !P_sum) {
+  random <- stan_data$random
+  if (!sum(random[2:3]) && !P_sum) {
     cli::cli_abort(
       "Model was fit without survey predictors or random effects."
     )
@@ -1410,34 +1575,17 @@ plot_surveys <- function(
 
   # get species and survey indices
   species_idx <- indices(species, species_lvl)
-  survey_idx <- indices(surveys, survey_lvl)
-
-  # determine projection
-  res <- TRUE
-  if (!restricted) {
-    if (P_sum && include_predictors) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is only applicable when predictors are in the
-        model but excluded from the plot."
-      )
-    } else if (!P_sum) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is only applicable when predictors are
-        included."
-      )
-    } else if (!stan_data$project[2]) {
-      cli::cli_abort(
-        "{.arg restricted = FALSE} is ignored when random survey effects were
-        not orthogonally projected. Requires
-        {.arg project = list(survey = TRUE)} in {.fun occARU}."
-      )
-    } else {
-      res <- FALSE
-    }
-  }
+  # survey_idx <- indices(surveys, survey_lvl)
+  season_idx <- indices(seasons, season_lvl)
+  S <- length(species_idx)
+  K <- length(season_idx)
 
   # initialise log_mu
-  draws <- tidyr::expand_grid(s = species_idx, j = survey_idx) |>
+  draws <- tidyr::expand_grid(
+    k = season_idx,
+    s = species_idx,
+    j = 1:stan_data$J
+  ) |>
     dplyr::mutate(log_mu = 0)
 
   # increment predictor effects
@@ -1451,18 +1599,17 @@ plot_surveys <- function(
           seed = seed
         ) |>
           dplyr::filter(s %in% species_idx),
-        predictor_matrix_to_tibble(apply(stan_data$X3, 2:3, mean)) |>
-          dplyr::rename(j = i) |>
-          dplyr::filter(j %in% survey_idx),
+        predictors_to_tibble(apply(stan_data$X3, c(1, 3, 4), mean)) |>
+          dplyr::rename(j = i), # |> dplyr::filter(j %in% survey_idx),
         by = dplyr::join_by(p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           gammaX = posterior::rvar_sum(gamma * x),
-          .by = c(j, s)
+          .by = c(k, j, s)
         )
 
-      draws <- dplyr::left_join(draws, gammaX, by = dplyr::join_by(j, s)) |>
+      draws <- dplyr::left_join(draws, gammaX, by = dplyr::join_by(k, j, s)) |>
         dplyr::mutate(log_mu = log_mu + gammaX) |>
         dplyr::relocate(gammaX, .before = log_mu)
     }
@@ -1470,21 +1617,20 @@ plot_surveys <- function(
       gammaX_cat <- dplyr::left_join(
         tidybayes::spread_rvars(fit, gamma_cat[p, x, s]) |>
           dplyr::filter(s %in% species_idx),
-        predictor_matrix_to_tibble(apply(stan_data$X_cat3, 2:3, int_mode)) |>
-          dplyr::rename(j = i) |>
-          dplyr::filter(j %in% survey_idx),
+        predictors_to_tibble(apply(stan_data$X_cat3, c(1, 3, 4), int_mode)) |>
+          dplyr::rename(j = i), # |> dplyr::filter(j %in% survey_idx),
         by = dplyr::join_by(x, p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           gammaX_cat = posterior::rvar_sum(gamma_cat),
-          .by = c(j, s)
+          .by = c(k, j, s)
         )
 
       draws <- dplyr::left_join(
         draws,
         gammaX_cat,
-        by = dplyr::join_by(j, s)
+        by = dplyr::join_by(k, j, s)
       ) |>
         dplyr::mutate(log_mu = log_mu + gammaX_cat) |>
         dplyr::relocate(gammaX_cat, .before = log_mu)
@@ -1498,25 +1644,24 @@ plot_surveys <- function(
           seed = seed
         ) |>
           dplyr::filter(s %in% species_idx),
-        predictor_matrix_to_tibble(apply(
+        predictors_to_tibble(apply(
           stan_data$X_ord3 + 1,
-          2:3,
+          c(1, 3, 4),
           int_mode
         )) |>
-          dplyr::rename(j = i) |>
-          dplyr::filter(j %in% survey_idx),
+          dplyr::rename(j = i), # |> dplyr::filter(j %in% survey_idx),
         by = dplyr::join_by(x, p),
         relationship = "many-to-many"
       ) |>
         dplyr::summarise(
           gammaX_ord = posterior::rvar_sum(gamma_ord_realised),
-          .by = c(j, s)
+          .by = c(k, j, s)
         )
 
       draws <- dplyr::left_join(
         draws,
         gammaX_ord,
-        by = dplyr::join_by(j, s)
+        by = dplyr::join_by(k, j, s)
       ) |>
         dplyr::mutate(log_mu = log_mu + gammaX_ord) |>
         dplyr::relocate(gammaX_ord, .before = log_mu)
@@ -1524,20 +1669,30 @@ plot_surveys <- function(
   }
 
   # increment random survey effects
-  if (random) {
-    param <- rlang::sym(paste0("kappa", if (!res) "2"))
+  if (random[2]) {
     draws <- dplyr::left_join(
       draws,
       tidybayes::spread_rvars(
         fit,
-        (!!param)[j, s],
+        kappa[k, j, s],
         ndraws = ndraws,
         seed = seed
       ),
-      by = dplyr::join_by(j, s)
+      by = dplyr::join_by(k, j, s)
     ) |>
-      dplyr::mutate(log_mu = log_mu + !!param) |>
-      dplyr::relocate(!!param, .before = log_mu)
+      dplyr::mutate(log_mu = log_mu + kappa) |>
+      dplyr::relocate(kappa, .before = log_mu)
+  }
+
+  # increment random season effects
+  if (random[3]) {
+    draws <- dplyr::left_join(
+      draws,
+      tidybayes::spread_rvars(fit, nu[k, s], ndraws = ndraws, seed = seed),
+      by = dplyr::join_by(k, s)
+    ) |>
+      dplyr::mutate(log_mu = log_mu + nu) |>
+      dplyr::relocate(nu, .before = log_mu)
   }
 
   # join intercepts
@@ -1567,10 +1722,17 @@ plot_surveys <- function(
   # add labels
   draws <- draws |>
     dplyr::mutate(
-      s = factor(species_lvl[s], levels = species_lvl[species_idx]),
-      j = lubridate::ymd(survey_lvl[j])
+      k = factor(season_lvl[k], levels = season_lvl[season_idx]),
+      s = factor(species_lvl[s], levels = species_lvl[species_idx])
     ) |>
-    dplyr::rename(species = s, survey = j)
+    dplyr::left_join(
+      survey_lvl,
+      ,
+      by = join_by(k == .season, j == .survey_idx)
+    ) |>
+    dplyr::rename(season = k, species = s, survey = .survey) |>
+    dplyr::select(-j) |>
+    dplyr::relocate(survey, .after = season)
 
   # transform and plot
   draws <- dplyr::mutate(draws, pred = if (transform) exp(log_mu) else log_mu)
@@ -1591,22 +1753,35 @@ plot_surveys <- function(
       )
     )
   attr(p, "plot_data") <- draws
-  p
+  if (K > 1) {
+    if (S > 1) {
+      p +
+        ggplot2::facet_grid(
+          species ~ season,
+          scales = if (transform) "free" else "free_x"
+        )
+    } else {
+      p + ggplot2::facet_wrap(~season, scales = "free_x")
+    }
+  } else if (S > 1) {
+    p + ggplot2::facet_wrap(~species, scales = if (transform) "free_y")
+  } else {
+    p
+  }
 }
 
-#' Convert `[P, I]` design matrix in `stan_data` object to long format
+#' Convert `[K, I, P]` design array in `stan_data` object to long format
 #'
-#' @param X Design matrix
+#' @param X Design array
 #' @return A `tibble` with continuous or integer valued predictors
 #' @noRd
-predictor_matrix_to_tibble <- function(X) {
+predictors_to_tibble <- function(X) {
   categorical <- all(X == round(X))
-  P <- ncol(X)
-  tidyr::as_tibble(X) |>
-    purrr::set_names(1:P) |>
-    dplyr::mutate(i = dplyr::row_number()) |>
-    tidyr::pivot_longer(-i, names_to = "p", values_to = "x") |>
-    dplyr::mutate(p = as.integer(p), x = if (categorical) as.integer(x) else x)
+  P <- dim(X)[3]
+  as.data.frame.table(X) |>
+    tidyr::as_tibble() |>
+    purrr::set_names("k", "i", "p", "x") |>
+    dplyr::mutate(dplyr::across(dplyr::where(is.factor), as.integer))
 }
 
 

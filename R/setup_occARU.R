@@ -20,7 +20,7 @@ setup_occARU <- function(...) {
   # check toolchain before attempting install
   cli::cli_inform(c("i" = "Checking C++ toolchain..."))
   check <- tryCatch(
-    cmdstanr::check_cmdstan_toolchain(fix = TRUE, quiet = TRUE),
+    cmdstanr::check_cmdstan_toolchain(quiet = TRUE),
     error = \(e) e
   )
   if (inherits(check, "error")) {

@@ -9,7 +9,6 @@ occARU(
   prior = set_priors(verbose = FALSE),
   stan_file = NULL,
   random = list(site = gp(), survey = gp()),
-  project = list(site = TRUE, survey = TRUE),
   overdispersion = c("none", "nb", "olre"),
   variance_decomposition = c("dirichlet", "logistic-normal"),
   ppc = c("Q", "y", "both", "none"),
@@ -38,19 +37,12 @@ survey effects on detection. For multiseason models, optionally accepts
 season effects on detection (\code{season}) and site (\code{site_occ}) and season
 (\code{season_occ}) effects on occupancy. Must be one of:
 \itemize{
-\item \code{gp()} (default for site, survey, and season effects on detection), which
-fits a (multispecies) Gaussian process. See \code{\link[=gp]{gp()}} for details.
+\item \code{\link[=gp]{gp()}}, which fits a (multispecies) Gaussian process. Default for site
+and survey effects. Also the default for season effects on both detection
+and occupancy and occupancy site effects in dynamic models.
 \item \code{"mvn"}, which fits an unstructured (multispecies) normal.
-\item \code{"none"} (default for site and season effects on occupancy), which omits
-random effects entirely.
+\item \code{"none"},which omits random effects entirely.
 }}
-
-\item{project}{A named \code{list} of logicals specifying whether to project
-random effects when predictors are included. Entries must be one of \code{site}
-or \code{survey}. If \code{TRUE} (default for both), orthogonally projects random
-effects. For survey effects, the design matrices are averaged across sites.
-For site effects in multiseason models, the design matrices are averaged
-across seasons.}
 
 \item{overdispersion}{\code{character}. Overdispersion model for the observation
 process. One of \code{"none"} (Poisson, default), \code{"nb"} (negative binomial),
@@ -94,7 +86,8 @@ convergence.}
 \item{pathfinder_args}{Named list of additional arguments passed to
 \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()} when \code{init = "pathfinder"}.
 Overrides defaults (\code{refresh = 0}, \code{sig_figs = 14}, \code{init = 0.1},
-\code{num_paths = chains}, \code{num_threads = chains}). Default: \code{list()}.}
+\code{num_paths = chains}, \code{num_threads = chains}, \code{psis_resample = FALSE}).
+Default: \code{list()}.}
 
 \item{threads}{Positive integer. Number of threads for within-chain
 parallelisation via \code{reduce_sum()}. Default: \code{1} (no parallelisation).

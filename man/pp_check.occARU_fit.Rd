@@ -5,7 +5,13 @@
 \alias{pp_check}
 \title{Posterior predictive checks using rootograms for \code{occARU_fit} objects}
 \usage{
-\method{pp_check}{occARU_fit}(object, level = c("Q", "y"), ndraws = NULL, ...)
+\method{pp_check}{occARU_fit}(
+  object,
+  level = c("Q", "y"),
+  group = c("species", "region", "season"),
+  ndraws = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{A fitted model object from \code{\link[=occARU]{occARU()}}.}
@@ -14,11 +20,14 @@
 aggregated counts per site and species as data. If \code{"y"}, uses the raw
 (survey-level) counts as input.}
 
+\item{group}{Character. Whether to group by \code{"species"} (default),
+\code{"region"}, or \code{"season"}.}
+
 \item{ndraws}{Positive integer. Number of draws to use. If \code{NULL} (default),
 uses all draws.}
 
 \item{...}{Additional arguments to be passed to
-\code{\link[bayesplot:PPC-discrete]{bayesplot::ppc_rootogram_grouped()}}.}
+\code{\link[bayesplot:ppc_rootogram_grouped]{bayesplot::ppc_rootogram_grouped()}}.}
 }
 \value{
 A ggplot object with posterior predictive rootograms faceted by

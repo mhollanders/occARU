@@ -12,7 +12,7 @@ plot_coefficients(
   level = c("species", "mean"),
   facet_by = c("species", "predictor"),
   species = NULL,
-  restricted = TRUE,
+  unconditional = FALSE,
   ordinal_categories = FALSE,
   ...
 )
@@ -39,16 +39,12 @@ Only used if \code{level} is \code{"species"}.}
 \item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
 all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
-\item{restricted}{\code{logical}. If \code{TRUE} (default), plots coefficients with
-orthogonal projection of the detection random site or survey effects, e.g.,
-\eqn{\boldsymbol{\iota}(\boldsymbol{I} - \boldsymbol{P_{X_2}})}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
-the column space of the design matrix. If \code{FALSE}, recovers coefficients
-without orthogonal projection, e.g., \eqn{\boldsymbol{\beta} -
-  \boldsymbol{X_2}^+ \boldsymbol{\iota}}, where \eqn{\boldsymbol{X_2}^+} is
-the pseudo-inverse of the design matrix. Only used for site predictors if
-\code{submodel = "detection"}, or if survey random effects were projected with
-\code{project = list(survey = TRUE)} in \code{occARU()}.}
+\item{unconditional}{\code{logical}. If \code{TRUE}, plot the unconditional regression
+coefficients, e.g., \eqn{\boldsymbol{\beta} + \boldsymbol{X^+_2}
+\boldsymbol{\iota}}, which attribute variance shared between the fixed
+effects and random site or survey effects back to the covariates. If
+\code{FALSE} (default), plot the conditional coefficients
+\eqn{\boldsymbol{\beta}}.}
 
 \item{ordinal_categories}{\code{logical}. If \code{FALSE} (default), plots coefficients
 associated with maximum category (full effect). If \code{TRUE}, plots realised

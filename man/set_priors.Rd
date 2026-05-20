@@ -17,6 +17,8 @@ set_priors(
   kappa_ell_periodic = c(1, 1),
   K_phi = c(1, 1),
   nu_ell = c(1, 1),
+  psi_iota_ell = c(1, 1),
+  psi_nu_ell = c(1, 1),
   phi = c(0.4, 0.3),
   alpha_O_L = 1,
   psi_beta_O_L = 1,
@@ -24,6 +26,9 @@ set_priors(
   gamma_O_L = 1,
   iota_O_L = 1,
   kappa_O_L = 1,
+  nu_O_L = 1,
+  psi_iota_O_L = 1,
+  psi_nu_O_L = 1,
   epsilon_O_L = 1,
   verbose = TRUE
 )
@@ -56,8 +61,8 @@ Gamma(shape, rate) prior on the detection variance partition sparsity
 parameter. Default: \code{c(1, 1)}.}
 
 \item{iota_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
-InvGamma(alpha, beta) prior on the spatial GP length scale(s). Default:
-\code{c(1, 1)}.}
+InvGamma(alpha, beta) prior on the detection spatial GP length scale.
+Default: \code{c(1, 1)}.}
 
 \item{kappa_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
 InvGamma(alpha, beta) prior on the temporal GP length scale. Default:
@@ -72,8 +77,16 @@ Dirichlet(alpha) prior on the temporal GP variance partitions of the
 Matern and periodic kernels. Default: \code{c(1, 1)}.}
 
 \item{nu_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
-InvGamma(alpha, beta) prior on the seasonal GP length scale. Default:
-\code{c(1, 1)}.}
+InvGamma(alpha, beta) prior on the detection season GP length scale.
+Default: \code{c(1, 1)}.}
+
+\item{psi_iota_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
+InvGamma(alpha, beta) prior on the occupancy spatial GP length scale.
+Default: \code{c(1, 1)}.}
+
+\item{psi_nu_ell}{Numeric vector of length 2. \code{c(alpha, beta)} for an
+InvGamma(alpha, beta) prior on the occupancy season GP length scale.
+Default: \code{c(1, 1)}.}
 
 \item{phi}{Numeric vector of length 2. \code{c(alpha, beta)} for an
 InvGamma(alpha, beta) prior on species-specific negative binomial
@@ -97,10 +110,20 @@ matrix of species-specific survey coefficients. Only used when survey
 predictors are supplied. Default: \code{1}.}
 
 \item{iota_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]} correlation
-matrix of species-specific site effects. Default: \code{1}.}
+matrix of species-specific site effects on detection. Default: \code{1}.}
 
 \item{kappa_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]} correlation
 matrix of species-specific survey effects. Default: \code{1}.}
+
+\item{nu_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]} correlation
+matrix of species-specific season effects on detection. Default: \code{1}.}
+
+\item{psi_iota_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]}
+correlation matrix of species-specific season effects on detection.
+Default: \code{1}.}
+
+\item{psi_nu_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]} correlation
+matrix of species-specific season effects on occupancy. Default: \code{1}.}
 
 \item{epsilon_O_L}{Positive scalar. LKJ prior on the \eqn{[S, S]}
 correlation matrix of species-specific OLRE residuals. Default: \code{1}.}

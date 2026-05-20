@@ -10,6 +10,7 @@ plot_realised(
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ...
 )
 }
@@ -28,6 +29,9 @@ sites are used. Must be one of \code{attr(occARU_data, "sites")}.}
 \item{regions}{\code{character}. Vector of regions to use. If \code{NULL} (default),
 all regions are used. Must be one of \code{attr(occARU_data, "regions")}.}
 
+\item{seasons}{\code{character}. Vector of seasons to use. If \code{NULL} (default),
+all seasons are used. Must be one of \code{attr(occARU_data, "seasons")}.}
+
 \item{...}{Additional arguments passed to \code{\link[ggdist:stat_pointinterval]{ggdist::stat_pointinterval()}}.}
 }
 \value{
@@ -37,8 +41,8 @@ A \code{ggplot} object with occARU-specific attributes attached:
 }
 }
 \description{
-Plots species-level proportions of occupied sites,
-\eqn{\frac{\sum_{i = 1}^I z_{is}}{I}}, potentially by region.
+Plots species-level proportions of occupied sites by season,
+\eqn{\frac{\sum_{i = 1}^I z_{kis}}{I}}, potentially by region.
 }
 \seealso{
 \code{\link[=occARU]{occARU()}}, \code{\link[=plot_intercepts]{plot_intercepts()}}, \code{\link[=plot_coefficients]{plot_coefficients()}},

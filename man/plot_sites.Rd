@@ -10,10 +10,10 @@ plot_sites(
   intercepts = TRUE,
   back_transform = TRUE,
   include_predictors = TRUE,
-  restricted = TRUE,
   species = NULL,
   sites = NULL,
   regions = NULL,
+  seasons = NULL,
   ndraws = NULL,
   seed = NULL,
   ...
@@ -40,15 +40,6 @@ via \code{exp()}. If \code{FALSE}, values are left on the log scale.}
 in the site effects, if included. If \code{FALSE}, only plots the random
 effects.}
 
-\item{restricted}{\code{logical}. If \code{TRUE} (default), when \code{include_predictors} is
-\code{FALSE}, plots random site effects with orthogonal projection, i.e.,
-\eqn{(\boldsymbol{I} - \boldsymbol{P_{X_2}}) \boldsymbol{\iota}}, where
-\eqn{\boldsymbol{I} - \boldsymbol{P_{X_2}}} is the orthogonal complement of
-the column space of the site design matrix. If \code{FALSE}, plots random
-effects without orthogonal projection, i.e., \eqn{\boldsymbol{\iota}} only.
-Has no effect when \code{include_predictors} is \code{TRUE} as the linear predictor
-is unaffected by orthogonal projection.}
-
 \item{species}{\code{character}. Vector of species to plot. If \code{NULL} (default),
 all species are plotted. Must be one of \code{attr(occARU_data, "species")}.}
 
@@ -57,6 +48,9 @@ sites are plotted. Must be one of \code{attr(occARU_data, "sites")}.}
 
 \item{regions}{\code{character}. Vector of regions to plot. If \code{NULL} (default),
 all regions are plotted. Must be one of \code{attr(occARU_data, "regions")}.}
+
+\item{seasons}{\code{character}. Vector of seasons to plot. If \code{NULL} (default),
+all seasons are plotted. Must be one of \code{attr(occARU_data, "seasons")}.}
 
 \item{ndraws}{Positive integerish. Number of draws to use for plotting,
 passed to \code{\link[tidybayes:spread_rvars]{tidybayes::spread_rvars()}}. Default: \code{NULL} (uses all draws).}

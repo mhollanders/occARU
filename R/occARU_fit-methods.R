@@ -26,6 +26,8 @@
 #' @param level Character. One of `"Q"` or `"y"`. If `"Q"` (default), uses the
 #'   aggregated counts per site and species as data. If `"y"`, uses the raw
 #'   (survey-level) counts as input.
+#' @param group Character. Whether to group by `"species"` (default),
+#'   `"region"`, or `"season"`.
 #' @param ndraws Positive integer. Number of draws to use. If `NULL` (default),
 #'   uses all draws.
 #' @param ... Additional arguments to be passed to
@@ -39,69 +41,72 @@
 pp_check.occARU_fit <- function(
   object,
   level = c("Q", "y"),
+  group = c("species", "region", "season"),
   ndraws = NULL,
   ...
 ) {
   # checks and observed data
   fit <- object
   stan_data <- attr(fit, "stan_data")
-  if (!(stan_data$PPC_Q || stan_data$PPC_y)) {}
+  occARU_data <- attr(fit, "occARU_data")
+  if (!(stan_data$PPC_Q || stan_data$PPC_y)) {
+    cli::cli_abort(
+      "Model was fit without posterior predictions."
+    )
+  }
   level <- match.arg(level, c("Q", "y"))
+  group <- match.arg(group, c("species", "region", "season"))
+  species_lvl <- attr(occARU_data, "species")
+  region_lvl <- attr(occARU_data, "regions")
+  season_lvl <- attr(occARU_data, "seasons")
   y <- stan_data$y
 
   # aggregated counts
   if (level == "Q") {
-    obs <- c(apply(y, c(1, 3), sum))
-    if (stan_data$PPC_Q) {
-      rep <- fit$draws("Qrep", format = "draws_matrix")
-    } else if (stan_data$PPC_y) {
-      rep <- tidybayes::spread_rvars(fit, yrep[i, j, s]) |>
-        dplyr::summarise(Qrep = posterior::rvar_sum(yrep), .by = c(i, s)) |>
-        dplyr::mutate(name = paste0("Qrep[", i, ",", s, "]")) |>
-        dplyr::select(name, Qrep) |>
-        tibble::deframe() |>
-        posterior::as_draws_matrix()
+    draws <- if (stan_data$PPC_Q) {
+      tidybayes::spread_rvars(fit, Qrep[k, i, s])
     } else {
-      cli::cli_abort(
-        'Model was fit without posterior predictions. Refit the model without
-        {.arg ppc = "none"}.'
-      )
+      tidybayes::spread_rvars(fit, yrep[k, i, j, s]) |>
+        dplyr::summarise(Qrep = posterior::rvar_sum(yrep), .by = c(k, i, s))
     }
-
-    # observed counts
+    draws <- draws |>
+      dplyr::mutate(y = apply(stan_data$y, c(1, 2, 4), sum)[cbind(k, i, s)]) |>
+      dplyr::filter(apply(stan_data$Delta, c(1, 3), sum)[cbind(k, i)] > 0)
+  } else if (!stan_data$PPC_y) {
+    cli::cli_abort(
+      'Model was fit without posterior predictions for `y`. Refit the model
+      using with {.arg ppc = "y" or "both"}.'
+    )
   } else {
-    if (!stan_data$PPC_y) {
-      cli::cli_abort(
-        'Model was fit without posterior predictions for `y`. Refit the model
-        using with {.arg ppc = "y" or "both"}.'
-      )
-    }
-    surveyed <- which(c(stan_data$Delta) > 0)
-    obs <- c(y)[surveyed]
-    rep <- fit$draws("yrep", format = "draws_matrix")[, surveyed]
+    draws <- tidybayes::spread_rvars(fit, yrep[k, i, j, s]) |>
+      dplyr::mutate(y = y[cbind(k, i, j, s)]) |>
+      dplyr::filter(stan_data$Delta[cbind(k, j, i)] > 0)
   }
+
+  # label and extract
+  draws <- dplyr::mutate(
+    draws,
+    species = factor(species_lvl[s], species_lvl),
+    region = factor(region_lvl[stan_data$region[i]], region_lvl),
+    season = factor(season_lvl[k], season_lvl)
+  ) |>
+    dplyr::select(-dplyr::any_of(c("k", "i", "j", "s")))
+  y <- draws$y
+  yrep <- as_draws_matrix(if (level == "Q") draws$Qrep else draws$yrep)
+  group <- draws[[group]]
 
   # subsample
   if (!is.null(ndraws)) {
-    total_draws <- nrow(rep)
+    total_draws <- nrow(yrep)
     if (!rlang::is_integerish(ndraws) || ndraws > total_draws || ndraws <= 0) {
       cli::cli_abort(
         "{.arg ndraws} must be a positive integer less than the number of
         draws."
       )
     }
-    rep <- rep[sample(1:total_draws, ndraws), ]
+    yrep <- yrep[sample(1:total_draws, ndraws), ]
   }
 
   # plot
-  occARU_data <- attr(fit, "occARU_data")
-  bayesplot::ppc_rootogram_grouped(
-    obs,
-    rep,
-    group = rep(
-      attr(occARU_data, "species"),
-      each = if (level == "y") length(surveyed) else stan_data$I
-    ),
-    ...
-  )
+  bayesplot::ppc_rootogram_grouped(y, yrep, group = group, ...)
 }

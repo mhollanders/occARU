@@ -62,13 +62,14 @@ data
 #> ── occARU data ─────────────────────────────────────────────────────
 #> Sites (I): 30
 #> Surveys (J): 114
+#> Deployment span: 2019-11-06 to 2024-03-06
+#> Regions (R): 3
 #> Species (S): 6
 #> Detections: 11463
 #> Site coordinates: yes
-#> Deployment span: 2019-11-06 to 2024-03-06
 #> Survey length: 14 days
 #> Thinning: 30 minutes
-#> Occupancy site predictors: 0
+#> Occupancy predictors: 0
 #> Detection site predictors: 5
 #>   Continuous: 3
 #>   Categorical: 1
@@ -121,10 +122,10 @@ plot_surveys(fit, species = c("Species 1", "Species 2"))
 
 ![](man/figures/surveys.png)
 
-Key design choices in occARU are hierarchical multispecies spatial and temporal 
-Gaussian processes, implemented with orthogonal projection to retain fixed 
-effects. Interspecific correlations are estimated for responses to predictors 
-and random effects to explore species interactions.
+Key design choices in occARU are multispecies random site and survey effects
+implemented as hierarchical Gaussian processes. Interspecific correlations are 
+estimated for responses to predictors and random effects to explore species 
+interactions.
 
 ```r
 # variance partitions

@@ -78,8 +78,9 @@ gp <- function(
 #'
 #' @param random A named list of random effects.
 #' @param K Number of seasons
+#' @param dyn  Indicator of dynamic occupancy
 #' @keywords internal
-make_random <- function(random, K) {
+make_random <- function(random, K, dyn) {
   # check invalid list items
   invalid <- names(purrr::discard(
     random,
@@ -96,14 +97,13 @@ make_random <- function(random, K) {
   random_defaults <- list(
     site = gp(),
     survey = gp(),
-    season = gp(),
-    site_occ = "none",
-    season_occ = "none"
+    season = if (dyn) gp() else "none",
+    site_occ = if (dyn) gp() else "none",
+    season_occ = if (dyn) gp() else "none"
   )
 
   # validate multiseason
   if (K == 1) {
-    random_defaults <- random_defaults[1:2]
     wrong <- purrr::keep(
       names(random),
       ~ . %in% c("season", "site_occ", "season_occ")

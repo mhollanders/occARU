@@ -4,12 +4,14 @@
 \alias{make_random}
 \title{Organise random effects for use in \code{\link[=occARU]{occARU()}}}
 \usage{
-make_random(random, K)
+make_random(random, K, dyn)
 }
 \arguments{
 \item{random}{A named list of random effects.}
 
 \item{K}{Number of seasons}
+
+\item{dyn}{Indicator of dynamic occupancy}
 }
 \description{
 Specify Gaussian process (GP) random effects in occARU models, with a choice

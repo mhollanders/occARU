@@ -473,8 +473,7 @@ filter_observations_window <- function(
   locationID = locationID,
   deploymentStart = deploymentStart,
   deploymentEnd = deploymentEnd,
-  eventStart = eventStart,
-  .season = .season
+  eventStart = eventStart
 ) {
   n_before <- nrow(observations)
   cli::cli_inform("Starting with {n_before} events...")
@@ -484,10 +483,9 @@ filter_observations_window <- function(
       dplyr::select(
         {{ locationID }},
         {{ deploymentStart }},
-        {{ deploymentEnd }},
-        {{ .season }}
+        {{ deploymentEnd }}
       ),
-    by = dplyr::join_by({{ locationID }}, {{ .season }})
+    by = dplyr::join_by({{ locationID }})
   ) |>
     dplyr::filter(
       dplyr::between(

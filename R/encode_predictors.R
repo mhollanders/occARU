@@ -71,24 +71,17 @@ encode_predictors <- function(
   }
 
   empty_array <- if (mode == "site") {
-    array(
-      0L,
-      if (K == 1) c(I, 0) else c(I, K, 0),
-      dimnames = if (K == 1) {
-        list(site_lvl, NULL)
-      } else {
-        list(site_lvl, season_lvl, NULL)
-      }
-    )
+    array(0L, c(K, I, 0L), dimnames = list(season_lvl, site_lvl, NULL))
   } else {
     array(
       0L,
-      if (K == 1) c(I, J_max, 0) else c(I, K, J_max, 0),
-      dimnames = if (K == 1) {
-        list(site_lvl, as.character(surveys$.survey), NULL)
-      } else {
-        list(site_lvl, season_lvl, NULL, NULL)
-      }
+      c(K, I, J_max, 0),
+      dimnames = list(
+        season_lvl,
+        site_lvl,
+        if (K == 1) as.character(surveys$.survey),
+        NULL
+      )
     )
   }
 
@@ -274,8 +267,8 @@ encode_predictors <- function(
               dplyr::all_of(cols)
             ) |>
             tidyr::complete(
-              {{ locationID }} := factor(site_lvl, site_lvl),
               {{ .season }} := factor(season_lvl, season_lvl),
+              {{ locationID }} := factor(site_lvl, site_lvl),
               fill = as.list(purrr::set_names(
                 ifelse(cols %in% num_cols, 0L, 1L),
                 cols
@@ -287,16 +280,9 @@ encode_predictors <- function(
               values_to = "x"
             ) |>
             dplyr::mutate(p = factor(p, levels = cols)) |>
-            dplyr::arrange(p, {{ .season }}, {{ locationID }}) |>
+            dplyr::arrange(p, {{ locationID }}, {{ .season }}) |>
             dplyr::pull(x) |>
-            array(
-              if (K == 1) c(I, P) else c(I, K, P),
-              dimnames = if (K == 1) {
-                list(site_lvl, cols)
-              } else {
-                list(site_lvl, season_lvl, cols)
-              }
-            )
+            array(c(K, I, P), dimnames = list(season_lvl, site_lvl, cols))
         } else {
           empty_array
         }
@@ -327,15 +313,16 @@ encode_predictors <- function(
               values_to = "x"
             ) |>
             dplyr::mutate(p = factor(p, levels = cols)) |>
-            dplyr::arrange(p, .survey_idx, {{ .season }}, {{ locationID }}) |>
+            dplyr::arrange(p, .survey_idx, {{ locationID }}, {{ .season }}) |>
             dplyr::pull(x) |>
             array(
-              if (K == 1) c(I, J_max, P) else c(I, K, J_max, P),
-              dimnames = if (K == 1) {
-                list(site_lvl, as.character(surveys$.survey), cols)
-              } else {
-                list(site_lvl, season_lvl, NULL, cols)
-              }
+              c(K, I, J_max, P),
+              dimnames = list(
+                season_lvl,
+                site_lvl,
+                if (K == 1) as.character(surveys$.survey),
+                cols
+              )
             )
         } else {
           empty_array
