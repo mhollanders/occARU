@@ -1213,9 +1213,13 @@ generated quantities {
     vector[J_ksum] kappa_bar_long;
     matrix[MS * J_ksum, S] kappa_long;
     for (k in 1:K) {
-      int J_kk = J_k[k], idx = sum(J_k[:k - 1]);
-      kappa_bar_long[idx + 1:idx + J_kk] = kappa_bar[:J_kk, k];
-      kappa_long[idx + 1:idx + J_kk] = kappa[k, :J_kk];
+      int J_kk = J_k[k];
+      array[J_kk] int idx =
+        linspaced_int_array(J_kk, sum(J_k[:k - 1]) + 1, sum(J_k[:k]));
+      kappa_bar_long[idx] = kappa_bar[:J_kk, k];
+      if (MS) {
+        kappa_long[idx] = kappa[k, :J_kk];
+      }
     }
     if (P[3]) {
       gamma_bar2 = gamma_bar + X3_plus[:P[3]] * kappa_bar_long;
