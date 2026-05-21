@@ -12,7 +12,10 @@ plot_deployments(data, ...)
 \item{...}{Additional arguments passed to \code{\link[ggplot2:geom_rect]{ggplot2::geom_rect()}}.}
 }
 \value{
-A \code{ggplot} object.
+A \code{ggplot} object with occARU-specific attributes attached:
+\describe{
+\item{\code{plot_data}}{The tibble used to produce the plot.}
+}
 }
 \description{
 Plot deployment dates for each site across multiple seasons.

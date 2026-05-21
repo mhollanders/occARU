@@ -42,7 +42,7 @@
 #' @param season <[`data-masking`][rlang::args_data_masking]> Optional column
 #'   specifying season in `deployments`. The column must be a factor to ensure
 #'   correct ordering. If the column is not present, a single season is assumed.
-#'   Default: `season`.
+#'   Default: `season`. See [find_seasons()].
 #' @param eventStart <[`data-masking`][rlang::args_data_masking]> `POSIXt`.
 #'   Column name for observation timestamps in `observations`. Default:
 #'   `eventStart`.
@@ -172,7 +172,7 @@
 #'   }
 #'
 #' @seealso [occARU()], [plot_deployments()], [plot_observations()],
-#'    [thin_observations()], [find_failures()]
+#'    [thin_observations()], [find_failures()], [find_seasons()]
 #'   The model is described in detail in `vignette("model")`.
 #' @export
 make_data <- function(

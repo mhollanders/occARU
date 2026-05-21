@@ -116,7 +116,7 @@ Deployments may be spread across multiple distinct seasons $k \in 1, \dots, K$, 
   
 ### Continuous time dynamic occupancy
 
-occARU automatically detects the deployment history of each site and sites sampled in more than one season are modelled with dynamic occupancy with a continuous time transition process (with subscripts for $i$, $k$, and $s$ dropped on $\boldsymbol{P}$ and $\boldsymbol{Q}$):
+occARU automatically detects the deployment history of each site and sites sampled in more than one season are modelled with dynamic occupancy [@mackenzie2003] with a continuous time transition process (with subscripts for $i$, $k$, and $s$ dropped on $\boldsymbol{P}$ and $\boldsymbol{Q}$):
 
 $$
 \begin{aligned}
@@ -135,7 +135,7 @@ $$
 \end{bmatrix}, \ k \in 2, \dots, K,
 $$ {#eq-Q}
 
-$\tau_{ik}$ gives the elapsed time (expressed in years) from the end of deployment in season $k-1$ to the start of deployment in season $k$ at site $i$, and the transition rates $\boldsymbol{q}$ are the (annual) colonisation and emigration rates, respectively. The transition probability matrix $\boldsymbol{P}$ is obtained by taking the matrix exponential of the product $\boldsymbol{Q}\tau$, which accounts for (potentially) unequal time periods between deployments.
+$\tau_{ik}$ gives the elapsed time (expressed in years) from the end of deployment in season $k-1$ to the start of deployment in season $k$ at site $i$, and the transition rates $\boldsymbol{q}$ are the (annual) colonisation and emigration rates, respectively. The transition probability matrix $\boldsymbol{P}$ is obtained by taking the matrix exponential of $\boldsymbol{Q}\tau$, which accounts for (potentially) unequal time periods between deployments.
 
 ### Dimension reduction through structural equation modeling
 

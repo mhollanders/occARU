@@ -78,7 +78,7 @@ as a single region. Default: \code{region}.}
 \item{season}{<\code{\link[rlang:args_data_masking]{data-masking}}> Optional column
 specifying season in \code{deployments}. The column must be a factor to ensure
 correct ordering. If the column is not present, a single season is assumed.
-Default: \code{season}.}
+Default: \code{season}. See \code{\link[=find_seasons]{find_seasons()}}.}
 
 \item{eventStart}{<\code{\link[rlang:args_data_masking]{data-masking}}> \code{POSIXt}.
 Column name for observation timestamps in \code{observations}. Default:
@@ -232,6 +232,6 @@ to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
 \code{\link[=occARU]{occARU()}}, \code{\link[=plot_deployments]{plot_deployments()}}, \code{\link[=plot_observations]{plot_observations()}},
-\code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
+\code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}, \code{\link[=find_seasons]{find_seasons()}}
 The model is described in detail in \code{vignette("model")}.
 }

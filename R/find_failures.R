@@ -15,10 +15,10 @@
 #'   and before the next detection to exclude from the inferred failure period.
 #'   For example, `buffer_days = 2` means the failure period starts 2 days
 #'   after the last detection and ends 2 days before the next detection.
-#'
 #' @return A dataframe with columns `locationID`, `failureStart`, and
 #'   `failureEnd`, one row per inferred failure period, with `buffer_days`
 #'   stored as attribute.
+#' @seealso [make_data()], [find_seasons()]
 #' @export
 find_failures <- function(
   df,

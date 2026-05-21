@@ -37,3 +37,6 @@ between consecutive detections at each site. Best used on a dataframe of
 all records including null records, as a suitable gap threshold requires
 knowledge of expected detection rates.
 }
+\seealso{
+\code{\link[=make_data]{make_data()}}, \code{\link[=find_seasons]{find_seasons()}}
+}

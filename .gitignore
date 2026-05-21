@@ -8,7 +8,6 @@ scratch
 inst/stan/*
 !inst/stan/occARU.stan
 !inst/stan/occARU.stanfunctions
-!inst/stan/partial.stanfunctions
 !inst/stan/util.stanfunctions
 !inst/stan/predictors.stanfunctions
 !inst/stan/coefficients.stanfunctions
@@ -16,4 +15,3 @@ inst/stan/*
 !inst/stan/predict.stanfunctions
 docs
 R/simulate_occARU.R
-
