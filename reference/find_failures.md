@@ -45,3 +45,8 @@ find_failures(
 A dataframe with columns `locationID`, `failureStart`, and `failureEnd`,
 one row per inferred failure period, with `buffer_days` stored as
 attribute.
+
+## See also
+
+[`make_data()`](https://mhollanders.github.io/occARU/reference/make_data.md),
+[`find_seasons()`](https://mhollanders.github.io/occARU/reference/find_seasons.md)

@@ -54,3 +54,5 @@
   : Thin observations
 - [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
   : Find potential ARU failure periods
+- [`find_seasons()`](https://mhollanders.github.io/occARU/reference/find_seasons.md)
+  : Find seasons of deployments

@@ -22,7 +22,11 @@ plot_deployments(data, ...)
 
 ## Value
 
-A `ggplot` object.
+A `ggplot` object with occARU-specific attributes attached:
+
+- `plot_data`:
+
+  The tibble used to produce the plot.
 
 ## See also
 

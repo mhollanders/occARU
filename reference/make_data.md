@@ -112,7 +112,8 @@ make_data(
   \<[`data-masking`](https://rlang.r-lib.org/reference/args_data_masking.html)\>
   Optional column specifying season in `deployments`. The column must be
   a factor to ensure correct ordering. If the column is not present, a
-  single season is assumed. Default: `season`.
+  single season is assumed. Default: `season`. See
+  [`find_seasons()`](https://mhollanders.github.io/occARU/reference/find_seasons.md).
 
 - eventStart:
 
@@ -386,6 +387,7 @@ The object also carries the following attributes, accessible via
 [`plot_deployments()`](https://mhollanders.github.io/occARU/reference/plot_deployments.md),
 [`plot_observations()`](https://mhollanders.github.io/occARU/reference/plot_observations.md),
 [`thin_observations()`](https://mhollanders.github.io/occARU/reference/thin_observations.md),
-[`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
+[`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md),
+[`find_seasons()`](https://mhollanders.github.io/occARU/reference/find_seasons.md)
 The model is described in detail in
 [`vignette("model")`](https://mhollanders.github.io/occARU/articles/model.md).

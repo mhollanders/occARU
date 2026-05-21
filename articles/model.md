@@ -251,8 +251,9 @@ accommodates two types of multiseason data:
 
 occARU automatically detects the deployment history of each site and
 sites sampled in more than one season are modelled with dynamic
-occupancy with a continuous time transition process (with subscripts for
-i, k, and s dropped on \boldsymbol{P} and \boldsymbol{Q}):
+occupancy ([MacKenzie et al. 2003](#ref-mackenzie2003)) with a
+continuous time transition process (with subscripts for i, k, and s
+dropped on \boldsymbol{P} and \boldsymbol{Q}):
 
 \begin{aligned} z\_{1is} &\sim \mathrm{Categorical} \left( 1 -
 \psi\_{is}, \psi\_{is} \right) \\ z\_{kis} &\sim \mathrm{Categorical}
@@ -271,9 +272,9 @@ for i and s dropped):
 deployment in season k-1 to the start of deployment in season k at site
 i, and the transition rates \boldsymbol{q} are the (annual) colonisation
 and emigration rates, respectively. The transition probability matrix
-\boldsymbol{P} is obtained by taking the matrix exponential of the
-product \boldsymbol{Q}\tau, which accounts for (potentially) unequal
-time periods between deployments.
+\boldsymbol{P} is obtained by taking the matrix exponential of
+\boldsymbol{Q}\tau, which accounts for (potentially) unequal time
+periods between deployments.
 
 ### Dimension reduction through structural equation modeling
 
@@ -452,6 +453,12 @@ Power-Scaling.” *Statistics and Computing* 34 (57).
 Kleiber, Christian, and Achim Zeileis. 2016. “Visualizing Count Data
 Regressions Using Rootograms.” *The American Statistician* 70 (3):
 296–303. <https://doi.org/10.1080/00031305.2016.1173590>.
+
+MacKenzie, Darryl I., James D. Nichols, James E. Hines, Melinda G.
+Knutson, and Alan B. Franklin. 2003. “Estimating Site Occupancy,
+Colonization, and Local Extinction When a Species Is Detected
+Imperfectly.” *Ecology* 84 (8): 2200–2207.
+<https://doi.org/10.1890/02-3090>.
 
 MacKenzie, Darryl I., James D. Nichols, Gideon B. Lachman, Sam Droege,
 J. Andrew Royle, and Catherine A. Langtimm. 2002. “Estimating Site

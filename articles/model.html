@@ -151,7 +151,7 @@ K_{n, n'} = \tau^2 \exp \left(- \frac{2 \sin^2 \left( \pi
 </ol>
 <section class="level3"><h3 id="continuous-time-dynamic-occupancy">Continuous time dynamic occupancy<a class="anchor" aria-label="anchor" href="#continuous-time-dynamic-occupancy"></a>
 </h3>
-<p>occARU automatically detects the deployment history of each site and sites sampled in more than one season are modelled with dynamic occupancy with a continuous time transition process (with subscripts for <span class="math inline">i</span>, <span class="math inline">k</span>, and <span class="math inline">s</span> dropped on <span class="math inline">\boldsymbol{P}</span> and <span class="math inline">\boldsymbol{Q}</span>):</p>
+<p>occARU automatically detects the deployment history of each site and sites sampled in more than one season are modelled with dynamic occupancy <span class="citation" data-cites="mackenzie2003">(<a href="#ref-mackenzie2003" role="doc-biblioref">MacKenzie et al. 2003</a>)</span> with a continuous time transition process (with subscripts for <span class="math inline">i</span>, <span class="math inline">k</span>, and <span class="math inline">s</span> dropped on <span class="math inline">\boldsymbol{P}</span> and <span class="math inline">\boldsymbol{Q}</span>):</p>
 <p><span id="eq-dyn"><span class="math display">
 \begin{aligned}
   z_{1is} &amp;\sim \mathrm{Categorical} \left( 1 - \psi_{is}, \psi_{is} \right) \\
@@ -166,7 +166,7 @@ K_{n, n'} = \tau^2 \exp \left(- \frac{2 \sin^2 \left( \pi
   {q_2}_{[k-1]} &amp; -{q_2}_{[k-1]}
 \end{bmatrix}, \ k \in 2, \dots, K,
 \tag{7}</span></span></p>
-<p><span class="math inline">\tau_{ik}</span> gives the elapsed time (expressed in years) from the end of deployment in season <span class="math inline">k-1</span> to the start of deployment in season <span class="math inline">k</span> at site <span class="math inline">i</span>, and the transition rates <span class="math inline">\boldsymbol{q}</span> are the (annual) colonisation and emigration rates, respectively. The transition probability matrix <span class="math inline">\boldsymbol{P}</span> is obtained by taking the matrix exponential of the product <span class="math inline">\boldsymbol{Q}\tau</span>, which accounts for (potentially) unequal time periods between deployments.</p>
+<p><span class="math inline">\tau_{ik}</span> gives the elapsed time (expressed in years) from the end of deployment in season <span class="math inline">k-1</span> to the start of deployment in season <span class="math inline">k</span> at site <span class="math inline">i</span>, and the transition rates <span class="math inline">\boldsymbol{q}</span> are the (annual) colonisation and emigration rates, respectively. The transition probability matrix <span class="math inline">\boldsymbol{P}</span> is obtained by taking the matrix exponential of <span class="math inline">\boldsymbol{Q}\tau</span>, which accounts for (potentially) unequal time periods between deployments.</p>
 </section><section class="level3"><h3 id="dimension-reduction-through-structural-equation-modeling">Dimension reduction through structural equation modeling<a class="anchor" aria-label="anchor" href="#dimension-reduction-through-structural-equation-modeling"></a>
 </h3>
 <p>Initial occupancy probabilities (<span class="math inline">\boldsymbol{\psi}</span>) and colonisation (<span class="math inline">\boldsymbol{q_1}</span>) and emigration (<span class="math inline">\boldsymbol{q_2}</span>) rates may be expected to be highly correlated: sites that are suitable for a species should have high initial occupancy and colonisation rates and low emigration rates. Therefore, expressing linear predictors for all three parameters is likely redundant and makes interpretation more complex, especially when the primary interest is not on the dynamics of the occupancy process. As a remedy, occARU uses a structural equation modeling (SEM) approach and models a latent “site suitability” <span class="math inline">\eta_{kis}</span>, which are then mapped onto the ecological parameters using species-specific factor loadings <span class="math inline">\boldsymbol{\lambda}</span>:</p>
@@ -284,6 +284,9 @@ Kallioinen, Noa, Topi Paananen, Paul-Christian Bürkner, and Aki Vehtari. 2023. 
 </div>
 <div id="ref-kleiber2016" class="csl-entry" role="listitem">
 Kleiber, Christian, and Achim Zeileis. 2016. <span>“Visualizing <span>Count Data Regressions Using Rootograms</span>.”</span> <em>The American Statistician</em> 70 (3): 296–303. <a href="https://doi.org/10.1080/00031305.2016.1173590" class="external-link">https://doi.org/10.1080/00031305.2016.1173590</a>.
+</div>
+<div id="ref-mackenzie2003" class="csl-entry" role="listitem">
+MacKenzie, Darryl I., James D. Nichols, James E. Hines, Melinda G. Knutson, and Alan B. Franklin. 2003. <span>“Estimating Site Occupancy, Colonization, and Local Extinction When a Species Is Detected Imperfectly.”</span> <em>Ecology</em> 84 (8): 2200–2207. <a href="https://doi.org/10.1890/02-3090" class="external-link">https://doi.org/10.1890/02-3090</a>.
 </div>
 <div id="ref-mackenzie2002" class="csl-entry" role="listitem">
 MacKenzie, Darryl I., James D. Nichols, Gideon B. Lachman, Sam Droege, J. Andrew Royle, and Catherine A. Langtimm. 2002. <span>“Estimating Site Occupancy Rates When Detection Probabilities Are Less Than One.”</span> <em>Ecology</em> 83 (8): 2248–55. <a href="https://doi.org/10.1890/0012-9658(2002)083%5B2248:ESORWD%5D2.0.CO;2" class="external-link">https://doi.org/10.1890/0012-9658(2002)083[2248:ESORWD]2.0.CO;2</a>.
