@@ -60,7 +60,7 @@ single or multiseason model is required.</p>
 <span>  ppc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Q"</span>, <span class="st">"y"</span>, <span class="st">"both"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  latent <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  loo_draws <span class="op">=</span> <span class="fl">100L</span>,</span>
-<span>  init <span class="op">=</span> <span class="st">"pathfinder"</span>,</span>
+<span>  init <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>  pathfinder_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  threads <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  grainsize <span class="op">=</span> <span class="fl">1L</span>,</span>
@@ -137,23 +137,14 @@ produces better Pareto-k diagnostics. Set to <code>0</code> to disable, returnin
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p><code>character</code>, <code>numeric</code>, or <code>list</code>. Initialisation strategy passed
-to <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>. One of:</p><dl><dt><code>"pathfinder"</code></dt>
-<dd><p>Default. Use pathfinder to generate initial values
-(see <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$pathfinder()</code>). Recommended for complex
-models as it can substantially reduce warmup time and improve
-convergence.</p></dd>
-
-<dt>A numeric scalar</dt>
-<dd><p>Initialise all parameters uniformly in
-\([-\)<code>init</code>\(,\) <code>init</code>\(]\).</p></dd>
-
-<dt>A list</dt>
-<dd><p>Custom initial values passed directly to
-<a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>.</p></dd>
-
-
-</dl></dd>
+<dd><p><code>numeric</code>, <code>character</code>, or <code>list</code>. Initialisation strategy passed
+to <a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>. One of:</p><ul><li><p>A numeric scalar (default). Initialises all parameters uniformly in
+<code>[-init, init]</code>. Default: 0.1.</p></li>
+<li><p><code>"pathfinder"</code>. Use Pathfinder to generate initial values (see
+<a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$pathfinder()</code>).</p></li>
+<li><p>A named list with custom initial values passed directly to
+<a href="https://mc-stan.org/cmdstanr/reference/CmdStanModel.html" class="external-link">cmdstanr::CmdStanModel</a><code>$sample()</code>.</p></li>
+</ul></dd>
 
 
 <dt id="arg-pathfinder-args">pathfinder_args<a class="anchor" aria-label="anchor" href="#arg-pathfinder-args"></a></dt>
@@ -174,8 +165,8 @@ performance set <code>threads = floor(available_cores / chains)</code>. For exam
 
 <dt id="arg-grainsize">grainsize<a class="anchor" aria-label="anchor" href="#arg-grainsize"></a></dt>
 <dd><p>Positive integer. Chunk size for within-chain
-parallelisation via <code>reduce_sum()</code> when <code>threads &gt; 1</code>. For multiple
-regions, chunks are number of regions; otherwise it is number of sites.
+parallelisation when <code>threads &gt; 1</code>. For data with multiple regions, chunks
+are number of regions; otherwise it is number of sites in each slice.
 Default: <code>1</code>, which lets Stan automatically determine the optimal chunk
 size. Increase if you have many sites or regions and want to reduce
 parallelisation overhead. See the

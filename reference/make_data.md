@@ -327,6 +327,15 @@ The list contains:
 The object also carries the following attributes, accessible via
 [`attr()`](https://rdrr.io/r/base/attr.html):
 
+- `deployments`:
+
+  The processed `deployments`.
+
+- `observations`:
+
+  The processed and thinned `observations` aggregated to the chosen
+  survey length.
+
 - `sites`:
 
   Character vector of site identifiers.
@@ -374,6 +383,8 @@ The object also carries the following attributes, accessible via
 ## See also
 
 [`occARU()`](https://mhollanders.github.io/occARU/reference/occARU.md),
+[`plot_deployments()`](https://mhollanders.github.io/occARU/reference/plot_deployments.md),
+[`plot_observations()`](https://mhollanders.github.io/occARU/reference/plot_observations.md),
 [`thin_observations()`](https://mhollanders.github.io/occARU/reference/thin_observations.md),
 [`find_failures()`](https://mhollanders.github.io/occARU/reference/find_failures.md)
 The model is described in detail in

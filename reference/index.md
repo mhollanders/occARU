@@ -11,6 +11,15 @@
 
 ## Plotting
 
+### Data
+
+- [`plot_deployments()`](https://mhollanders.github.io/occARU/reference/plot_deployments.md)
+  : Plot deployment dates
+- [`plot_observations()`](https://mhollanders.github.io/occARU/reference/plot_observations.md)
+  : Plot observations
+
+### Fitted Object
+
 - [`plot_intercepts()`](https://mhollanders.github.io/occARU/reference/plot_intercepts.md)
   : Plot intercepts
 

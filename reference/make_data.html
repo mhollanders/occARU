@@ -344,7 +344,14 @@ integer array.</p></dd>
 
 
 </dl><p>The object also carries the following attributes, accessible via
-<code><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr()</a></code>:</p><dl><dt><code>sites</code></dt>
+<code><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr()</a></code>:</p><dl><dt><code>deployments</code></dt>
+<dd><p>The processed <code>deployments</code>.</p></dd>
+
+<dt><code>observations</code></dt>
+<dd><p>The processed and thinned <code>observations</code> aggregated
+to the chosen survey length.</p></dd>
+
+<dt><code>sites</code></dt>
 <dd><p>Character vector of site identifiers.</p></dd>
 
 <dt><code>regions</code></dt>
@@ -390,7 +397,8 @@ predictors.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="occARU.html">occARU()</a></code>, <code><a href="thin_observations.html">thin_observations()</a></code>, <code><a href="find_failures.html">find_failures()</a></code>
+    <div class="dont-index"><p><code><a href="occARU.html">occARU()</a></code>, <code><a href="plot_deployments.html">plot_deployments()</a></code>, <code><a href="plot_observations.html">plot_observations()</a></code>,
+<code><a href="thin_observations.html">thin_observations()</a></code>, <code><a href="find_failures.html">find_failures()</a></code>
 The model is described in detail in <code><a href="../articles/model.html">vignette("model")</a></code>.</p></div>
     </div>
 

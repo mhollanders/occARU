@@ -20,7 +20,7 @@ occARU(
   ppc = c("Q", "y", "both", "none"),
   latent = TRUE,
   loo_draws = 100L,
-  init = "pathfinder",
+  init = 0.1,
   pathfinder_args = list(),
   threads = 1L,
   grainsize = 1L,
@@ -107,26 +107,18 @@ occARU(
 
 - init:
 
-  `character`, `numeric`, or `list`. Initialisation strategy passed to
+  `numeric`, `character`, or `list`. Initialisation strategy passed to
   [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$sample()`.
   One of:
 
-  `"pathfinder"`
+  - A numeric scalar (default). Initialises all parameters uniformly in
+    `[-init, init]`. Default: 0.1.
 
-  :   Default. Use pathfinder to generate initial values (see
-      [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$pathfinder()`).
-      Recommended for complex models as it can substantially reduce
-      warmup time and improve convergence.
+  - `"pathfinder"`. Use Pathfinder to generate initial values (see
+    [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$pathfinder()`).
 
-  A numeric scalar
-
-  :   Initialise all parameters uniformly in \\\[-\\`init`\\,\\
-      `init`\\\]\\.
-
-  A list
-
-  :   Custom initial values passed directly to
-      [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$sample()`.
+  - A named list with custom initial values passed directly to
+    [cmdstanr::CmdStanModel](https://mc-stan.org/cmdstanr/reference/CmdStanModel.html)`$sample()`.
 
 - pathfinder_args:
 
@@ -147,9 +139,9 @@ occARU(
 
 - grainsize:
 
-  Positive integer. Chunk size for within-chain parallelisation via
-  `reduce_sum()` when `threads > 1`. For multiple regions, chunks are
-  number of regions; otherwise it is number of sites. Default: `1`,
+  Positive integer. Chunk size for within-chain parallelisation when
+  `threads > 1`. For data with multiple regions, chunks are number of
+  regions; otherwise it is number of sites in each slice. Default: `1`,
   which lets Stan automatically determine the optimal chunk size.
   Increase if you have many sites or regions and want to reduce
   parallelisation overhead. See the [Stan User's
