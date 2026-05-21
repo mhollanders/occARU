@@ -339,7 +339,6 @@ occARU <- function(
   fit <- mod$sample(
     data = stan_data,
     init = init,
-    chains = chains,
     parallel_chains = chains,
     threads_per_chain = threads,
     ...
