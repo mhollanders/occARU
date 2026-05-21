@@ -35,33 +35,6 @@ array[,,] int occARU_rng(data array[,,] int Q, data array[,] int f_l,
 }
 
 /**
- * Posterior predict Poisson OLREs.
- *
- * @param j_idx  Survey indices [K, I, J]
- * @param J_i    Number of surveys [K, I]
- * @param bar    Mean OLREs [N]
- * @param tau    Scale of mean OLREs
- * @param S_U    Upper triangular Cholesky matrix if multispecies [S]
- *
- * @return       Posterior predictive OLREs in array [K, I, J, S]
- */
-array[,] matrix pp_epsilon_rng(data array[,,] int j_idx, data array[,] int J_i,
-                               vector bar, vector tau, matrix S_U) {
-  int K = size(j_idx), I = size(j_idx[1]), J = size(j_idx[1, 1]), S = cols(S_U),
-      N = size(bar), Nm1 = N - 1;
-  matrix[N, S] epsilon_mat;
-  if (S > 1) {
-    int Sm1 = S - 1, NSm1 = Nm1 * Sm1;
-    matrix[Nm1, Sm1] u = to_matrix(normal_rng(zeros_vector(NSm1), 1), Nm1, Sm1);
-    epsilon_mat = rep_matrix(bar, S) + sum_to_zero_constrain(u) * S_U;
-  } else {
-    vector[Nm1] u = to_vector(normal_rng(zeros_vector(Nm1), 1));
-    epsilon_mat[:, 1] = tau[1] * sum_to_zero_constrain(u);
-  }
-  return fill_epsilon(j_idx, J_i, epsilon_mat);
-}
-
-/**
  * Posterior predictions for occARU model
  *
  * @param f_l        First and last season [I, 2]

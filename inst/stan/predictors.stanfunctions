@@ -204,5 +204,5 @@ tuple(array[,] int, array[] int, array[] int)
 matrix pseudo_inverse(data matrix X) {
   int I = rows(X), P = cols(X);
   matrix[P, I] Xt = X';
-  return inverse_spd(Xt * X) * Xt;
+  return inverse(Xt * X) * Xt;
 }
