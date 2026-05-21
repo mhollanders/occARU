@@ -14,7 +14,7 @@ occARU(
   ppc = c("Q", "y", "both", "none"),
   latent = TRUE,
   loo_draws = 100L,
-  init = "pathfinder",
+  init = 0.1,
   pathfinder_args = list(),
   threads = 1L,
   grainsize = 1L,
@@ -70,17 +70,15 @@ integration. \code{log_lik2} is recommended over \code{log_lik} for PSIS-LOO-CV 
 produces better Pareto-k diagnostics. Set to \code{0} to disable, returning only
 \code{log_lik}. Only used with site random effects or \code{overdispersion = "olre"}. Note: even high values (10K) seem inadequate for OLREs.}
 
-\item{init}{\code{character}, \code{numeric}, or \code{list}. Initialisation strategy passed
+\item{init}{\code{numeric}, \code{character}, or \code{list}. Initialisation strategy passed
 to \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}. One of:
-\describe{
-\item{\code{"pathfinder"}}{Default. Use pathfinder to generate initial values
-(see \link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()}). Recommended for complex
-models as it can substantially reduce warmup time and improve
-convergence.}
-\item{A numeric scalar}{Initialise all parameters uniformly in
-\eqn{[-}\code{init}\eqn{,} \code{init}\eqn{]}.}
-\item{A list}{Custom initial values passed directly to
-\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}.}
+\itemize{
+\item A numeric scalar (default). Initialises all parameters uniformly in
+\verb{[-init, init]}. Default: 0.1.
+\item \code{"pathfinder"}. Use Pathfinder to generate initial values (see
+\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$pathfinder()}).
+\item A named list with custom initial values passed directly to
+\link[cmdstanr:CmdStanModel]{cmdstanr::CmdStanModel}\verb{$sample()}.
 }}
 
 \item{pathfinder_args}{Named list of additional arguments passed to
@@ -96,8 +94,8 @@ performance set \code{threads = floor(available_cores / chains)}. For example,
 8 cores with 4 chains gives \code{threads = 2}.}
 
 \item{grainsize}{Positive integer. Chunk size for within-chain
-parallelisation via \code{reduce_sum()} when \code{threads > 1}. For multiple
-regions, chunks are number of regions; otherwise it is number of sites.
+parallelisation when \code{threads > 1}. For data with multiple regions, chunks
+are number of regions; otherwise it is number of sites in each slice.
 Default: \code{1}, which lets Stan automatically determine the optimal chunk
 size. Increase if you have many sites or regions and want to reduce
 parallelisation overhead. See the

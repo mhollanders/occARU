@@ -200,6 +200,9 @@ integer array.}
 The object also carries the following attributes, accessible via
 \code{\link[=attr]{attr()}}:
 \describe{
+\item{\code{deployments}}{The processed \code{deployments}.}
+\item{\code{observations}}{The processed and thinned \code{observations} aggregated
+to the chosen survey length.}
 \item{\code{sites}}{Character vector of site identifiers.}
 \item{\code{regions}}{Character vector of region identifiers.}
 \item{\code{surveys}}{tibble of start dates and indices for each survey
@@ -228,6 +231,7 @@ Site coordinates are automatically projected from WGS84 latitude/longitude
 to UTM (km), with the zone auto-detected from the mean longitude.
 }
 \seealso{
-\code{\link[=occARU]{occARU()}}, \code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
+\code{\link[=occARU]{occARU()}}, \code{\link[=plot_deployments]{plot_deployments()}}, \code{\link[=plot_observations]{plot_observations()}},
+\code{\link[=thin_observations]{thin_observations()}}, \code{\link[=find_failures]{find_failures()}}
 The model is described in detail in \code{vignette("model")}.
 }

@@ -43,18 +43,14 @@
 #'   produces better Pareto-k diagnostics. Set to `0` to disable, returning only
 #'   `log_lik`. Only used with site random effects or `overdispersion =
 #'   "olre"`. Note: even high values (10K) seem inadequate for OLREs.
-#' @param init `character`, `numeric`, or `list`. Initialisation strategy passed
+#' @param init `numeric`, `character`, or `list`. Initialisation strategy passed
 #'   to [cmdstanr::CmdStanModel]`$sample()`. One of:
-#'   \describe{
-#'     \item{`"pathfinder"`}{Default. Use pathfinder to generate initial values
-#'       (see [cmdstanr::CmdStanModel]`$pathfinder()`). Recommended for complex
-#'       models as it can substantially reduce warmup time and improve
-#'       convergence.}
-#'     \item{A numeric scalar}{Initialise all parameters uniformly in
-#'       \eqn{[-}\code{init}\eqn{,} \code{init}\eqn{]}.}
-#'     \item{A list}{Custom initial values passed directly to
-#'       [cmdstanr::CmdStanModel]`$sample()`.}
-#'   }
+#'   * A numeric scalar (default). Initialises all parameters uniformly in
+#'       `[-init, init]`. Default: 0.1.
+#'   * `"pathfinder"`. Use Pathfinder to generate initial values (see
+#'       [cmdstanr::CmdStanModel]`$pathfinder()`).
+#'   * A named list with custom initial values passed directly to
+#'       [cmdstanr::CmdStanModel]`$sample()`.
 #' @param pathfinder_args Named list of additional arguments passed to
 #'   [cmdstanr::CmdStanModel]`$pathfinder()` when `init = "pathfinder"`.
 #'   Overrides occARU-specific defaults (`refresh = 0`, `init = 0.1`,
@@ -66,8 +62,8 @@
 #'   performance set `threads = floor(available_cores / chains)`. For example,
 #'   8 cores with 4 chains gives `threads = 2`.
 #' @param grainsize Positive integer. Chunk size for within-chain
-#'   parallelisation via `reduce_sum()` when `threads > 1`. For multiple
-#'   regions, chunks are number of regions; otherwise it is number of sites.
+#'   parallelisation when `threads > 1`. For data with multiple regions, chunks
+#'   are number of regions; otherwise it is number of sites in each slice.
 #'   Default: `1`, which lets Stan automatically determine the optimal chunk
 #'   size. Increase if you have many sites or regions and want to reduce
 #'   parallelisation overhead. See the
@@ -100,7 +96,7 @@ occARU <- function(
   ppc = c("Q", "y", "both", "none"),
   latent = TRUE,
   loo_draws = 100L,
-  init = "pathfinder",
+  init = 0.1,
   pathfinder_args = list(),
   threads = 1L,
   grainsize = 1L,
@@ -343,6 +339,7 @@ occARU <- function(
   fit <- mod$sample(
     data = stan_data,
     init = init,
+    chains = chains,
     parallel_chains = chains,
     threads_per_chain = threads,
     ...

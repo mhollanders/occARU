@@ -750,7 +750,6 @@ plot_intercepts <- function(
   p
 }
 
-
 #' Plot variance partitions
 #'
 #' Plot variance partitions of the different model components for occupancy

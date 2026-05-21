@@ -46,8 +46,8 @@ array[,] matrix site_kernels(data array[] int I_r, data array[] vector XY,
  * @return  Cholesky factor(s) of kernel [K, 1( + S), J, J]
  */
 array[,] matrix survey_kernels(data array[] int J_k, data array[,] real surveys,
-                              data int kernel, data real period, vector tau,
-                              matrix ell) {
+                               data int kernel, data real period, vector tau,
+                               matrix ell) {
   int K = size(surveys), J = size(surveys[1]), periodic = size(tau),
       Sp1 = rows(ell);
   array[K, Sp1] matrix[J, J] L;

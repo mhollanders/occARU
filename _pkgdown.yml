@@ -17,6 +17,11 @@ reference:
       - occARU
       - set_priors
   - title: Plotting
+  - subtitle: Data
+    contents:
+      - plot_deployments
+      - plot_observations
+  - subtitle: Fitted Object
     contents:
       - plot_intercepts
       - plot_coefficients
