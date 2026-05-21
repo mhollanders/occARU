@@ -1512,10 +1512,14 @@ plot_sites <- function(
 #'   to [tidybayes::spread_rvars()]. Default: `NULL` (uses all draws).
 #' @param seed Positive numeric. Seed to use when subsampling draws when
 #'   `ndraws` is not `NULL`. Default: random integer.
+#' @param geom `character`. Whether to plot predictions with `"lineribbon"`
+#'   with [ggdist::stat_lineribbon()] or `"point_interval"` with
+#'   [ggdist::point_interval()]. Default: `"lineribbon"`.
 #' @param palette `character`. Colour palette to be passed to
-#'   [ggplot2::scale_fill_brewer()]. Default: `"YlGn"`.
-#' @param ... Additional arguments passed to [ggdist::stat_lineribbon()]
-#'   such as `.width` and `point_interval`.
+#'   [ggplot2::scale_fill_brewer()] when `geom = "lineribbon"`.
+#'   Default: `"YlGn"`.
+#' @param ... Additional arguments passed to [ggdist::stat_lineribbon()] or
+#'   [ggdist::point_interval()], such as `.width` and `point_interval`.
 #'
 #' @return A `ggplot` object with occARU-specific attributes attached:
 #'   \describe{
@@ -1536,6 +1540,7 @@ plot_surveys <- function(
   include_predictors = TRUE,
   ndraws = NULL,
   seed = NULL,
+  geom = c("lineribbon", "point_interval"),
   palette = "YlGn",
   ...
 ) {
@@ -1736,7 +1741,6 @@ plot_surveys <- function(
   draws <- dplyr::mutate(draws, pred = if (transform) exp(log_mu) else log_mu)
   p <- ggplot2::ggplot(draws) +
     ggplot2::aes(x = survey, ydist = pred) +
-    ggdist::stat_lineribbon(...) +
     ggplot2::facet_wrap(~species, scales = if (transform) "free_y") +
     ggplot2::scale_x_date(expand = c(0, 0)) +
     ggplot2::scale_y_continuous(expand = c(0, 0)) +
@@ -1750,6 +1754,12 @@ plot_surveys <- function(
         if (!transform) " (log)"
       )
     )
+  geom <- match.arg(geom, c("lineribbon", "point_interval"))
+  p <- if (geom == "lineribbon") {
+    p + ggdist::stat_lineribbon(...)
+  } else {
+    p + ggdist::stat_pointinterval()
+  }
   attr(p, "plot_data") <- draws
   if (K > 1) {
     if (S > 1) {
@@ -1759,7 +1769,7 @@ plot_surveys <- function(
           scales = if (transform) "free" else "free_x"
         )
     } else {
-      p + ggplot2::facet_wrap(~season, scales = "free_x")
+      p + ggplot2::facet_wrap(~season, ncol = 1, scales = "free_x")
     }
   } else if (S > 1) {
     p + ggplot2::facet_wrap(~species, scales = if (transform) "free_y")
