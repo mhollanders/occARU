@@ -36,4 +36,5 @@ reference:
       - setup_occARU
       - thin_observations
       - find_failures
+      - find_seasons
 

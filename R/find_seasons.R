@@ -25,11 +25,11 @@ find_seasons <- function(
   deploymentEnd = deploymentEnd
 ) {
   deployments |>
-    dplyr::arrange(deploymentStart) |>
+    dplyr::arrange({{ deploymentStart }}) |>
     dplyr::mutate(
       season = purrr::accumulate2(
-        deploymentStart[-1],
-        deploymentEnd[-n()],
+        {{ deploymentStart }}[-1],
+        {{ deploymentEnd }}[-n()],
         .init = 1L,
         \(season, start, end) {
           if (start > end) season + 1L else season
@@ -37,8 +37,8 @@ find_seasons <- function(
       )
     ) |>
     dplyr::mutate(
-      .mid = min(deploymentStart) +
-        (max(deploymentEnd) - min(deploymentStart)) / 2,
+      .mid = min({{ deploymentStart }}) +
+        (max({{ deploymentEnd }}) - min({{ deploymentStart }})) / 2,
       season = factor(paste0(
         lubridate::year(.mid),
         "_Q",
