@@ -711,17 +711,17 @@ make_deployments <- function(
 
   # regions
   if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(region)))) {
-    deployments <- dplyr::mutate(deployments, .region = factor(1L))
+    deployments$.region <- factor(1L)
   } else {
     deployments <- dplyr::rename(deployments, .region = {{ region }})
-    if (!is.factor(dplyr::pull(deployments, .region))) {
-      deployments <- dplyr::mutate(deployments, .region = factor(.region))
+    if (!is.factor(deployments$.region)) {
+      deployments$.region <- factor(deployments$.region)
     }
   }
 
   # seasons
   if (!rlang::has_name(deployments, rlang::as_name(rlang::enquo(season)))) {
-    deployments <- dplyr::mutate(deployments, .season = factor(1L))
+    deployments$.season <- factor(1L)
     check_cols_duplicates(deployments, locationID)
   } else if (!is.factor(dplyr::pull(deployments, {{ season }}))) {
     cli::cli_abort(
@@ -748,7 +748,7 @@ make_deployments <- function(
   if (is.factor(deployments |> dplyr::pull(locationID))) {
     check_empty_levels(deployments, locationID)
   } else {
-    deployments <- dplyr::mutate(deployments, locationID = factor(locationID))
+    deployments$locationID <- factor(deployments$locationID)
   }
   deployments <- dplyr::mutate(
     deployments,
@@ -860,13 +860,10 @@ make_observations <- function(
   observations <- align_factor(observations, locationID, site_lvl)
   check_cols_class(observations, "POSIXt", eventStart)
   check_empty_levels(observations, locationID, .season, strict = FALSE)
-  if (is.factor(observations |> dplyr::pull(scientificName))) {
+  if (is.factor(observations$scientificName)) {
     check_empty_levels(observations, scientificName)
   } else {
-    observations <- dplyr::mutate(
-      observations,
-      scientificName = factor(scientificName)
-    )
+    observations$scientificName <- factor(observations$scientificName)
   }
   observations <- observations |>
     dplyr::select(locationID, eventStart, scientificName, count) |>
@@ -930,19 +927,16 @@ make_site_predictors <- function(predictors, deployments, locationID, season) {
     check_missing(predictors)
     check_cols_exist(predictors, {{ locationID }})
     predictors <- dplyr::rename(predictors, locationID = {{ locationID }})
-    site_lvl <- dplyr::pull(deployments, locationID) |> levels()
+    site_lvl <- levels(deployments$locationID)
     predictors <- align_factor(
       predictors |> dplyr::filter(locationID %in% site_lvl),
       locationID,
       site_lvl,
       strict = TRUE
     )
-    season_lvl <- dplyr::pull(deployments, .season) |> levels()
+    season_lvl <- levels(deployments$.season)
     if (length(season_lvl) == 1) {
-      predictors <- dplyr::mutate(
-        predictors,
-        .season = factor(1L, labels = season_lvl)
-      )
+      predictors$.season <- factor(1L, labels = season_lvl)
       check_cols_duplicates(predictors, locationID)
     } else {
       check_cols_exist(predictors, {{ season }})
@@ -978,19 +972,16 @@ make_survey_predictors <- function(
       locationID = {{ locationID }},
       date = {{ date }}
     )
-    site_lvl <- dplyr::pull(deployments, locationID) |> levels()
+    site_lvl <- levels(deployments$locationID)
     predictors <- align_factor(
       predictors |> dplyr::filter(locationID %in% site_lvl),
       locationID,
       site_lvl,
       strict = TRUE
     )
-    season_lvl <- dplyr::pull(deployments, .season) |> levels()
-    if (length(season_lvl)) {
-      predictors <- dplyr::mutate(
-        predictors,
-        .season = factor(1L, labels = season_lvl)
-      )
+    season_lvl <- levels(deployments$.season)
+    if (length(season_lvl) == 1) {
+      predictors$.season <- factor(1L, labels = season_lvl)
     } else {
       check_cols_exist(predictors, {{ season }})
       predictors <- dplyr::rename(predictors, .season = {{ season }}) |>
